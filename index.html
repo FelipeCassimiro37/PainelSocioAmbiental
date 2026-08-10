@@ -105,9 +105,10 @@ select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid 
 .fichahead h2{margin:4px 0 2px;font-size:20px;font-weight:700;line-height:1.15}
 .fichahead .code{font-family:var(--f-num);font-size:11px;color:var(--muted)}
 
-.grp{padding:11px 16px 5px;display:flex;align-items:center;gap:7px;font-family:var(--f-num);
-  font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);
-  background:#FAFBFA;border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2)}
+/* O grupo é um <details>: cabeçalho em cima, indicadores embaixo.
+   A versão anterior deixava o .grp como flex, o que jogava o título para o
+   lado dos indicadores e espremia a coluna. */
+details.grp{display:block;border-top:1px solid var(--line-2)}
 .row{padding:9px 16px;border-bottom:1px solid var(--line-2)}
 .row:hover{background:#FAFBFA}
 .row .l{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -159,7 +160,8 @@ summary .seta{margin-left:auto;transition:transform .15s;color:var(--muted);font
 details[open] > summary .seta{transform:rotate(90deg)}
 summary .cont{font-family:var(--f-num);font-size:9.5px;color:#A6AEB2;font-weight:400}
 summary:hover{color:var(--ink)}
-details.grp > summary{padding:11px 16px;background:#FAFBFA;border-bottom:1px solid var(--line-2)}
+details.grp > summary{padding:11px 16px;background:#FAFBFA;
+  border-bottom:1px solid var(--line-2);position:sticky;top:0;z-index:1}
 details.grp{border-bottom:1px solid var(--line-2)}
 .mini{background:none;border:0;color:var(--muted);font-size:11px;cursor:pointer;
   padding:2px 0;text-decoration:underline}
@@ -246,6 +248,32 @@ label.op span small{display:block;color:var(--muted);font-size:12px}
 .cols label.op{break-inside:avoid;margin-bottom:6px;font-size:12.5px}
 @media (max-width:640px){.cols{columns:1}}
 
+
+
+/* marcar todos por tema, dentro do cabeçalho do grupo */
+summary input[type=checkbox]{margin:0;flex:none;cursor:pointer}
+summary .rot{flex:1}
+
+/* comparação: tabela + gráfico lado a lado */
+.cmp-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+.cmp-grid > .tabela{margin-top:0}
+.grafico{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.grafico h3{margin:0 0 2px;font-size:14px;font-weight:600}
+.grafico .un{font-family:var(--f-num);font-size:10.5px;color:var(--muted);
+  display:block;margin-bottom:14px}
+.grafico .dica{font-size:12px;color:var(--muted);line-height:1.5}
+.grafico .fonte{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2);
+  font-size:10.5px;color:#98A0A4;font-style:italic;line-height:1.45}
+.gb{margin-bottom:12px}
+.gb .lb{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+.gb .lb b{font-weight:500;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gb .lb span{font-family:var(--f-num);font-size:12px;font-weight:600;white-space:nowrap}
+.gb .tr{height:9px;background:var(--line-2);border-radius:2px;overflow:hidden}
+.gb .tr i{display:block;height:100%;border-radius:2px}
+.gb.sd .lb span{color:#A6AEB2;font-weight:400}
+tbody tr.escolhida td,tbody tr.escolhida td:first-child{background:#FFF6E8}
+tbody tr[data-ind]{cursor:pointer}
+@media (max-width:1080px){ .cmp-grid{grid-template-columns:minmax(0,1fr)} }
 
 @media (max-width:1180px){
   .shell{grid-template-columns:246px minmax(0,1fr)}
@@ -350,9 +378,10 @@ label.op span small{display:block;color:var(--muted);font-size:12px}
 <div id="vistaComparar">
   <div class="cmp-wrap">
     <h2>Comparar lugares</h2>
-    <p class="lead">Escolha até seis municípios, estados ou o Brasil. A tabela põe os
+    <p class="lead">Escolha até cinco municípios, estados ou o Brasil. A tabela põe os
       indicadores lado a lado, e a barra em cada célula mostra o valor em relação ao
-      maior da linha. Somar o estado e o Brasil à seleção dá a referência para leitura.</p>
+      maior da linha. Clique em qualquer linha para ver aquele indicador no gráfico ao lado.
+      Somar o estado e o Brasil à seleção dá a referência para leitura.</p>
 
     <div class="picker">
       <div class="linha">
@@ -375,7 +404,10 @@ label.op span small{display:block;color:var(--muted);font-size:12px}
       Nenhum lugar escolhido ainda. Adicione pelo menos dois para a comparação fazer sentido.
     </div>
 
-    <div class="tabela" id="cmpTabela" style="display:none"><table id="cmpTab"></table></div>
+    <div class="cmp-grid" id="cmpTabela" style="display:none">
+      <div class="tabela"><table id="cmpTab"></table></div>
+      <div class="grafico" id="cmpGraf"></div>
+    </div>
 
     <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn sec" id="cmpCsv" style="display:none">Baixar esta comparação em CSV</button>
@@ -405,6 +437,8 @@ label.op span small{display:block;color:var(--muted);font-size:12px}
               <small><select id="relUF" style="margin-top:5px;padding:5px 7px;border:1px solid var(--line);border-radius:3px"></select></small></span></label>
           <label class="op"><input type="radio" name="escopo" value="ufs">
             <span>Uma linha por estado, mais o Brasil<small>28 linhas, com os agregados</small></span></label>
+          <label class="op"><input type="radio" name="escopo" value="mun">
+            <span>O município selecionado no mapa<small id="relMunInfo">nenhum selecionado</small></span></label>
           <label class="op"><input type="radio" name="escopo" value="sel">
             <span>Os lugares que escolhi na aba Comparar<small id="relSelInfo">nenhum escolhido</small></span></label>
         </div>
@@ -466,6 +500,7 @@ async function baixar(url){
 /* ================= estado ================= */
 let META, DIC, TEMAS, N, UFCODES, MAPEAVEIS, IDS;
 let selecao = [];                 // lugares escolhidos na aba Comparar
+let cmpInd = null;                // indicador desenhado no gráfico da comparação
 const fechadosFicha = new Set();  // temas recolhidos na ficha
 let malhaMun, feats, meshUF, geoUF;
 const cacheInd = new Map();     // id -> vetor nacional
@@ -504,7 +539,7 @@ const proj=d3.geoMercator();
 let W=0,H=0,dpr=1;
 let paths=[], caixas=[], pathMesh=null, cores=[];
 let tr=d3.zoomIdentity;
-const zoom=d3.zoom().scaleExtent([1,60]).on('zoom',e=>{ tr=e.transform; desenhar(); });
+const zoom=d3.zoom().scaleExtent([1,160]).on('zoom',e=>{ tr=e.transform; desenhar(); });
 
 function dimensiona(){
   const r=$('.mapwrap').getBoundingClientRect();
@@ -884,7 +919,7 @@ async function comparar(){
       const nums=vals.filter(v=>typeof v==='number');
       const max=nums.length?Math.max.apply(null,nums.map(Math.abs)):0;
       const topo=nums.length>1?Math.max.apply(null,nums):null;
-      html+=`<tr><td>${DIC[id].nome}`+
+      html+=`<tr data-ind="${id}"${id===cmpInd?' class="escolhida"':''}><td>${DIC[id].nome}`+
         `${DIC[id].unidade?` <span style="color:var(--muted);font-size:11px">${DIC[id].unidade}</span>`:''}</td>`;
       for(const v of vals){
         if(v===null||v===''){ html+='<td class="na">sem dado</td>'; continue; }
@@ -899,6 +934,49 @@ async function comparar(){
     }
   }
   $('#cmpTab').innerHTML=html+'</tbody>';
+  $$('#cmpTab tbody tr[data-ind]').forEach(tr=>{
+    tr.onclick=()=>{ cmpInd=tr.dataset.ind;
+      $$('#cmpTab tbody tr').forEach(o=>o.classList.remove('escolhida'));
+      tr.classList.add('escolhida'); grafico(); };
+  });
+  if(!cmpInd||!DIC[cmpInd]) cmpInd=IDS.find(k=>DIC[k].formato!=='texto');
+  grafico();
+}
+
+/* gráfico de um indicador entre os lugares escolhidos */
+function grafico(){
+  const cx=$('#cmpGraf');
+  if(!selecao.length||!cmpInd){ cx.innerHTML=''; return; }
+  const m=DIC[cmpInd], ramp=TEMAS[m.tema].ramp;
+  if(m.formato==='texto'){
+    cx.innerHTML=`<h3>${m.nome}</h3><span class="un">indicador de texto</span>`+
+      `<p class="dica">Este indicador não é numérico, então não entra no gráfico.
+       Escolha outra linha da tabela.</p>`;
+    return;
+  }
+  const dados=selecao.map(it=>{
+    const v=valorDe(it,cmpInd);
+    return { nome:rotulo(it), cor:corItem(it), v:(v===undefined?null:v) };
+  });
+  const nums=dados.filter(d=>typeof d.v==='number').map(d=>d.v);
+  const teto=nums.length?Math.max.apply(null,nums.map(Math.abs)):0;
+  let html=`<h3>${m.nome}</h3><span class="un">`+
+    [m.unidade,m.ano].filter(Boolean).join(' · ')+`</span>`;
+  if(!nums.length){
+    html+='<p class="dica">Nenhum dos lugares escolhidos tem valor para este indicador.</p>';
+  }else{
+    for(const d of dados){
+      const tem=typeof d.v==='number';
+      const larg=tem&&teto?Math.max(1.5,Math.abs(d.v)/teto*100):0;
+      html+=`<div class="gb${tem?'':' sd'}">`+
+        `<div class="lb"><b>${d.nome}</b><span>${fmt(d.v,cmpInd,true)}</span></div>`+
+        `<div class="tr"><i style="width:${larg}%;background:${tem?d.cor:'transparent'}"></i></div>`+
+        `</div>`;
+    }
+    html+=`<p class="dica">Barras proporcionais ao maior valor da seleção.</p>`;
+  }
+  html+=`<div class="fonte">${m.fonte}</div>`;
+  cx.innerHTML=html;
 }
 function montaComparar(){
   $('#cmpUF').onchange=e=>{
@@ -912,7 +990,7 @@ function montaComparar(){
   };
   $('#cmpMun').onchange=e=>{ $('#cmpAdd').disabled=!e.target.value; };
   const cabe=()=>{
-    if(selecao.length>=6){ alert('São no máximo seis lugares por comparação.'); return false; }
+    if(selecao.length>=5){ alert('São no máximo cinco lugares por comparação.'); return false; }
     return true;
   };
   $('#cmpAdd').onclick=()=>{
@@ -962,13 +1040,25 @@ function baixarCSV(texto,nome){
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },300);
 }
 const escopoAtual=()=>{ const r=$$('input[name=escopo]').filter(x=>x.checked)[0]; return r?r.value:'br'; };
-const indsMarcados=()=>$$('#relInds input').filter(c=>c.checked).map(c=>c.value);
+const indsMarcados=()=>$$('#relInds .cols input').filter(c=>c.checked).map(c=>c.value);
+function sincronizaTemas(){
+  $$('#relInds details').forEach(det=>{
+    const cx=Array.from(det.querySelectorAll('.cols input'));
+    const marca=det.querySelector('.todosTema');
+    if(!marca||!cx.length) return;
+    const m=cx.filter(c=>c.checked).length;
+    marca.checked = m===cx.length;
+    marca.indeterminate = m>0 && m<cx.length;
+  });
+}
 function infoRel(){
+  sincronizaTemas();
   const e=escopoAtual(), n=indsMarcados().length;
   let linhas;
   if(e==='br') linhas=N;
   else if(e==='uf') linhas=(munsByUF.get($('#relUF').value)||[]).length;
   else if(e==='ufs') linhas=UFCODES.length+1;
+  else if(e==='mun') linhas=(st.mun!==null?1:0);
   else linhas=selecao.length;
   $('#relInfo').textContent=linhas.toLocaleString('pt-BR')+' linhas × '+n+' indicadores';
   $('#relGerar').disabled=(n===0||linhas===0);
@@ -979,8 +1069,15 @@ function montaRelatorio(){
     const ids=IDS.filter(k=>DIC[k].tema===tema);
     if(!ids.length) continue;
     const det=document.createElement('details'); det.open=(tema==='demografia');
-    det.innerHTML=`<summary><span class="dot" style="background:${tm.ramp[4]}"></span>${tm.nome}`+
+    det.innerHTML=`<summary><input type="checkbox" class="todosTema" aria-label="Marcar todos de ${tm.nome}">`+
+      `<span class="dot" style="background:${tm.ramp[4]}"></span><span class="rot">${tm.nome}</span>`+
       `<span class="cont">${ids.length}</span><span class="seta">&#9654;</span></summary>`;
+    const marcaTema=det.querySelector('.todosTema');
+    marcaTema.addEventListener('click',e=>e.stopPropagation());
+    marcaTema.addEventListener('change',()=>{
+      det.querySelectorAll('.cols input').forEach(c=>{ c.checked=marcaTema.checked; });
+      infoRel();
+    });
     const d=document.createElement('div'); d.className='cols';
     for(const id of ids){
       const l=document.createElement('label'); l.className='op';
@@ -991,11 +1088,19 @@ function montaRelatorio(){
     }
     det.appendChild(d); box.appendChild(det);
   }
-  $('#relTodos').onclick=()=>{ $$('#relInds input').forEach(c=>c.checked=true); infoRel(); };
-  $('#relNenhum').onclick=()=>{ $$('#relInds input').forEach(c=>c.checked=false); infoRel(); };
+  $('#relTodos').onclick=()=>{ $$('#relInds .cols input').forEach(c=>{c.checked=true}); infoRel(); };
+  $('#relNenhum').onclick=()=>{ $$('#relInds .cols input').forEach(c=>{c.checked=false}); infoRel(); };
   $$('input[name=escopo]').forEach(r=>{ r.onchange=infoRel; });
   $('#relUF').onchange=infoRel;
-  $('#abrirRel').onclick=()=>{ $('#modalRel').classList.add('on'); infoRel(); };
+  $('#abrirRel').onclick=()=>{
+    const r=$('input[name=escopo][value=mun]');
+    $('#relMunInfo').textContent = st.mun!==null
+      ? META.nomes[st.mun]+' — '+META.ufSiglas[META.uf[st.mun]]
+      : 'nenhum selecionado; escolha um município na aba Mapa';
+    r.disabled = st.mun===null;
+    if(r.disabled && r.checked){ $('input[name=escopo][value=br]').checked=true; }
+    $('#modalRel').classList.add('on'); infoRel();
+  };
   const fechar=()=>$('#modalRel').classList.remove('on');
   $('#fecharRel').onclick=fechar; $('#relCancelar').onclick=fechar;
   $('#modalRel').addEventListener('click',e=>{ if(e.target.id==='modalRel') fechar(); });
@@ -1015,6 +1120,12 @@ async function gerarRelatorio(){
       linhas.push(['BR','Brasil','País'].concat(ids.map(i=>csvNum(agregado('BR')[i],i))));
       for(const u of UFCODES)
         linhas.push([u,META.ufNomes[u],'UF'].concat(ids.map(i=>csvNum(agregado(u)[i],i))));
+    }else if(esc==='mun'){
+      await garanteUF(META.uf[st.mun]);
+      const it={t:'mun',i:st.mun};
+      linhas.push(['codigo_ibge','municipio','uf'].concat(ids.map(i=>DIC[i].nome)));
+      linhas.push([META.municipios[st.mun],META.nomes[st.mun],META.ufSiglas[META.uf[st.mun]]]
+        .concat(ids.map(i=>{ const v=valorDe(it,i); return csvNum(v===undefined?null:v,i); })));
     }else if(esc==='sel'){
       for(const it of selecao) if(it.t==='mun') await garanteUF(META.uf[it.i]);
       linhas.push(['codigo','nome','tipo'].concat(ids.map(i=>DIC[i].nome)));
