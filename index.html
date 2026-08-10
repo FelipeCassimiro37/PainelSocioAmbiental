@@ -176,6 +176,10 @@ details.grp{border-bottom:1px solid var(--line-2)}
 .btn-rel{background:#FBD9AE;border:0;color:#5B3B12;font-weight:600;font-size:12.5px;
   padding:8px 14px;border-radius:var(--r);cursor:pointer;white-space:nowrap}
 .btn-rel:hover{background:#F7CB90}
+.btn-link{background:#ffffff1f;border:1px solid #ffffff33;color:#DCE9F1;font-size:12.5px;
+  padding:7px 12px;border-radius:var(--r);cursor:pointer;white-space:nowrap}
+.btn-link:hover{background:#ffffff33;color:#fff}
+.btn-link.ok{background:#CFE8CF;border-color:#CFE8CF;color:#245024}
 .badge{font-family:var(--f-num);font-size:10px;letter-spacing:.06em;color:#9FC0D6;
   background:none;padding:0;white-space:nowrap}
 /* ---------- comparação ---------- */
@@ -254,26 +258,7 @@ label.op span small{display:block;color:var(--muted);font-size:12px}
 summary input[type=checkbox]{margin:0;flex:none;cursor:pointer}
 summary .rot{flex:1}
 
-/* comparação: tabela + gráfico lado a lado */
-.cmp-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
-.cmp-grid > .tabela{margin-top:0}
-.grafico{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
-.grafico h3{margin:0 0 2px;font-size:14px;font-weight:600}
-.grafico .un{font-family:var(--f-num);font-size:10.5px;color:var(--muted);
-  display:block;margin-bottom:14px}
-.grafico .dica{font-size:12px;color:var(--muted);line-height:1.5}
-.grafico .fonte{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2);
-  font-size:10.5px;color:#98A0A4;font-style:italic;line-height:1.45}
-.gb{margin-bottom:12px}
-.gb .lb{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
-.gb .lb b{font-weight:500;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gb .lb span{font-family:var(--f-num);font-size:12px;font-weight:600;white-space:nowrap}
-.gb .tr{height:9px;background:var(--line-2);border-radius:2px;overflow:hidden}
-.gb .tr i{display:block;height:100%;border-radius:2px}
-.gb.sd .lb span{color:#A6AEB2;font-weight:400}
-tbody tr.escolhida td,tbody tr.escolhida td:first-child{background:#FFF6E8}
-tbody tr[data-ind]{cursor:pointer}
-@media (max-width:1080px){ .cmp-grid{grid-template-columns:minmax(0,1fr)} }
+/* comparação */
 
 @media (max-width:1180px){
   .shell{grid-template-columns:246px minmax(0,1fr)}
@@ -287,6 +272,34 @@ tbody tr[data-ind]{cursor:pointer}
   .top .sub{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- documento para PDF (via impressão do navegador) ---------- */
+#impressao{display:none}
+@media print{
+  @page{ size:A4 portrait; margin:14mm 12mm 16mm; }
+  body{background:#fff;display:block;height:auto}
+  body > *{display:none !important}
+  #impressao{display:block !important;font-size:9.5pt;color:#10161C}
+  .pdf-cab{border-bottom:2px solid #17405F;padding-bottom:6px;margin-bottom:14px;
+    display:flex;align-items:baseline;gap:10px}
+  .pdf-cab h1{margin:0;font-size:12pt;letter-spacing:.14em;text-transform:uppercase;color:#17405F}
+  .pdf-cab span{font-size:8pt;color:#6E787E;margin-left:auto}
+  .pdf-lugar{page-break-before:always;break-before:page}
+  .pdf-lugar:first-of-type{page-break-before:avoid;break-before:auto}
+  .pdf-lugar > h2{margin:0 0 1px;font-size:15pt}
+  .pdf-lugar > .id{font-size:8.5pt;color:#6E787E;margin-bottom:10px}
+  .pdf-tema{font-size:8.5pt;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:#17405F;border-bottom:1px solid #DCE1DF;padding-bottom:3px;margin:12px 0 6px}
+  .pdf-grade{columns:2;column-gap:10mm}
+  .pdf-item{break-inside:avoid;padding:3px 0;border-bottom:1px dotted #DCE1DF;
+    display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .pdf-item b{font-weight:400}
+  .pdf-item span{font-weight:700;white-space:nowrap;text-align:right}
+  .pdf-item span.na{font-weight:400;color:#9AA2A6}
+  .pdf-fontes{margin-top:14px;padding-top:8px;border-top:1px solid #DCE1DF;
+    font-size:7.5pt;color:#6E787E;line-height:1.5}
+  .pdf-fontes b{color:#3A454C}
+}
 </style>
 </head>
 <body>
@@ -305,6 +318,7 @@ tbody tr[data-ind]{cursor:pointer}
     <button data-v="comparar" aria-pressed="false">Comparar</button>
   </nav>
   <div class="acoes">
+    <button class="btn-link" id="copiarLink" title="Copiar um link que abre o painel neste mesmo recorte">Copiar link</button>
     <button class="btn-rel" id="abrirRel">Gerar relatório</button>
     <span class="badge" id="cobertura">—</span>
   </div>
@@ -380,8 +394,7 @@ tbody tr[data-ind]{cursor:pointer}
     <h2>Comparar lugares</h2>
     <p class="lead">Escolha até cinco municípios, estados ou o Brasil. A tabela põe os
       indicadores lado a lado, e a barra em cada célula mostra o valor em relação ao
-      maior da linha. Clique em qualquer linha para ver aquele indicador no gráfico ao lado.
-      Somar o estado e o Brasil à seleção dá a referência para leitura.</p>
+      maior da linha. Somar o estado e o Brasil à seleção dá a referência para leitura.</p>
 
     <div class="picker">
       <div class="linha">
@@ -404,10 +417,7 @@ tbody tr[data-ind]{cursor:pointer}
       Nenhum lugar escolhido ainda. Adicione pelo menos dois para a comparação fazer sentido.
     </div>
 
-    <div class="cmp-grid" id="cmpTabela" style="display:none">
-      <div class="tabela"><table id="cmpTab"></table></div>
-      <div class="grafico" id="cmpGraf"></div>
-    </div>
+    <div class="tabela" id="cmpTabela" style="display:none"><table id="cmpTab"></table></div>
 
     <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn sec" id="cmpCsv" style="display:none">Baixar esta comparação em CSV</button>
@@ -455,11 +465,14 @@ tbody tr[data-ind]{cursor:pointer}
     <footer>
       <span class="info" id="relInfo">—</span>
       <button class="btn sec" id="relCancelar">Cancelar</button>
+      <button class="btn sec" id="relPdf">Gerar PDF</button>
       <button class="btn" id="relGerar">Baixar CSV</button>
     </footer>
   </div>
 </div>
 
+
+<div id="impressao" aria-hidden="true"></div>
 
 <script src="vendor/d3.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
@@ -500,7 +513,6 @@ async function baixar(url){
 /* ================= estado ================= */
 let META, DIC, TEMAS, N, UFCODES, MAPEAVEIS, IDS;
 let selecao = [];                 // lugares escolhidos na aba Comparar
-let cmpInd = null;                // indicador desenhado no gráfico da comparação
 const fechadosFicha = new Set();  // temas recolhidos na ficha
 let malhaMun, feats, meshUF, geoUF;
 const cacheInd = new Map();     // id -> vetor nacional
@@ -750,11 +762,19 @@ function cabecalho(){
 /* ================= enquadramento ================= */
 function enquadra(anima){
   const gen=d3.geoPath(proj);
-  const alvo = st.uf ? geoUF.features.find(f=>String(f.properties.uf)===String(st.uf)) : null;
+  // Município ocupa menos da tela que um estado: assim ele aparece grande sem
+  // perder o entorno, que é o que situa quem está lendo.
+  let alvo=null, fracao=0.86, kmax=40;
+  if(st.nivel==='mun' && st.mun!==null && feats[st.mun]){
+    alvo=feats[st.mun]; fracao=0.42; kmax=140;
+  }else if(st.uf){
+    alvo=geoUF.features.find(f=>String(f.properties.uf)===String(st.uf));
+  }
   let t=d3.zoomIdentity;
   if(alvo){
     const [[x0,y0],[x1,y1]]=gen.bounds(alvo);
-    const k=Math.min(40, 0.86/Math.max((x1-x0)/W,(y1-y0)/H));
+    const larg=Math.max(x1-x0,1e-6), alt=Math.max(y1-y0,1e-6);
+    const k=Math.min(kmax, fracao/Math.max(larg/W, alt/H));
     t=d3.zoomIdentity.translate(W/2,H/2).scale(k).translate(-(x0+x1)/2,-(y0+y1)/2);
   }
   const sel=d3.select(cv);
@@ -919,7 +939,7 @@ async function comparar(){
       const nums=vals.filter(v=>typeof v==='number');
       const max=nums.length?Math.max.apply(null,nums.map(Math.abs)):0;
       const topo=nums.length>1?Math.max.apply(null,nums):null;
-      html+=`<tr data-ind="${id}"${id===cmpInd?' class="escolhida"':''}><td>${DIC[id].nome}`+
+      html+=`<tr><td>${DIC[id].nome}`+
         `${DIC[id].unidade?` <span style="color:var(--muted);font-size:11px">${DIC[id].unidade}</span>`:''}</td>`;
       for(const v of vals){
         if(v===null||v===''){ html+='<td class="na">sem dado</td>'; continue; }
@@ -934,50 +954,9 @@ async function comparar(){
     }
   }
   $('#cmpTab').innerHTML=html+'</tbody>';
-  $$('#cmpTab tbody tr[data-ind]').forEach(tr=>{
-    tr.onclick=()=>{ cmpInd=tr.dataset.ind;
-      $$('#cmpTab tbody tr').forEach(o=>o.classList.remove('escolhida'));
-      tr.classList.add('escolhida'); grafico(); };
-  });
-  if(!cmpInd||!DIC[cmpInd]) cmpInd=IDS.find(k=>DIC[k].formato!=='texto');
-  grafico();
+  gravarHash();
 }
 
-/* gráfico de um indicador entre os lugares escolhidos */
-function grafico(){
-  const cx=$('#cmpGraf');
-  if(!selecao.length||!cmpInd){ cx.innerHTML=''; return; }
-  const m=DIC[cmpInd], ramp=TEMAS[m.tema].ramp;
-  if(m.formato==='texto'){
-    cx.innerHTML=`<h3>${m.nome}</h3><span class="un">indicador de texto</span>`+
-      `<p class="dica">Este indicador não é numérico, então não entra no gráfico.
-       Escolha outra linha da tabela.</p>`;
-    return;
-  }
-  const dados=selecao.map(it=>{
-    const v=valorDe(it,cmpInd);
-    return { nome:rotulo(it), cor:corItem(it), v:(v===undefined?null:v) };
-  });
-  const nums=dados.filter(d=>typeof d.v==='number').map(d=>d.v);
-  const teto=nums.length?Math.max.apply(null,nums.map(Math.abs)):0;
-  let html=`<h3>${m.nome}</h3><span class="un">`+
-    [m.unidade,m.ano].filter(Boolean).join(' · ')+`</span>`;
-  if(!nums.length){
-    html+='<p class="dica">Nenhum dos lugares escolhidos tem valor para este indicador.</p>';
-  }else{
-    for(const d of dados){
-      const tem=typeof d.v==='number';
-      const larg=tem&&teto?Math.max(1.5,Math.abs(d.v)/teto*100):0;
-      html+=`<div class="gb${tem?'':' sd'}">`+
-        `<div class="lb"><b>${d.nome}</b><span>${fmt(d.v,cmpInd,true)}</span></div>`+
-        `<div class="tr"><i style="width:${larg}%;background:${tem?d.cor:'transparent'}"></i></div>`+
-        `</div>`;
-    }
-    html+=`<p class="dica">Barras proporcionais ao maior valor da seleção.</p>`;
-  }
-  html+=`<div class="fonte">${m.fonte}</div>`;
-  cx.innerHTML=html;
-}
 function montaComparar(){
   $('#cmpUF').onchange=e=>{
     const cod=e.target.value, sm=$('#cmpMun');
@@ -1062,6 +1041,11 @@ function infoRel(){
   else linhas=selecao.length;
   $('#relInfo').textContent=linhas.toLocaleString('pt-BR')+' linhas × '+n+' indicadores';
   $('#relGerar').disabled=(n===0||linhas===0);
+  const pdfOk=(e==='mun'&&st.mun!==null)||(e==='sel'&&selecao.length>0);
+  const bp=$('#relPdf');
+  bp.disabled=(n===0||!pdfOk);
+  bp.title = pdfOk ? 'Abre a janela de impressão; escolha "Salvar como PDF"'
+    : 'O PDF vale para o município selecionado ou para os lugares da aba Comparar';
 }
 function montaRelatorio(){
   const box=$('#relInds');
@@ -1106,6 +1090,7 @@ function montaRelatorio(){
   $('#modalRel').addEventListener('click',e=>{ if(e.target.id==='modalRel') fechar(); });
   addEventListener('keydown',e=>{ if(e.key==='Escape') fechar(); });
   $('#relGerar').onclick=gerarRelatorio;
+  $('#relPdf').onclick=gerarPDF;
   infoRel();
 }
 async function gerarRelatorio(){
@@ -1156,13 +1141,145 @@ async function gerarRelatorio(){
   }finally{ btn.disabled=false; btn.textContent=rot; }
 }
 
+
+/* ================= link permanente ================= */
+/* O endereço guarda o recorte usando código IBGE, não posição na lista:
+   assim um link continua válido depois de uma troca de malha. */
+function itemParaTexto(it){
+  return it.t==='br' ? 'BR' : (it.t==='uf' ? 'UF'+it.cod : META.municipios[it.i]);
+}
+function textoParaItem(txt){
+  txt=String(txt||'').trim();
+  if(txt==='BR') return {t:'br'};
+  if(txt.slice(0,2)==='UF'){
+    const c=txt.slice(2).padStart(2,'0');
+    return META.ufNomes[c] ? {t:'uf',cod:c} : null;
+  }
+  const i=idxByCode.get(txt);
+  return i===undefined ? null : {t:'mun',i};
+}
+function montaHash(){
+  const p=new URLSearchParams();
+  p.set('v',st.vista);
+  if(st.vista==='comparar'){
+    if(selecao.length) p.set('s',selecao.map(itemParaTexto).join(','));
+  }else{
+    p.set('n',st.nivel);
+    if(st.uf) p.set('uf',st.uf);
+    if(st.mun!==null&&st.mun!==undefined) p.set('m',META.municipios[st.mun]);
+    if(st.ind) p.set('i',st.ind);
+  }
+  return '#'+p.toString();
+}
+function gravarHash(){
+  try{ history.replaceState(null,'',location.pathname+location.search+montaHash()); }catch(e){}
+}
+function lerHash(){
+  const h=(location.hash||'').replace(/^#/,'');
+  if(!h) return false;
+  const p=new URLSearchParams(h);
+  const v=p.get('v');
+  if(p.get('s')){
+    selecao=p.get('s').split(',').map(textoParaItem).filter(Boolean).slice(0,5);
+  }
+  const ind=p.get('i');
+  if(ind&&DIC[ind]&&DIC[ind].formato!=='texto') st.ind=ind;
+  const uf=p.get('uf');
+  if(uf&&META.ufNomes[uf]) st.uf=uf;
+  const cod=p.get('m');
+  if(cod&&idxByCode.has(cod)){
+    const i=idxByCode.get(cod);
+    st.mun=i; st.uf=META.uf[i];
+  }
+  const n=p.get('n');
+  st.nivel = (n==='mun'&&st.mun!==null) ? 'mun' : (n==='uf'&&st.uf ? 'uf' : 'pais');
+  if(st.nivel!=='mun') st.mun=null;
+  if(st.nivel==='pais') st.uf=null;
+  if(v==='comparar') st.vista='comparar';
+  return true;
+}
+function montaCopiarLink(){
+  $('#copiarLink').onclick=async()=>{
+    gravarHash();
+    const url=location.href;
+    const b=$('#copiarLink'), rot='Copiar link';
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText) await navigator.clipboard.writeText(url);
+      else{
+        const t=document.createElement('textarea');
+        t.value=url; t.style.position='fixed'; t.style.opacity='0';
+        document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+      }
+      b.textContent='Link copiado'; b.classList.add('ok');
+      setTimeout(()=>{ b.textContent=rot; b.classList.remove('ok'); },1800);
+    }catch(e){
+      prompt('Copie o link do painel:',url);
+    }
+  };
+}
+
+/* ================= documento para PDF ================= */
+async function gerarPDF(){
+  const esc=escopoAtual(), ids=indsMarcados();
+  if(!ids.length) return;
+  let lugares;
+  if(esc==='mun'&&st.mun!==null) lugares=[{t:'mun',i:st.mun}];
+  else if(esc==='sel') lugares=selecao.slice();
+  else{
+    alert('O PDF é para poucos lugares: escolha "O município selecionado no mapa" '+
+          'ou "Os lugares que escolhi na aba Comparar". Para listas grandes, use o CSV.');
+    return;
+  }
+  if(!lugares.length){ alert('Nenhum lugar selecionado.'); return; }
+  const btn=$('#relPdf'), rot=btn.textContent;
+  btn.disabled=true; btn.textContent='Preparando…';
+  try{
+    for(const it of lugares) if(it.t==='mun') await garanteUF(META.uf[it.i]);
+    const esc2=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    let html='<div class="pdf-cab"><h1>Painel Socioambiental</h1>'+
+      '<span>extraído em '+new Date().toLocaleDateString('pt-BR')+
+      ' · dados de '+esc2(META.atualizado||'')+'</span></div>';
+    const fontes=new Set();
+    for(const it of lugares){
+      const sub = it.t==='mun'
+        ? META.ufNomes[META.uf[it.i]]+' · código IBGE '+META.municipios[it.i]
+        : (it.t==='uf' ? 'Unidade da Federação · '+munsByUF.get(it.cod).length+' municípios'
+                       : 'País · '+N+' municípios');
+      html+='<section class="pdf-lugar"><h2>'+esc2(rotulo(it))+'</h2>'+
+            '<div class="id">'+esc2(sub)+'</div>';
+      for(const [tema,tm] of Object.entries(TEMAS)){
+        const doTema=ids.filter(k=>DIC[k].tema===tema);
+        if(!doTema.length) continue;
+        html+='<div class="pdf-tema">'+esc2(tm.nome)+'</div><div class="pdf-grade">';
+        for(const id of doTema){
+          let v=valorDe(it,id); if(v===undefined) v=null;
+          const nulo=(v===null||v==='');
+          if(!nulo) fontes.add(DIC[id].fonte);
+          const un=(DIC[id].unidade&&DIC[id].formato!=='pct'&&!nulo)?' '+DIC[id].unidade:'';
+          html+='<div class="pdf-item"><b>'+esc2(DIC[id].nome)+'</b>'+
+                '<span'+(nulo?' class="na"':'')+'>'+esc2(fmt(v,id,true)+un)+'</span></div>';
+        }
+        html+='</div>';
+      }
+      html+='<div class="pdf-fontes"><b>Fontes:</b> '+
+            esc2(Array.from(fontes).join(' · '))+'</div></section>';
+      fontes.clear();
+    }
+    $('#impressao').innerHTML=html;
+    $('#modalRel').classList.remove('on');
+    setTimeout(()=>window.print(),120);
+  }catch(e){
+    alert('Não foi possível montar o PDF: '+(e.message||e));
+  }finally{ btn.disabled=false; btn.textContent=rot; }
+}
+
 /* ================= vistas ================= */
 function trocaVista(v){
   st.vista=v;
   $$('.nav button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
   $('#vistaMapa').style.display = v==='mapa' ? 'grid' : 'none';
   $('#vistaComparar').style.display = v==='comparar' ? 'block' : 'none';
-  if(v==='mapa') setTimeout(dimensiona,30); else comparar();
+  if(v==='mapa'){ setTimeout(dimensiona,30); gravarHash(); } else comparar();
 }
 
 /* ================= orquestração ================= */
@@ -1175,7 +1292,7 @@ async function aplicar(reenquadrar){
   try{
     await garanteInd(st.ind);
     if(st.uf) await garanteUF(st.uf);
-    sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking();
+    sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking(); gravarHash();
     if(reenquadrar) enquadra(true); else desenhar();
   }catch(e){ falhar(e); }
   finally{
@@ -1214,11 +1331,17 @@ async function iniciar(){
       `${N.toLocaleString('pt-BR')} municípios · ${IDS.length} indicadores`;
     $('#cobertura').textContent = 'atualizado em ' + (META.atualizado||'—');
     $('#cobertura').title = 'versão ' + (META.versao||'');
-    montaIndicadores(); montaSelects(); montaComparar(); montaRelatorio();
+    montaIndicadores(); montaSelects(); montaComparar(); montaRelatorio(); montaCopiarLink();
     $$('.nav button').forEach(b=>{ b.onclick=()=>trocaVista(b.dataset.v); });
+    lerHash();
+    if(st.uf) await garanteUF(st.uf);
+    await garanteInd(st.ind);
+    preencheMun();
     d3.select(cv).call(zoom);
     dimensiona();
-    sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking(); desenhar();
+    sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking();
+    enquadra(false); desenhar();
+    if(st.vista==='comparar') trocaVista('comparar'); else gravarHash();
     boot.style.display='none';
     let rt; addEventListener('resize',()=>{ clearTimeout(rt);
       rt=setTimeout(()=>{ if(st.vista==='mapa') dimensiona(); },180); });
