@@ -223,6 +223,29 @@ def main():
     for i, u in enumerate(ufs):
         idx_uf.setdefault(u, []).append(i)
 
+    # Coluna inteiramente zerada num estado é ausência de dado, não zero real.
+    # Uma série verdadeira de ocorrências varia entre municípios; 645 zeros
+    # seguidos em São Paulo significam que a secretaria não publicou a série.
+    zerados = []
+    for cod, ids in sorted(idx_uf.items()):
+        for k in IDS:
+            if DIC[k]["tema"] != "seguranca" or DIC[k]["formato"] == "texto":
+                continue
+            vistos = [series[k][i] for i in ids if series[k][i] is not None]
+            if vistos and not any(v for v in vistos):
+                for i in ids:
+                    series[k][i] = None
+                zerados.append((UF[cod], k))
+    if zerados:
+        porind = {}
+        for sig, k in zerados:
+            porind.setdefault(k, []).append(sig)
+        for k, sigs in porind.items():
+            avisos.append(
+                f"'{k}' ({DIC[k]['nome']}) estava zerado em todos os municípios de "
+                f"{len(sigs)} estados [{', '.join(sigs)}] e passou a constar como sem "
+                f"dado. Se algum desses zeros for real, me avise.")
+
     def calcula(k, ids):
         m, s = DIC[k], series[k]
         if m["formato"] == "texto":
