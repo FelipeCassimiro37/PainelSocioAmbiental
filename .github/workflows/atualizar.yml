@@ -1,0 +1,39 @@
+name: Atualizar dados do painel
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install --quiet openpyxl
+
+      - name: Ler a planilha e gerar os dados
+        env:
+          SHEET_ID: ${{ vars.SHEET_ID }}
+        run: python scripts/build.py
+
+      - name: Publicar se algo mudou
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados
+          if git diff --staged --quiet; then
+            echo "Nenhuma mudanca nos dados."
+          else
+            git commit -m "Atualiza dados a partir do Google Sheets"
+            git push
+          fi
