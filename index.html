@@ -509,16 +509,30 @@ function falhar(e){
        Publicado no GitHub Pages funciona normalmente. Para ver na sua máquina,
        execute <code>ver-local.bat</code> na pasta do projeto e abra
        <code>http://localhost:8000</code>.`
-    : `<b>Não foi possível carregar os dados.</b>
-       ${String(e && e.message || e)}<br><br>
-       Verifique se as pastas <code>dados/</code> e <code>malha/</code> foram publicadas
-       junto com o <code>index.html</code>.`;
+    : `<b>O painel não conseguiu iniciar.</b>
+       <code>${String(e && e.message || e).slice(0,300)}</code><br><br>
+       Se a mensagem falar em arquivo não encontrado, confira se as pastas
+       <code>dados/</code>, <code>malha/</code> e <code>vendor/</code> foram
+       publicadas junto com o <code>index.html</code>. Para o erro completo,
+       aperte F12 e abra a aba Console.`;
   console.error(e);
 }
 async function baixar(url){
   const r = await fetch(url, {cache:'default'});
   if(!r.ok) throw new Error(`${url} → HTTP ${r.status}`);
   return r.json();
+}
+
+/* As bibliotecas do mapa vêm de vendor/ e são usadas logo abaixo. Se
+   faltarem, o script morre antes de qualquer aviso — daí a checagem aqui, e
+   não lá no carregamento dos dados. */
+if(typeof d3==='undefined' || typeof topojson==='undefined'){
+  const faltam=[];
+  if(typeof d3==='undefined') faltam.push('vendor/d3.min.js');
+  if(typeof topojson==='undefined') faltam.push('vendor/topojson-client.min.js');
+  falhar(new Error('Não foi possível carregar '+faltam.join(' e ')+
+    '. Confira se a pasta vendor/ foi publicada junto com o index.html.'));
+  return;
 }
 
 /* ================= estado ================= */
