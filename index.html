@@ -1341,4 +1341,114 @@ async function gerarPDF(){
     const fontes=new Set();
     for(const it of lugares){
       const sub = it.t==='mun'
-        ? META.ufNomes[META.uf[it.i]]+' · código IBGE '+MET
+        ? META.ufNomes[META.uf[it.i]]+' · código IBGE '+META.municipios[it.i]
+        : (it.t==='uf' ? 'Unidade da Federação · '+munsByUF.get(it.cod).length+' municípios'
+                       : 'País · '+N+' municípios');
+      html+='<section class="pdf-lugar"><h2>'+esc2(rotulo(it))+'</h2>'+
+            '<div class="id">'+esc2(sub)+'</div>';
+      for(const [tema,tm] of Object.entries(TEMAS)){
+        const doTema=ids.filter(k=>DIC[k].tema===tema);
+        if(!doTema.length) continue;
+        html+='<div class="pdf-tema">'+esc2(tm.nome)+'</div><div class="pdf-grade">';
+        for(const id of doTema){
+          let v=valorDe(it,id); if(v===undefined) v=null;
+          const nulo=(v===null||v==='');
+          if(!nulo) fontes.add(DIC[id].fonte);
+          const un=(DIC[id].unidade&&DIC[id].formato!=='pct'&&!nulo)?' '+DIC[id].unidade:'';
+          html+='<div class="pdf-item"><b>'+esc2(nomeLongo(id))+'</b>'+
+                '<span'+(nulo?' class="na"':'')+'>'+esc2(fmt(v,id,true)+un)+'</span></div>';
+        }
+        html+='</div>';
+      }
+      html+='<div class="pdf-fontes"><b>Fontes:</b> '+
+            esc2(Array.from(fontes).join(' · '))+'</div></section>';
+      fontes.clear();
+    }
+    $('#impressao').innerHTML=html;
+    $('#modalRel').classList.remove('on');
+    setTimeout(()=>window.print(),120);
+  }catch(e){
+    alert('Não foi possível montar o PDF: '+(e.message||e));
+  }finally{ btn.disabled=false; btn.textContent=rot; }
+}
+
+/* ================= vistas ================= */
+function trocaVista(v){
+  st.vista=v;
+  $$('.nav button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
+  $('#vistaMapa').style.display = v==='mapa' ? 'grid' : 'none';
+  $('#vistaComparar').style.display = v==='comparar' ? 'block' : 'none';
+  if(v==='mapa'){ setTimeout(dimensiona,30); gravarHash(); } else comparar();
+}
+
+/* ================= orquestração ================= */
+
+let ocupado=false;
+async function aplicar(reenquadrar){
+  if(ocupado) return;
+  ocupado=true;
+  $('#vistaMapa').classList.add('carregando');
+  try{
+    await garanteInd(st.ind);
+    if(st.uf) await garanteUF(st.uf);
+    sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking(); gravarHash();
+    if(reenquadrar) enquadra(true); else desenhar();
+  }catch(e){ falhar(e); }
+  finally{
+    $('#vistaMapa').classList.remove('carregando');
+    ocupado=false;
+  }
+}
+
+async function iniciar(){
+  try{
+    progresso('Carregando definições',12);
+    META = await baixar('dados/meta.json');
+    DIC=META.dicionario; TEMAS=META.temas; N=META.municipios.length;
+    IDS=Object.keys(DIC);
+    MAPEAVEIS=IDS.filter(k=>DIC[k].formato!=='texto');
+    st.ind=MAPEAVEIS[0];
+    META.municipios.forEach((c,i)=>idxByCode.set(String(c),i));
+    META.uf.forEach((u,i)=>{ if(!munsByUF.has(u)) munsByUF.set(u,[]); munsByUF.get(u).push(i); });
+    UFCODES=[...munsByUF.keys()].sort((a,b)=>META.ufNomes[a].localeCompare(META.ufNomes[b],'pt'));
+
+    progresso('Carregando o mapa',45);
+    malhaMun = await baixar('malha/mun.topo.json');
+    const malhaUF = await baixar('malha/uf.topo.json');
+    const kM=Object.keys(malhaMun.objects)[0], kU=Object.keys(malhaUF.objects)[0];
+    feats = topojson.feature(malhaMun, malhaMun.objects[kM]).features;
+    geoUF = topojson.feature(malhaUF, malhaUF.objects[kU]);
+    meshUF = topojson.mesh(malhaUF, malhaUF.objects[kU], (a,b)=>a!==b);
+    if(feats.length!==N)
+      console.warn('malha com '+feats.length+' feições e meta com '+N+' municípios');
+
+    progresso('Carregando indicador',78);
+    await garanteInd(st.ind);
+
+    progresso('Desenhando',94);
+    $('#subtitulo').textContent =
+      `${N.toLocaleString('pt-BR')} municípios · ${IDS.length} indicadores`;
+    $('#cobertura').textContent = 'atualizado em ' + (META.atualizado||'—');
+    $('#cobertura').title = 'versão ' + (META.versao||'');
+    montarGrupos(); montaIndicadores(); ligaBusca();
+    montaSelects(); montaComparar(); montaRelatorio(); montaCopiarLink();
+    $$('.nav button').forEach(b=>{ b.onclick=()=>trocaVista(b.dataset.v); });
+    lerHash();
+    if(st.uf) await garanteUF(st.uf);
+    await garanteInd(st.ind);
+    preencheMun();
+    d3.select(cv).call(zoom);
+    dimensiona();
+    sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking();
+    enquadra(false); desenhar();
+    if(st.vista==='comparar') trocaVista('comparar'); else gravarHash();
+    boot.style.display='none';
+    let rt; addEventListener('resize',()=>{ clearTimeout(rt);
+      rt=setTimeout(()=>{ if(st.vista==='mapa') dimensiona(); },180); });
+  }catch(e){ falhar(e); }
+}
+iniciar();
+})();
+</script>
+</body>
+</html>
