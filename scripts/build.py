@@ -138,20 +138,28 @@ def ler_sheets(sheet_id, aba):
     suficiente para tabelas simples. Tentamos as duas e ficamos com a que
     trouxer uma coluna de código reconhecível.
     """
-    ultima, erro = [], None
+    def nota(linhas):
+        """Quanto essa resposta parece um cabeçalho utilizável."""
+        if not linhas:
+            return -1
+        melhor = 0
+        for l in linhas[:12]:
+            rotulos = sum(1 for c in l if str(c).strip())
+            tem_id = any(norm(c) in CHAVES_ID for c in l)
+            melhor = max(melhor, rotulos + (1000 if tem_id else 0))
+        return melhor
+
+    candidatas, erro = [], None
     for extra in ("&headers=0", ""):
         try:
-            linhas = _baixa_gviz(sheet_id, aba, extra)
+            candidatas.append(_baixa_gviz(sheet_id, aba, extra))
         except Exception as e:
             erro = e
-            continue
-        if linhas:
-            ultima = linhas
-            if any(norm(c) in CHAVES_ID for l in linhas[:12] for c in l):
-                return linhas
-    if not ultima and erro is not None:
-        avisos.append(f"aba '{aba}': não foi possível ler ({erro})")
-    return ultima
+    if not candidatas:
+        if erro is not None:
+            avisos.append(f"aba '{aba}': não foi possível ler ({erro})")
+        return []
+    return max(candidatas, key=nota)
 
 
 def ler_xlsx(caminho, aba):
@@ -198,11 +206,16 @@ def tabela(linhas, rotulo=""):
         avisos.append(f"{rotulo}: cabeçalho em dois níveis, nomes compostos "
                       f"(ex.: '{exemplo}')")
 
+    # colunas sem rótulo recebem um nome interno para continuarem endereçáveis;
+    # o Google às vezes devolve o cabeçalho em branco quando a coluna mistura
+    # texto no topo com números embaixo
+    nomes = [n if n else f"col_{j+1}" for j, n in enumerate(nomes)]
+
     registros = []
     for l in linhas[idx + 1:]:
         if not any(str(c).strip() for c in l):
             continue
-        registros.append({nomes[j]: l[j] for j in range(min(len(nomes), len(l))) if nomes[j]})
+        registros.append({nomes[j]: l[j] for j in range(min(len(nomes), len(l)))})
     return nomes, registros
 
 
@@ -278,73 +291,35 @@ def main():
     series = {k: [None] * n for k in DIC}
     conflitos = {}
 
-    # ------------------------------------------------------ abas por estado
-    for cod, sig in sorted(UF.items(), key=lambda kv: kv[1]):
-        _, linhas = tabela(ler(sig), sig)
-        if not linhas:
-            avisos.append(f"aba '{sig}' vazia ou ausente")
-            continue
-        for r in linhas:
-            cid = str(r.get("id") or "").split(".")[0].strip()
-            if not cid:
-                continue
-            if cid not in pos:
-                avisos.append(f"{sig}: código '{cid}' não existe na malha")
-                continue
-            for k in IDS:
-                bruto = r.get(k)
-                if bruto is None or str(bruto).strip().lower() in VAZIOS:
-                    continue
-                if DIC[k]["formato"] == "texto":
-                    series[k][pos[cid]] = str(bruto).strip()
-                    continue
-                v = num(bruto)
-                if v is None:
-                    avisos.append(f"{sig}/{cid}: valor ilegível em '{k}' ({bruto!r})")
-                    continue
-                series[k][pos[cid]] = arredonda(v, DIC[k]["formato"])
-
-    # -------------------------------------------------- abas de fonte
-    if listar_abas is None:
-        nomes_fonte = sorted(abas_declaradas)     # no Sheets não dá para listar abas
-    else:
-        nomes_fonte = sorted(set(a for a in listar_abas if a.lower().startswith("fonte_"))
-                             | abas_declaradas)
-
+    # ------------------------------------------------------------ leitura
+    # Toda aba passa pelo mesmo leitor. A única diferença entre uma aba de
+    # estado e uma aba de fonte é o que se espera encontrar nela; a forma de
+    # localizar a coluna de código e de casar as colunas com o dicionário é a
+    # mesma. Antes as abas de estado exigiam uma coluna chamada exatamente
+    # 'id', e quando o Google devolvia esse cabeçalho em branco elas eram
+    # puladas linha a linha, sem um único aviso.
     oficiais_fonte = {}
-    if nomes_fonte:
-        print("Abas de fonte:")
-    for aba in nomes_fonte:
+
+    def processa(aba, tipo):
         cols, linhas = tabela(ler(aba), aba)
         if not linhas:
-            avisos.append(f"aba de fonte '{aba}' vazia ou ausente")
-            continue
-        # diagnóstico: o que exatamente foi lido desta aba
-        print(f"  {aba}: {len(linhas)} linhas de dado; cabeçalho lido = "
-              f"{[c for c in cols if c][:6]}")
-        if linhas:
-            amostra = {c: linhas[0].get(c) for c in list(cols)[:6] if c}
-            print(f"      primeira linha = {amostra}")
+            avisos.append(f"aba '{aba}' vazia ou ausente")
+            return None
+
         col_id = next((c for c in cols if norm(c) in CHAVES_ID), None)
+        recurso = ""
         if not col_id:
-            erros.append(f"{aba}: nenhuma coluna de código IBGE encontrada. "
-                         f"A primeira coluna precisa se chamar 'id', 'Código' ou "
-                         f"'cod_ibge'. Cabeçalho lido: {[c for c in cols if c][:8]}")
-            continue
-        mapeadas = {c: apelidos[norm(c)] for c in cols if c and norm(c) in apelidos}
+            col_id = cols[0]
+            recurso = f" (sem cabeçalho de código reconhecido; usando a 1ª coluna '{col_id}')"
+
+        mapeadas = {c: apelidos[norm(c)] for c in cols if norm(c) in apelidos}
         if not mapeadas:
             erros.append(f"{aba}: nenhuma coluna casou com o dicionário. "
-                         f"Colunas da aba: {[c for c in cols if c][:8]}. "
-                         f"Confira o campo 'coluna' (ou o 'id') no dicionário.")
-            continue
-        print(f"      casaram com o dicionário: {sorted(mapeadas.values(), key=lambda x: x[0])[:6]}")
-        for c in cols:
-            if c and norm(c) not in apelidos and norm(c) not in CHAVES_ID \
-               and norm(c) not in DESCRITIVAS:
-                avisos.append(f"{aba}: coluna '{c}' não está no dicionário — ignorada")
+                         f"Colunas lidas: {[c for c in cols if not c.startswith('col_')][:8]}")
+            return None
 
-        lidos = {"mun": 0, "uf": 0, "pais": 0, "fora": 0}
-        fora_com_dado = []
+        lidos = {"mun": 0, "uf": 0, "pais": 0}
+        fora = []
         for r in linhas:
             cru = str(r.get(col_id) or "").split(".")[0].strip()
             if not cru:
@@ -355,11 +330,8 @@ def main():
                     avisos.append(f"{aba}: código '{cru}' não reconhecido")
                 continue                    # notas de rodapé caem aqui, em silêncio
             if nivel == "mun" and chave not in pos:
-                # o Atlas do Desenvolvimento Humano lista municípios extintos,
-                # sempre sem valor; só vale avisar se a linha trouxer dado
                 if any(str(r.get(c) or "").strip().lower() not in VAZIOS for c in mapeadas):
-                    lidos["fora"] += 1
-                    fora_com_dado.append(cru)
+                    fora.append(cru)
                 continue
             if nivel == "uf" and chave not in UF:
                 continue
@@ -383,13 +355,30 @@ def main():
                     series[ind][i] = valor
                 else:
                     oficiais_fonte.setdefault("BR" if nivel == "pais" else chave, {})[ind] = valor
-        print(f"  {aba}: {lidos['mun']} municípios, {lidos['uf']} UFs, {lidos['pais']} país, "
-              f"{len(mapeadas)} colunas mapeadas"
-              + (f", {lidos['fora']} códigos fora da malha" if lidos["fora"] else ""))
-        if fora_com_dado:
-            avisos.append(f"{aba}: {len(fora_com_dado)} códigos com dado não existem na "
-                          f"malha e foram descartados [{', '.join(fora_com_dado[:8])}"
-                          f"{'…' if len(fora_com_dado) > 8 else ''}]")
+
+        resumo = (f"  {aba:22} {lidos['mun']:>5} municípios, {lidos['uf']:>2} UFs, "
+                  f"{lidos['pais']} país, {len(mapeadas):>2} colunas{recurso}")
+        print(resumo)
+        if fora:
+            avisos.append(f"{aba}: {len(fora)} códigos com dado não existem na malha "
+                          f"[{', '.join(fora[:8])}{'…' if len(fora) > 8 else ''}]")
+        if not lidos["mun"] and not lidos["uf"] and not lidos["pais"]:
+            erros.append(f"{aba}: {len(linhas)} linhas lidas mas nenhum código "
+                         f"aproveitado. Coluna de código usada: '{col_id}'. "
+                         f"Primeira linha: {dict(list(linhas[0].items())[:4])}")
+        return lidos
+
+    print("Leitura das abas:")
+    for cod, sig in sorted(UF.items(), key=lambda kv: kv[1]):
+        processa(sig, "uf")
+
+    if listar_abas is None:
+        nomes_fonte = sorted(abas_declaradas)   # no Sheets não dá para listar abas
+    else:
+        nomes_fonte = sorted(set(a for a in listar_abas if a.lower().startswith("fonte_"))
+                             | abas_declaradas)
+    for aba in nomes_fonte:
+        processa(aba, "fonte")
 
     for (ind, aba), qtd in sorted(conflitos.items()):
         avisos.append(f"'{ind}': a aba '{aba}' sobrescreveu {qtd} valores vindos "
