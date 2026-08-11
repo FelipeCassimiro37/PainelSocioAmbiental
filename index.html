@@ -70,6 +70,17 @@ select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid 
 .ind[aria-pressed="true"]::before{content:"";position:absolute;left:9px;top:50%;
   transform:translateY(-50%);width:5px;height:5px;border-radius:50%;background:var(--sel)}
 .vazio{font-size:12px;color:var(--muted)}
+/* subgrupo: indicadores que só diferem por um recorte (faixa etária, sexo,
+   cor) viram um item só, com um seletor para a dimensão */
+.sg{margin:2px 0 8px;padding:7px 8px 4px;background:#FAFBFA;border:1px solid var(--line-2);
+  border-radius:var(--r)}
+.sg-cab{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sg-cab b{font-size:12.5px;font-weight:600;color:var(--ink-2);flex:none}
+.sg-cab select{flex:1;min-width:0;padding:4px 6px;font-size:11.5px;border:1px solid var(--line);
+  border-radius:var(--r);background:#fff;color:var(--ink-2)}
+.sg .ind{padding-left:16px;font-size:12.5px}
+.sg .ind[aria-pressed="true"]::before{left:3px}
+details.grp .sg{margin:6px 16px 10px}
 
 .maphead{padding:12px 20px 10px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .maphead h2{margin:0;font-size:16px;font-weight:600}
@@ -514,6 +525,8 @@ async function baixar(url){
 let META, DIC, TEMAS, N, UFCODES, MAPEAVEIS, IDS;
 let selecao = [];                 // lugares escolhidos na aba Comparar
 const fechadosFicha = new Set();  // temas recolhidos na ficha
+const GRUPOS = {};                // tema -> grupo -> {recortes, itens, nomes}
+const recorteAtual = {};          // 'tema|grupo' -> recorte escolhido
 let malhaMun, feats, meshUF, geoUF;
 const cacheInd = new Map();     // id -> vetor nacional
 const cacheUF  = new Map();     // sigla -> {ind:[...]}
@@ -543,6 +556,53 @@ function fmt(v,id,curto){
     case 'dec4': return br(f4(v));
     default:     return br(fInt(v));
   }
+}
+
+/* ================= subgrupos ================= */
+/* Um indicador agrupado tem nome curto dentro do subgrupo e nome completo em
+   todo o resto: título do mapa, tabela de comparação, CSV e PDF. */
+function nomeLongo(id){
+  const m=DIC[id];
+  return (m.grupo&&m.recorte) ? m.nome+' — '+m.recorte : m.nome;
+}
+function montarGrupos(){
+  for(const id of IDS){
+    const m=DIC[id];
+    if(!m.grupo) continue;
+    const porTema=GRUPOS[m.tema]=GRUPOS[m.tema]||{};
+    const bloco=porTema[m.grupo]=porTema[m.grupo]||{recortes:[],itens:{},nomes:[]};
+    const r=m.recorte||'';
+    if(bloco.recortes.indexOf(r)<0) bloco.recortes.push(r);
+    (bloco.itens[r]=bloco.itens[r]||[]).push(id);
+    if(bloco.nomes.indexOf(m.nome)<0) bloco.nomes.push(m.nome);
+  }
+  for(const t in GRUPOS) for(const g in GRUPOS[t])
+    recorteAtual[t+'|'+g]=GRUPOS[t][g].recortes[0];
+}
+const soltos = tema => IDS.filter(k=>DIC[k].tema===tema&&!DIC[k].grupo);
+const gruposDo = tema => Object.keys(GRUPOS[tema]||{});
+function idsDoGrupo(tema,grupo){
+  const b=GRUPOS[tema][grupo];
+  return b.itens[recorteAtual[tema+'|'+grupo]]||[];
+}
+/* ao trocar o recorte, se o mapa mostra um indicador daquele grupo,
+   passa para o equivalente no recorte novo */
+function trocaRecorte(tema,grupo,valor){
+  recorteAtual[tema+'|'+grupo]=valor;
+  const m=DIC[st.ind];
+  if(m.tema===tema&&m.grupo===grupo){
+    const novo=idsDoGrupo(tema,grupo).filter(k=>DIC[k].nome===m.nome)[0];
+    if(novo){ st.ind=novo; montaIndicadores(); ficha(); aplicar(false); return; }
+  }
+  montaIndicadores(); ficha(); sincronizaControles();
+}
+function seletorRecorte(tema,grupo,aoTrocar){
+  const b=GRUPOS[tema][grupo], sel=document.createElement('select');
+  sel.setAttribute('aria-label','Recorte de '+grupo);
+  sel.innerHTML=b.recortes.map(r=>'<option value="'+r+'">'+r+'</option>').join('');
+  sel.value=recorteAtual[tema+'|'+grupo];
+  sel.onchange=()=>aoTrocar(sel.value);
+  return sel;
 }
 
 /* ================= mapa em canvas ================= */
@@ -668,51 +728,63 @@ async function garanteUF(cod){
 function agregado(chave){ return META.agregados[chave]||{}; }
 function ehOficial(chave,id){ return (META.oficiais[chave]||[]).indexOf(id)>=0; }
 
+function linhaFicha(id,bloco,pl,chave,tm,curto){
+  const m=DIC[id], txt=m.formato==='texto';
+  let v = st.nivel==='mun' ? (bloco&&pl>=0?bloco[id][pl]:null)
+                           : (txt?null:agregado(chave)[id]);
+  if(v===undefined) v=null;
+  const nulo=(v===null||v==='');
+  let pct=null,pos=null,tot=null;
+  if(!nulo&&!txt){
+    let arr=null;
+    if(st.nivel==='mun'&&bloco) arr=bloco[id];
+    else if(st.nivel==='uf') arr=UFCODES.map(u=>agregado(u)[id]);
+    if(arr){
+      const lim=arr.filter(x=>x!==null&&x!==undefined).sort(d3.ascending);
+      if(lim.length>1){ tot=lim.length; pct=d3.bisect(lim,v)/lim.length;
+                        pos=lim.length-d3.bisect(lim,v)+1; }
+    }
+  }
+  let origem='';
+  if(!nulo&&!txt&&st.nivel!=='mun')
+    origem = ehOficial(chave,id)?' \u00b7 valor da fonte':' \u00b7 agregado dos municípios';
+  const row=document.createElement('div'); row.className='row';
+  row.innerHTML='<div class="l"><span class="n">'+(curto?m.nome:nomeLongo(id))+'</span>'+
+    '<span class="v'+(nulo?' na':'')+(txt&&!nulo?' txt':'')+'">'+fmt(v,id,false)+
+    ((m.unidade&&m.formato!=='pct'&&!nulo&&!txt)
+      ?'<span style="font-weight:400;color:var(--muted)"> '+m.unidade+'</span>':'')+
+    '</span></div>'+
+    (pct!==null?'<div class="bar"><i style="width:'+Math.max(2,pct*100)+'%;background:'+tm.ramp[4]+'"></i></div>':'')+
+    (pos!==null?'<div class="pos">'+pos+'º de '+tot+' '+(st.nivel==='mun'?'no estado':'entre as UFs')+'</div>':'')+
+    '<div class="src">'+m.fonte+origem+'</div>';
+  return row;
+}
 function ficha(){
   const box=$('#ficha'); box.innerHTML='';
   const bloco=(st.nivel==='mun'||st.nivel==='uf')&&st.uf?cacheUF.get(META.ufSiglas[st.uf]):null;
   const chave=st.nivel==='pais'?'BR':st.uf;
   const pl=st.nivel==='mun'&&bloco?munsByUF.get(st.uf).indexOf(st.mun):-1;
   for(const [tema,tm] of Object.entries(TEMAS)){
-    const ids=IDS.filter(k=>DIC[k].tema===tema);
-    if(!ids.length) continue;
+    const avulsos=soltos(tema), grupos=gruposDo(tema);
+    if(!avulsos.length&&!grupos.length) continue;
     const det=document.createElement('details'); det.className='grp';
     det.open=!fechadosFicha.has(tema);
     det.addEventListener('toggle',()=>{ det.open?fechadosFicha.delete(tema):fechadosFicha.add(tema); });
     const sum=document.createElement('summary');
     sum.innerHTML='<span class="dot" style="background:'+tm.ramp[4]+'"></span>'+tm.nome+
-      '<span class="cont">'+ids.length+'</span><span class="seta">&#9654;</span>';
+      '<span class="cont">'+(avulsos.length+grupos.length)+'</span><span class="seta">&#9654;</span>';
     det.appendChild(sum);
-    for(const id of ids){
-      const m=DIC[id], txt=m.formato==='texto';
-      let v = st.nivel==='mun' ? (bloco&&pl>=0?bloco[id][pl]:null)
-                               : (txt?null:agregado(chave)[id]);
-      if(v===undefined) v=null;
-      const nulo=(v===null||v==='');
-      let pct=null,pos=null,tot=null;
-      if(!nulo&&!txt){
-        let arr=null;
-        if(st.nivel==='mun'&&bloco) arr=bloco[id];
-        else if(st.nivel==='uf') arr=UFCODES.map(u=>agregado(u)[id]);
-        if(arr){
-          const lim=arr.filter(x=>x!==null&&x!==undefined).sort(d3.ascending);
-          if(lim.length>1){ tot=lim.length; pct=d3.bisect(lim,v)/lim.length;
-                            pos=lim.length-d3.bisect(lim,v)+1; }
-        }
-      }
-      let origem='';
-      if(!nulo&&!txt&&st.nivel!=='mun')
-        origem = ehOficial(chave,id)?' \u00b7 valor da fonte':' \u00b7 agregado dos municípios';
-      const row=document.createElement('div'); row.className='row';
-      row.innerHTML='<div class="l"><span class="n">'+m.nome+'</span>'+
-        '<span class="v'+(nulo?' na':'')+(txt&&!nulo?' txt':'')+'">'+fmt(v,id,false)+
-        ((m.unidade&&m.formato!=='pct'&&!nulo&&!txt)
-          ?'<span style="font-weight:400;color:var(--muted)"> '+m.unidade+'</span>':'')+
-        '</span></div>'+
-        (pct!==null?'<div class="bar"><i style="width:'+Math.max(2,pct*100)+'%;background:'+tm.ramp[4]+'"></i></div>':'')+
-        (pos!==null?'<div class="pos">'+pos+'º de '+tot+' '+(st.nivel==='mun'?'no estado':'entre as UFs')+'</div>':'')+
-        '<div class="src">'+m.fonte+origem+'</div>';
-      det.appendChild(row);
+    for(const id of avulsos) det.appendChild(linhaFicha(id,bloco,pl,chave,tm,false));
+    for(const grupo of grupos){
+      const cx=document.createElement('div'); cx.className='sg';
+      const cab=document.createElement('div'); cab.className='sg-cab';
+      const t=document.createElement('b'); t.textContent=grupo;
+      cab.appendChild(t);
+      cab.appendChild(seletorRecorte(tema,grupo,v=>trocaRecorte(tema,grupo,v)));
+      cx.appendChild(cab);
+      for(const id of idsDoGrupo(tema,grupo))
+        cx.appendChild(linhaFicha(id,bloco,pl,chave,tm,true));
+      det.appendChild(cx);
     }
     box.appendChild(det);
   }
@@ -721,11 +793,11 @@ function ranking(){
   const ul=$('#rankList'), m=DIC[st.ind], vet=cacheInd.get(st.ind); ul.innerHTML='';
   let itens;
   if(st.nivel==='pais'){
-    $('#rankTitle').textContent=`Maiores UFs — ${m.nome}`;
+    $('#rankTitle').textContent='Maiores UFs — '+nomeLongo(st.ind);
     itens=UFCODES.map(u=>({nome:META.ufNomes[u], v:agregado(u)[st.ind],
       go:()=>{st.nivel='uf'; st.uf=u; st.mun=null;}}));
   }else{
-    $('#rankTitle').textContent=`Maiores municípios — ${m.nome}`;
+    $('#rankTitle').textContent='Maiores municípios — '+nomeLongo(st.ind);
     itens=munsByUF.get(st.uf).map(i=>({nome:META.nomes[i], v:vet[i], i,
       go:()=>{st.nivel='mun'; st.uf=META.uf[i]; st.mun=i;}}));
   }
@@ -745,7 +817,7 @@ function ranking(){
 }
 function cabecalho(){
   const m=DIC[st.ind];
-  $('#mapTitle').textContent=m.nome;
+  $('#mapTitle').textContent=nomeLongo(st.ind);
   $('#mapUnit').textContent=[m.unidade,m.ano].filter(Boolean).join(' · ');
   if(st.nivel==='mun'&&st.mun!==null){
     $('#fScope').textContent='Município'; $('#fNome').textContent=META.nomes[st.mun];
@@ -814,40 +886,67 @@ cv.addEventListener('click',e=>{
 });
 
 /* ================= controles ================= */
+function botaoInd(id,curto){
+  const b=document.createElement('button');
+  b.className='ind'; b.textContent = curto?DIC[id].nome:nomeLongo(id); b.dataset.id=id;
+  b.setAttribute('aria-pressed',String(id===st.ind));
+  b.onclick=()=>{ st.ind=id; aplicar(false); };
+  return b;
+}
 function montaIndicadores(){
   const box=$('#indList');
+  const abertos={};
+  box.querySelectorAll('details').forEach(d=>{ abertos[d.dataset.tema]=d.open; });
+  box.innerHTML='';
   for(const [tema,meta] of Object.entries(TEMAS)){
-    const ids=MAPEAVEIS.filter(k=>DIC[k].tema===tema);
-    if(!ids.length) continue;
+    const avulsos=soltos(tema).filter(k=>DIC[k].formato!=='texto');
+    const grupos=gruposDo(tema);
+    if(!avulsos.length&&!grupos.length) continue;
     const det=document.createElement('details');
-    det.className='theme'; det.dataset.tema=tema; det.open=true;
-    det.innerHTML=`<summary><span class="dot" style="background:${meta.ramp[4]}"></span>${meta.nome}`+
-      `<span class="cont">${ids.length}</span><span class="seta">&#9654;</span></summary>`;
-    for(const id of ids){
-      const b=document.createElement('button');
-      b.className='ind'; b.textContent=DIC[id].nome; b.dataset.id=id;
-      b.setAttribute('aria-pressed',String(id===st.ind));
-      b.onclick=()=>{ st.ind=id; aplicar(false); };
-      det.appendChild(b);
+    det.className='theme'; det.dataset.tema=tema;
+    det.open = abertos[tema]===undefined ? true : abertos[tema];
+    const qtd=avulsos.length+grupos.length;
+    det.innerHTML='<summary><span class="dot" style="background:'+meta.ramp[4]+'"></span>'+
+      meta.nome+'<span class="cont">'+qtd+'</span><span class="seta">&#9654;</span></summary>';
+    for(const id of avulsos) det.appendChild(botaoInd(id,false));
+    for(const grupo of grupos){
+      const cx=document.createElement('div'); cx.className='sg';
+      const cab=document.createElement('div'); cab.className='sg-cab';
+      const t=document.createElement('b'); t.textContent=grupo;
+      cab.appendChild(t);
+      cab.appendChild(seletorRecorte(tema,grupo,v=>trocaRecorte(tema,grupo,v)));
+      cx.appendChild(cab);
+      for(const id of idsDoGrupo(tema,grupo))
+        if(DIC[id].formato!=='texto') cx.appendChild(botaoInd(id,true));
+      det.appendChild(cx);
     }
     box.appendChild(det);
   }
+  filtraBusca();
+}
+function filtraBusca(){
+  const q=($('#busca').value||'').trim().toLowerCase(); let n=0;
+  $$('#indList details').forEach(t=>{
+    let vis=0;
+    t.querySelectorAll('.ind').forEach(b=>{
+      const alvo=(DIC[b.dataset.id]?nomeLongo(b.dataset.id):b.textContent).toLowerCase();
+      const ok=!q||alvo.indexOf(q)>=0;
+      b.classList.toggle('oculto',!ok); if(ok) vis++;
+    });
+    t.querySelectorAll('.sg').forEach(sg=>{
+      const algum=Array.from(sg.querySelectorAll('.ind')).some(b=>!b.classList.contains('oculto'));
+      sg.style.display=algum?'':'none';
+    });
+    t.classList.toggle('oculto',!vis);
+    if(q&&vis) t.open=true;
+    n+=vis;
+  });
+  $('#semInd').style.display=n?'none':'block';
+}
+function ligaBusca(){
   $('#abrirTudo').onclick=()=>$$('#indList details').forEach(d=>d.open=true);
   $('#fecharTudo').onclick=()=>$$('#indList details').forEach(d=>d.open=false);
-  $('#busca').oninput=e=>{
-    const q=e.target.value.trim().toLowerCase(); let n=0;
-    $$('#indList details').forEach(t=>{
-      let vis=0;
-      t.querySelectorAll('.ind').forEach(b=>{
-        const ok=!q||b.textContent.toLowerCase().includes(q);
-        b.classList.toggle('oculto',!ok); if(ok) vis++;
-      });
-      t.classList.toggle('oculto',!vis);
-      if(q&&vis) t.open=true;
-      n+=vis;
-    });
-    $('#semInd').style.display=n?'none':'block';
-  };
+  $('#busca').oninput=filtraBusca;
 }
 function preencheMun(){
   const sm=$('#selMun');
@@ -939,7 +1038,7 @@ async function comparar(){
       const nums=vals.filter(v=>typeof v==='number');
       const max=nums.length?Math.max.apply(null,nums.map(Math.abs)):0;
       const topo=nums.length>1?Math.max.apply(null,nums):null;
-      html+=`<tr><td>${DIC[id].nome}`+
+      html+=`<tr><td>${nomeLongo(id)}`+
         `${DIC[id].unidade?` <span style="color:var(--muted);font-size:11px">${DIC[id].unidade}</span>`:''}</td>`;
       for(const v of vals){
         if(v===null||v===''){ html+='<td class="na">sem dado</td>'; continue; }
@@ -992,7 +1091,7 @@ function montaComparar(){
   $('#cmpCsv').onclick=()=>{
     const linhas=[['Indicador','Unidade','Ano','Fonte'].concat(selecao.map(rotulo))];
     for(const id of IDS)
-      linhas.push([DIC[id].nome,DIC[id].unidade,DIC[id].ano,DIC[id].fonte].concat(
+      linhas.push([nomeLongo(id),DIC[id].unidade,DIC[id].ano,DIC[id].fonte].concat(
         selecao.map(it=>{ const v=valorDe(it,id); return csvNum(v===undefined?null:v,id); })));
     baixarCSV(paraCSV(linhas),'comparacao-painel-socioambiental.csv');
   };
@@ -1066,7 +1165,7 @@ function montaRelatorio(){
     for(const id of ids){
       const l=document.createElement('label'); l.className='op';
       l.innerHTML=`<input type="checkbox" value="${id}"${tema==='demografia'?' checked':''}>`+
-                  `<span>${DIC[id].nome}</span>`;
+                  `<span>${nomeLongo(id)}</span>`;
       l.querySelector('input').onchange=infoRel;
       d.appendChild(l);
     }
@@ -1101,19 +1200,19 @@ async function gerarRelatorio(){
   try{
     const linhas=[];
     if(esc==='ufs'){
-      linhas.push(['codigo','nome','tipo'].concat(ids.map(i=>DIC[i].nome)));
+      linhas.push(['codigo','nome','tipo'].concat(ids.map(i=>nomeLongo(i))));
       linhas.push(['BR','Brasil','País'].concat(ids.map(i=>csvNum(agregado('BR')[i],i))));
       for(const u of UFCODES)
         linhas.push([u,META.ufNomes[u],'UF'].concat(ids.map(i=>csvNum(agregado(u)[i],i))));
     }else if(esc==='mun'){
       await garanteUF(META.uf[st.mun]);
       const it={t:'mun',i:st.mun};
-      linhas.push(['codigo_ibge','municipio','uf'].concat(ids.map(i=>DIC[i].nome)));
+      linhas.push(['codigo_ibge','municipio','uf'].concat(ids.map(i=>nomeLongo(i))));
       linhas.push([META.municipios[st.mun],META.nomes[st.mun],META.ufSiglas[META.uf[st.mun]]]
         .concat(ids.map(i=>{ const v=valorDe(it,i); return csvNum(v===undefined?null:v,i); })));
     }else if(esc==='sel'){
       for(const it of selecao) if(it.t==='mun') await garanteUF(META.uf[it.i]);
-      linhas.push(['codigo','nome','tipo'].concat(ids.map(i=>DIC[i].nome)));
+      linhas.push(['codigo','nome','tipo'].concat(ids.map(i=>nomeLongo(i))));
       for(const it of selecao){
         const tipo=it.t==='br'?'País':(it.t==='uf'?'UF':'Município');
         const cod=it.t==='br'?'BR':(it.t==='uf'?it.cod:META.municipios[it.i]);
@@ -1123,7 +1222,7 @@ async function gerarRelatorio(){
     }else{
       for(const id of ids) await garanteInd(id);
       const alvo = esc==='uf' ? munsByUF.get($('#relUF').value) : d3.range(N);
-      linhas.push(['codigo_ibge','municipio','uf'].concat(ids.map(i=>DIC[i].nome)));
+      linhas.push(['codigo_ibge','municipio','uf'].concat(ids.map(i=>nomeLongo(i))));
       for(const i of alvo)
         linhas.push([META.municipios[i],META.nomes[i],META.ufSiglas[META.uf[i]]]
           .concat(ids.map(k=>csvNum(cacheInd.get(k)[i],k))));
@@ -1242,113 +1341,4 @@ async function gerarPDF(){
     const fontes=new Set();
     for(const it of lugares){
       const sub = it.t==='mun'
-        ? META.ufNomes[META.uf[it.i]]+' · código IBGE '+META.municipios[it.i]
-        : (it.t==='uf' ? 'Unidade da Federação · '+munsByUF.get(it.cod).length+' municípios'
-                       : 'País · '+N+' municípios');
-      html+='<section class="pdf-lugar"><h2>'+esc2(rotulo(it))+'</h2>'+
-            '<div class="id">'+esc2(sub)+'</div>';
-      for(const [tema,tm] of Object.entries(TEMAS)){
-        const doTema=ids.filter(k=>DIC[k].tema===tema);
-        if(!doTema.length) continue;
-        html+='<div class="pdf-tema">'+esc2(tm.nome)+'</div><div class="pdf-grade">';
-        for(const id of doTema){
-          let v=valorDe(it,id); if(v===undefined) v=null;
-          const nulo=(v===null||v==='');
-          if(!nulo) fontes.add(DIC[id].fonte);
-          const un=(DIC[id].unidade&&DIC[id].formato!=='pct'&&!nulo)?' '+DIC[id].unidade:'';
-          html+='<div class="pdf-item"><b>'+esc2(DIC[id].nome)+'</b>'+
-                '<span'+(nulo?' class="na"':'')+'>'+esc2(fmt(v,id,true)+un)+'</span></div>';
-        }
-        html+='</div>';
-      }
-      html+='<div class="pdf-fontes"><b>Fontes:</b> '+
-            esc2(Array.from(fontes).join(' · '))+'</div></section>';
-      fontes.clear();
-    }
-    $('#impressao').innerHTML=html;
-    $('#modalRel').classList.remove('on');
-    setTimeout(()=>window.print(),120);
-  }catch(e){
-    alert('Não foi possível montar o PDF: '+(e.message||e));
-  }finally{ btn.disabled=false; btn.textContent=rot; }
-}
-
-/* ================= vistas ================= */
-function trocaVista(v){
-  st.vista=v;
-  $$('.nav button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
-  $('#vistaMapa').style.display = v==='mapa' ? 'grid' : 'none';
-  $('#vistaComparar').style.display = v==='comparar' ? 'block' : 'none';
-  if(v==='mapa'){ setTimeout(dimensiona,30); gravarHash(); } else comparar();
-}
-
-/* ================= orquestração ================= */
-
-let ocupado=false;
-async function aplicar(reenquadrar){
-  if(ocupado) return;
-  ocupado=true;
-  $('#vistaMapa').classList.add('carregando');
-  try{
-    await garanteInd(st.ind);
-    if(st.uf) await garanteUF(st.uf);
-    sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking(); gravarHash();
-    if(reenquadrar) enquadra(true); else desenhar();
-  }catch(e){ falhar(e); }
-  finally{
-    $('#vistaMapa').classList.remove('carregando');
-    ocupado=false;
-  }
-}
-
-async function iniciar(){
-  try{
-    progresso('Carregando definições',12);
-    META = await baixar('dados/meta.json');
-    DIC=META.dicionario; TEMAS=META.temas; N=META.municipios.length;
-    IDS=Object.keys(DIC);
-    MAPEAVEIS=IDS.filter(k=>DIC[k].formato!=='texto');
-    st.ind=MAPEAVEIS[0];
-    META.municipios.forEach((c,i)=>idxByCode.set(String(c),i));
-    META.uf.forEach((u,i)=>{ if(!munsByUF.has(u)) munsByUF.set(u,[]); munsByUF.get(u).push(i); });
-    UFCODES=[...munsByUF.keys()].sort((a,b)=>META.ufNomes[a].localeCompare(META.ufNomes[b],'pt'));
-
-    progresso('Carregando o mapa',45);
-    malhaMun = await baixar('malha/mun.topo.json');
-    const malhaUF = await baixar('malha/uf.topo.json');
-    const kM=Object.keys(malhaMun.objects)[0], kU=Object.keys(malhaUF.objects)[0];
-    feats = topojson.feature(malhaMun, malhaMun.objects[kM]).features;
-    geoUF = topojson.feature(malhaUF, malhaUF.objects[kU]);
-    meshUF = topojson.mesh(malhaUF, malhaUF.objects[kU], (a,b)=>a!==b);
-    if(feats.length!==N)
-      console.warn('malha com '+feats.length+' feições e meta com '+N+' municípios');
-
-    progresso('Carregando indicador',78);
-    await garanteInd(st.ind);
-
-    progresso('Desenhando',94);
-    $('#subtitulo').textContent =
-      `${N.toLocaleString('pt-BR')} municípios · ${IDS.length} indicadores`;
-    $('#cobertura').textContent = 'atualizado em ' + (META.atualizado||'—');
-    $('#cobertura').title = 'versão ' + (META.versao||'');
-    montaIndicadores(); montaSelects(); montaComparar(); montaRelatorio(); montaCopiarLink();
-    $$('.nav button').forEach(b=>{ b.onclick=()=>trocaVista(b.dataset.v); });
-    lerHash();
-    if(st.uf) await garanteUF(st.uf);
-    await garanteInd(st.ind);
-    preencheMun();
-    d3.select(cv).call(zoom);
-    dimensiona();
-    sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking();
-    enquadra(false); desenhar();
-    if(st.vista==='comparar') trocaVista('comparar'); else gravarHash();
-    boot.style.display='none';
-    let rt; addEventListener('resize',()=>{ clearTimeout(rt);
-      rt=setTimeout(()=>{ if(st.vista==='mapa') dimensiona(); },180); });
-  }catch(e){ falhar(e); }
-}
-iniciar();
-})();
-</script>
-</body>
-</html>
+        ? META.ufNomes[META.uf[it.i]]+' · código IBGE '+MET
