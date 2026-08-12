@@ -95,15 +95,24 @@ details.grp .sg{margin:6px 16px 10px}
 .tip b{display:block;font-weight:600;margin-bottom:2px}
 .tip span{font-family:var(--f-num);color:#FBD9AE}
 
-.legend{padding:10px 20px 16px;flex:none}
-.ramp{height:11px;border-radius:2px;position:relative;background:#E3E6E4}
-.mark{position:absolute;top:-4px;width:2px;height:19px;background:var(--ink)}
-.mark::after{content:attr(data-l);position:absolute;top:-15px;left:50%;transform:translateX(-50%);
+.legend{padding:14px 20px 16px;flex:none}
+.ramp{height:12px;border-radius:2px;position:relative;display:flex;overflow:visible}
+.ramp .faixa{display:block;height:100%}
+.ramp .faixa:first-child{border-radius:2px 0 0 2px}
+.ramp .faixa:last-child{border-radius:0 2px 2px 0}
+.ramp .tick{position:absolute;top:-2px;width:1px;height:16px;background:#ffffffcc}
+.mark{position:absolute;top:-5px;width:2px;height:22px;background:var(--ink);z-index:2}
+.mark::after{content:attr(data-l);position:absolute;top:-16px;left:50%;transform:translateX(-50%);
   white-space:nowrap;font-family:var(--f-num);font-size:10px;font-weight:600;color:var(--ink)}
-.scale{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--f-num);
-  font-size:10px;color:var(--muted)}
+.rots{position:relative;height:14px;margin-top:4px}
+.rots .rot{position:absolute;transform:translateX(-50%);white-space:nowrap;
+  font-family:var(--f-num);font-size:9.5px;color:var(--ink-2)}
+.escala{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  margin-top:2px;font-family:var(--f-num);font-size:10px;color:var(--muted)}
+.escala .meio{font-family:var(--f-ui);font-size:10.5px;color:#98A0A4;font-style:italic}
 .legend .nd{margin-top:9px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .legend .nd i{width:12px;height:11px;background:#E3E6E4;border-radius:2px;display:block}
+@media (max-width:900px){ .escala .meio{display:none} .rots .rot{font-size:8.5px} }
 
 .zoom{position:absolute;right:14px;top:14px;display:flex;flex-direction:column;gap:5px}
 .zoom button{width:29px;height:29px;background:#fff;border:1px solid var(--line);
@@ -376,11 +385,7 @@ summary .rot{flex:1}
         <button id="zReset" title="Enquadrar" aria-label="Enquadrar">⤢</button>
       </div>
     </div>
-    <div class="legend">
-      <div class="ramp" id="ramp"></div>
-      <div class="scale"><span id="sMin"></span><span id="sMax"></span></div>
-      <div class="nd"><i></i> Sem dado disponível para a fonte/ano</div>
-    </div>
+    <div class="legend" id="legenda"></div>
   </main>
 
   <aside class="side">
@@ -697,39 +702,138 @@ function indiceEm(x,y){
 
 /* ================= escala de cor ================= */
 let quebras=[], corDe=()=>null;
+/* Classificação por quantis: cada cor recebe aproximadamente o mesmo número de
+   municípios. É o que funciona para as distribuições muito assimétricas desta
+   base — numa escala linear de área territorial, 5.535 dos 5.570 municípios
+   cairiam na primeira classe e o mapa ficaria de uma cor só.
+
+   Duas correções sobre o quantil puro:
+   · quebras repetidas são descartadas. Em 'roubo a banco', 98% dos municípios
+     marcam zero e as cinco quebras davam zero, o que pintava o país inteiro na
+     cor mais escura;
+   · quando muitos municípios estão no piso da escala, esse valor ganha classe
+     própria, para não misturar quem não tem ocorrência com quem tem uma. */
+function classifica(vals, ramp){
+  const n=vals.length, min=vals[0], max=vals[n-1];
+  if(min===max) return {quebras:[], cores:[ramp[ramp.length-1]], vals};
+  // Poucos valores distintos: cada um vira sua própria classe. É o caso dos
+  // crimes raros — 'roubo a banco' só assume 0, 1, 2, 4 e 11 no país inteiro,
+  // e agrupá-los por quantil apagaria a diferença entre 1 e 11.
+  const distintos=[];
+  for(const v of vals) if(distintos[distintos.length-1]!==v) distintos.push(v);
+  if(distintos.length<=ramp.length){
+    const cores=distintos.map((_,i)=>
+      ramp[Math.round(i*(ramp.length-1)/Math.max(distintos.length-1,1))]);
+    return {quebras:distintos.slice(1), cores, vals};
+  }
+
+  let q=[];
+  const piso=d3.bisectRight(vals,min);          // quantos estão no menor valor
+  if(piso/n>0.15 && piso<n){
+    // o piso ganha classe própria; a quebra é o menor valor acima dele
+    const resto=vals.slice(piso), k=ramp.length-1;
+    q.push(resto[0]);
+    for(let i=1;i<k;i++) q.push(d3.quantileSorted(resto,i/k));
+  }else{
+    for(let i=1;i<ramp.length;i++) q.push(d3.quantileSorted(vals,i/ramp.length));
+  }
+  // fora do intervalo ou repetida não vira classe
+  const vistas=[];
+  q=q.filter(v=>v>min && v<=max && vistas.indexOf(v)<0 && vistas.push(v));
+  // se os quantis colapsaram em poucas classes, usa os valores distintos
+  if(q.length<ramp.length-1){
+    const acima=[];
+    for(const v of vals) if(v>min && acima[acima.length-1]!==v) acima.push(v);
+    if(acima.length>q.length){
+      const k=Math.min(acima.length, ramp.length-1);
+      const escolhidas=[];
+      for(let i=0;i<k;i++) escolhidas.push(acima[Math.round(i*(acima.length-1)/Math.max(k-1,1))]);
+      const vis2=[];
+      const alt=escolhidas.filter(v=>vis2.indexOf(v)<0 && vis2.push(v));
+      if(alt.length>q.length) q=alt;
+    }
+  }
+  const cores=[];
+  const passo=(ramp.length-1)/Math.max(q.length,1);
+  for(let i=0;i<=q.length;i++) cores.push(ramp[Math.round(i*passo)]);
+  return {quebras:q, cores, vals};
+}
+
 function recalcCor(){
   const vet=cacheInd.get(st.ind);
   const ramp=TEMAS[DIC[st.ind].tema].ramp;
   const escUF=(st.nivel==='pais'||!st.uf)?null:st.uf;
   const ids = escUF===null ? d3.range(N) : munsByUF.get(escUF);
   const vals=ids.map(i=>vet[i]).filter(v=>v!==null&&v!==undefined).sort(d3.ascending);
+  const leg=$('#legenda');
   if(!vals.length){
     corDe=()=>null; quebras=[];
-    $('#ramp').style.background=NODATA;
-    $('#ramp').querySelectorAll('.mark').forEach(e=>e.remove());
-    $('#sMin').textContent='—'; $('#sMax').textContent='sem série neste recorte';
+    leg.innerHTML='<div class="ramp" style="background:'+NODATA+'"></div>'+
+      '<div class="escala"><span>sem série neste recorte</span></div>';
   }else{
-    quebras=d3.range(1,ramp.length).map(k=>d3.quantileSorted(vals,k/ramp.length));
+    const cl=classifica(vals,ramp);
+    quebras=cl.quebras;
+    const cores=cl.cores;
     corDe=v=>{ if(v===null||v===undefined) return null;
-      let k=0; while(k<quebras.length && v>=quebras[k]) k++; return ramp[k]; };
-    const stops=ramp.map((c,i)=>`${c} ${(i/ramp.length)*100}%, ${c} ${((i+1)/ramp.length)*100}%`).join(', ');
-    $('#ramp').style.background=`linear-gradient(90deg, ${stops})`;
-    $('#sMin').textContent=fmt(vals[0],st.ind,true);
-    $('#sMax').textContent=fmt(vals[vals.length-1],st.ind,true);
-    $('#ramp').querySelectorAll('.mark').forEach(e=>e.remove());
-    if(st.nivel==='mun'&&st.mun!==null){
-      const v=vet[st.mun];
-      if(v!==null&&v!==undefined){
-        const p=d3.bisect(vals,v)/vals.length;
-        const m=document.createElement('div');
-        m.className='mark'; m.style.left=(p*100)+'%'; m.dataset.l=fmt(v,st.ind,true);
-        $('#ramp').appendChild(m);
-      }
-    }
+      let k=0; while(k<quebras.length && v>=quebras[k]) k++; return cores[k]; };
+    desenhaLegenda(vals,cores,quebras,vet);
   }
   cores=new Array(N);
   for(let i=0;i<N;i++){
     cores[i] = (escUF!==null && META.uf[i]!==escUF) ? FORA : (corDe(vet[i])||NODATA);
+  }
+}
+
+/* A legenda mostra o valor de cada quebra, não só o mínimo e o máximo: sem
+   isso, seis faixas de largura igual dão a impressão de uma escala linear. */
+function legendaNota(classes,n){
+  // com poucos valores distintos cada classe é um valor, não um quantil
+  return classes<=2 ? 'passe o mouse nas cores para ver o intervalo'
+       : `${classes} classes · passe o mouse para ver o intervalo e a contagem`;
+}
+function desenhaLegenda(vals,cores,qs,vet){
+  const n=vals.length, leg=$('#legenda');
+  const larg=100/cores.length;
+  let faixas='', marcas='', rotulos='';
+  cores.forEach((c,i)=>{
+    const ultima = i===cores.length-1;
+    const lo = i===0 ? vals[0] : qs[i-1];
+    const hi = ultima ? vals[n-1] : qs[i];
+    const ini = d3.bisectLeft(vals,lo);
+    const quantos = (ultima ? n : d3.bisectLeft(vals,qs[i])) - ini;
+    // classe de valor único (o caso dos municípios sem nenhuma ocorrência)
+    const unico = ultima ? lo===hi
+                        : d3.bisectRight(vals,lo)>=d3.bisectLeft(vals,hi);
+    const faixa = unico ? fmt(lo,st.ind,true)
+                        : fmt(lo,st.ind,true)+' a '+fmt(hi,st.ind,true);
+    const rot = quantos===1 ? '1 município'
+                            : quantos.toLocaleString('pt-BR')+' municípios';
+    faixas+=`<span class="faixa" style="width:${larg}%;background:${c}" `+
+            `title="${faixa} · ${rot}"></span>`;
+  });
+  qs.forEach((q,i)=>{
+    const x=(i+1)*larg;
+    marcas+=`<span class="tick" style="left:${x}%"></span>`;
+    rotulos+=`<span class="rot" style="left:${x}%">${fmt(q,st.ind,true)}</span>`;
+  });
+  leg.innerHTML =
+    `<div class="ramp">${faixas}${marcas}</div>`+
+    `<div class="rots">${rotulos}</div>`+
+    `<div class="escala"><span>${fmt(vals[0],st.ind,true)}</span>`+
+    `<span class="meio">${legendaNota(cores.length,n)}</span>`+
+    `<span>${fmt(vals[n-1],st.ind,true)}</span></div>`+
+    `<div class="nd"><i></i> Sem dado disponível para a fonte/ano</div>`;
+  // marca do município selecionado
+  if(st.nivel==='mun'&&st.mun!==null&&vet){
+    const v=vet[st.mun];
+    if(v!==null&&v!==undefined){
+      let k=0; while(k<qs.length && v>=qs[k]) k++;
+      const dentro = k===0 ? 0 : 1;
+      const x=Math.min(99.5,(k+0.5)*larg);
+      const m=document.createElement('div');
+      m.className='mark'; m.style.left=x+'%'; m.dataset.l=fmt(v,st.ind,true);
+      leg.querySelector('.ramp').appendChild(m);
+    }
   }
 }
 
