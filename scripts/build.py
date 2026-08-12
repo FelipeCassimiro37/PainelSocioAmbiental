@@ -314,8 +314,18 @@ def main():
 
         mapeadas = {c: apelidos[norm(c)] for c in cols if norm(c) in apelidos}
         if not mapeadas:
-            erros.append(f"{aba}: nenhuma coluna casou com o dicionário. "
-                         f"Colunas lidas: {[c for c in cols if not c.startswith('col_')][:8]}")
+            # Aba sem nenhuma coluna de indicador. Numa aba de estado isso é
+            # esperado quando a secretaria não publica nada: o Google entrega
+            # só as colunas que têm algum valor, e uma aba inteiramente vazia
+            # chega com 'id' e 'nome' apenas. Numa aba de fonte é erro de
+            # verdade, porque ela existe justamente para trazer indicadores.
+            uteis = [c for c in cols if not c.startswith("col_")]
+            if tipo == "uf":
+                avisos.append(f"{aba}: nenhuma coluna de indicador — o estado "
+                              f"provavelmente não publica esses dados")
+            else:
+                erros.append(f"{aba}: nenhuma coluna casou com o dicionário. "
+                             f"Colunas lidas: {uteis[:8]}")
             return None
 
         lidos = {"mun": 0, "uf": 0, "pais": 0}
@@ -363,6 +373,8 @@ def main():
             avisos.append(f"{aba}: {len(fora)} códigos com dado não existem na malha "
                           f"[{', '.join(fora[:8])}{'…' if len(fora) > 8 else ''}]")
         if not lidos["mun"] and not lidos["uf"] and not lidos["pais"]:
+            # linhas existem mas nenhum código foi aproveitado: isso é sempre
+            # erro, porque significa que a coluna de código está errada
             erros.append(f"{aba}: {len(linhas)} linhas lidas mas nenhum código "
                          f"aproveitado. Coluna de código usada: '{col_id}'. "
                          f"Primeira linha: {dict(list(linhas[0].items())[:4])}")
