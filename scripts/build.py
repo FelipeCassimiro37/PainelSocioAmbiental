@@ -52,7 +52,10 @@ TEMAS = {
  "saneamento": dict(nome="Saneamento", ramp=["#EAF1FA","#C0D8F0","#8DB9E2","#5A96CE","#2E71AE","#154C7D"]),
  "seguranca":  dict(nome="Segurança",  ramp=["#F7ECF1","#E5C4D5","#CE95B6","#B06693","#8A4270","#5C2549"]),
 }
-CASAS = {"int":0,"brl":0,"brl_c":0,"pct":2,"dec1":1,"dec2":2,"dec3":3,"dec4":4}
+# Casas guardadas no arquivo de dados. Guardamos no mínimo 2 para taxas e
+# decimais: o valor da fonte não deve ser perdido na gravação, e a exibição
+# decide separadamente quantas casas mostrar.
+CASAS = {"int":0,"brl":2,"brl_c":2,"pct":2,"dec1":2,"dec2":2,"dec3":3,"dec4":4}
 
 # Marcas de ausência. As últimas são notação do SIDRA: '-' zero absoluto ou não
 # aplicável, '..' não se aplica, '...' valor não disponível, 'X' omitido.
