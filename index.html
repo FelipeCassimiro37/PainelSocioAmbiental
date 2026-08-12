@@ -565,14 +565,14 @@ function fmt(v,id,curto){
   if(m.formato==='texto') return String(v);
   switch(m.formato){
     case 'int':  return br(fInt(v));
-    case 'brl':  return "R$ "+br(fInt(v));
+    case 'brl':  return "R$ "+br(f2(v));
     case 'brl_c':{ const a=Math.abs(v);
       if(a>=1e9) return "R$ "+br(f2(v/1e9))+" bi";
-      if(a>=1e6) return "R$ "+br(f1(v/1e6))+" mi";
-      if(a>=1e3) return "R$ "+br(f1(v/1e3))+" mil";
-      return "R$ "+br(fInt(v)); }
-    case 'pct':  return br(f1(v))+"%";
-    case 'dec1': return br(f1(v));
+      if(a>=1e6) return "R$ "+br(f2(v/1e6))+" mi";
+      if(a>=1e3) return "R$ "+br(f2(v/1e3))+" mil";
+      return "R$ "+br(f2(v)); }
+    case 'pct':  return br(f2(v))+"%";
+    case 'dec1': return br(f2(v));
     case 'dec2': return br(f2(v));
     case 'dec3': return br(f3(v));
     case 'dec4': return br(f4(v));
