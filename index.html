@@ -320,6 +320,81 @@ summary .rot{flex:1}
   .ir ul{max-height:60vh}
 }
 
+
+/* ---------- página do município ---------- */
+#vistaMunicipio{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
+.mun{max-width:1180px;padding:22px 26px 60px}
+
+.mun-topo{display:flex;gap:24px;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap}
+.mun-id{flex:1;min-width:230px}
+.mun-id .volta{background:none;border:0;padding:0;margin-bottom:8px;cursor:pointer;
+  font-family:var(--f-num);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted)}
+.mun-id .volta:hover{color:var(--navy)}
+.mun-id h2{margin:0;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.mun-id .uf{margin:5px 0 0;font-size:14px;color:var(--ink-2)}
+.mun-id .cod{margin:2px 0 0;font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.mun-id .acoesM{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.mun-mapa{flex:none;width:250px}
+.mun-mapa canvas{width:250px;height:180px;display:block;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r)}
+.mun-mapa .leg{margin-top:5px;font-family:var(--f-num);font-size:9.5px;color:var(--muted);text-align:center}
+
+.destaques{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:26px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:14px 15px}
+.kpi .ic{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);margin-bottom:9px}
+.kpi .ic svg{width:16px;height:16px;flex:none}
+.kpi .vl{font-family:var(--f-num);font-size:22px;font-weight:600;letter-spacing:-.02em;
+  line-height:1.1;color:var(--ink)}
+.kpi .vl small{font-family:var(--f-ui);font-size:11px;font-weight:400;color:var(--muted)}
+.kpi .cmp{margin-top:7px;font-size:11px;color:var(--muted);line-height:1.4}
+.kpi .cmp b{font-weight:600;color:var(--ink-2)}
+
+.pares{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:28px}
+.par{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:15px 17px}
+.par h4{margin:0 0 14px;font-family:var(--f-num);font-size:10px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.par .lados{display:flex;gap:16px;margin-bottom:12px}
+.par .lado{flex:1;display:flex;gap:10px;align-items:flex-start}
+.par .lado svg{width:30px;height:30px;flex:none;margin-top:1px}
+.par .lado .tx{min-width:0}
+.par .lado .n{font-size:12px;color:var(--muted);line-height:1.3}
+.par .lado .v{font-family:var(--f-num);font-size:17px;font-weight:600;letter-spacing:-.02em}
+.par .lado .p{font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.par .barra{height:10px;border-radius:2px;overflow:hidden;display:flex}
+.par .barra i{display:block;height:100%}
+.par .ref{margin-top:8px;font-size:11px;color:var(--muted)}
+
+.tema-bloco{margin-bottom:26px}
+.tema-cab{display:flex;align-items:center;gap:9px;margin-bottom:12px;
+  border-bottom:1px solid var(--line);padding-bottom:8px}
+.tema-cab svg{width:19px;height:19px;flex:none}
+.tema-cab h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.tema-cab .qt{margin-left:auto;font-family:var(--f-num);font-size:10px;color:var(--muted)}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+.card .n{font-size:12px;color:var(--ink-2);line-height:1.35;margin-bottom:5px;
+  display:flex;align-items:baseline;gap:6px}
+.card .n svg{width:13px;height:13px;flex:none;align-self:center}
+.card .v{font-family:var(--f-num);font-size:16px;font-weight:600;letter-spacing:-.02em}
+.card .v.na{font-size:12.5px;font-weight:400;color:#A6AEB2;font-family:var(--f-ui)}
+.card .v.txt{font-family:var(--f-ui);font-size:12.5px;font-weight:500;line-height:1.35}
+.card .v small{font-family:var(--f-ui);font-size:10.5px;font-weight:400;color:var(--muted)}
+.card .tr{height:3px;background:var(--line-2);border-radius:2px;overflow:hidden;margin-top:7px}
+.card .tr i{display:block;height:100%}
+.card .pos{margin-top:5px;font-family:var(--f-num);font-size:9.5px;color:var(--muted)}
+.card .ref{margin-top:3px;font-size:10.5px;color:#98A0A4}
+.card .fonte{margin-top:6px;font-size:9.5px;color:#A9B0B4;font-style:italic;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mun .aviso-sem{background:#FAFBFA;border:1px dashed var(--line);border-radius:var(--r);
+  padding:11px 13px;font-size:12px;color:var(--muted)}
+@media (max-width:700px){
+  .mun{padding:18px 16px 50px}
+  .mun-id h2{font-size:24px}
+  .mun-mapa{width:100%}
+  .mun-mapa canvas{width:100%}
+}
+
 /* ---------- página Sobre ---------- */
 #vistaSobre{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
 .sobre{max-width:860px;padding:26px 28px 60px}
@@ -411,6 +486,7 @@ summary .rot{flex:1}
   <div class="sub" id="subtitulo">—</div>
   <nav class="nav">
     <button data-v="mapa" aria-pressed="true">Mapa</button>
+    <button data-v="municipio" aria-pressed="false" hidden>Município</button>
     <button data-v="comparar" aria-pressed="false">Comparar</button>
     <button data-v="sobre" aria-pressed="false">Sobre</button>
   </nav>
@@ -527,6 +603,7 @@ summary .rot{flex:1}
   </div>
 </div>
 
+<div id="vistaMunicipio"></div>
 <div id="vistaSobre"></div>
 
 <div class="modal" id="modalRel">
@@ -1030,7 +1107,9 @@ function ranking(){
     const li=document.createElement('li');
     if(st.nivel==='mun'&&it.i===st.mun) li.className='me';
     li.innerHTML=`<span class="rn">${it.nome}</span><span class="rv">${fmt(it.v,st.ind,true)}</span>`;
-    li.onclick=()=>{ it.go(); aplicar(true); };
+    li.onclick=()=>{ it.go();
+      const abrir = st.nivel==='mun';
+      aplicar(true).then(()=>{ if(abrir) trocaVista('municipio'); }); };
     ul.appendChild(li);
   }
 }
@@ -1094,14 +1173,21 @@ cv.addEventListener('mousemove',e=>{
 });
 cv.addEventListener('mouseleave',()=>{ tip.style.opacity=0;
   if(hovIdx!==null){ hovIdx=null; desenhar(); } });
-cv.addEventListener('mousedown',()=>cv.classList.add('dragging'));
+let arrastouDe=null;
+cv.addEventListener('mousedown',e=>{ cv.classList.add('dragging');
+  arrastouDe={x:e.clientX,y:e.clientY}; });
 addEventListener('mouseup',()=>cv.classList.remove('dragging'));
 cv.addEventListener('click',e=>{
+  // arrastar o mapa também termina em 'click': só vale como clique se o
+  // ponteiro praticamente não andou, senão mudar de tela durante o pan irrita
+  const d=arrastouDe?Math.hypot(e.clientX-arrastouDe.x,e.clientY-arrastouDe.y):0;
+  arrastouDe=null;
+  if(d>4) return;
   const r=cv.getBoundingClientRect();
   const i=indiceEm(e.clientX-r.left, e.clientY-r.top);
   if(i===null) return;
   st.nivel='mun'; st.uf=META.uf[i]; st.mun=i;
-  aplicar(true);
+  aplicar(false).then(()=>trocaVista('municipio'));
 });
 
 /* ================= controles ================= */
@@ -1199,6 +1285,8 @@ function montaSelects(){
   });
 }
 function sincronizaControles(){
+  const bm=$('.nav button[data-v="municipio"]');
+  if(bm) bm.hidden = (st.mun===null||st.mun===undefined);
   $('#segNivel').querySelectorAll('button')
     .forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.n===st.nivel)));
   $('#indList').querySelectorAll('.ind')
@@ -1513,7 +1601,7 @@ function lerHash(){
   st.nivel = (n==='mun'&&st.mun!==null) ? 'mun' : (n==='uf'&&st.uf ? 'uf' : 'pais');
   if(st.nivel!=='mun') st.mun=null;
   if(st.nivel==='pais') st.uf=null;
-  if(v==='comparar'||v==='sobre') st.vista=v;
+  if(v==='comparar'||v==='sobre'||v==='municipio') st.vista=v;
   return true;
 }
 function montaCopiarLink(){
@@ -1705,8 +1793,250 @@ function vaiPara(it){
   else { st.nivel='mun'; st.uf=META.uf[it.i]; st.mun=it.i; }
   $('#irBusca').value=''; $('#irLimpar').hidden=true; $('#irBusca').blur();
   fechaIr();
-  if(st.vista!=='mapa') trocaVista('mapa');
-  aplicar(true);
+  const paraFicha = it.t==='mun';
+  if(st.vista!=='mapa' && !paraFicha) trocaVista('mapa');
+  aplicar(true).then(()=>{ if(paraFicha) trocaVista('municipio'); });
+}
+
+
+/* ================= ícones ================= */
+/* Desenhados aqui mesmo, em SVG, para não depender de biblioteca externa nem
+   somar peso ao carregamento. Traço fino, para combinar com o resto. */
+const IC = (()=>{
+  const w=(d,extra)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" `+
+    `stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  return {
+    pessoas: w('<circle cx="8.5" cy="8" r="3"/><path d="M2.5 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9.5" r="2.4"/><path d="M16 14.7c3 .2 5.5 2.3 5.5 5.3"/>'),
+    area:    w('<path d="M3 6.5 9.5 4l5 2.5L21 4v13.5L14.5 20l-5-2.5L3 20z"/><path d="M9.5 4v13.5M14.5 6.5V20"/>'),
+    densidade: w('<circle cx="6" cy="6" r="1.4"/><circle cx="12" cy="6" r="1.4"/><circle cx="18" cy="6" r="1.4"/><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/>'),
+    predios: w('<path d="M3 21V8.5L10 5v16"/><path d="M10 21V11l8 3v7"/><path d="M2 21h20"/><path d="M6 11v0M6 15v0M13.5 15v0M13.5 18v0"/>'),
+    mato:    w('<path d="M12 21v-5"/><path d="M12 16c-3.5 0-5.5-2.4-5.5-5.4 0-3.6 2.6-6.6 5.5-8.6 2.9 2 5.5 5 5.5 8.6 0 3-2 5.4-5.5 5.4z"/><path d="M4 21c1.4-2 2.9-3 4-3M20 21c-1.4-2-2.9-3-4-3"/>'),
+    homem:   w('<circle cx="12" cy="5.5" r="2.8"/><path d="M12 8.3c-2.4 0-4 1.5-4 3.7V15h1.4l.6 6h4l.6-6H16v-3c0-2.2-1.6-3.7-4-3.7z"/>'),
+    mulher:  w('<circle cx="12" cy="5.5" r="2.8"/><path d="M12 8.3c-2.3 0-3.8 1.4-4.3 3.4L6.3 17h2.5l.6 4h5.2l.6-4h2.5l-1.4-5.3c-.5-2-2-3.4-4.3-3.4z"/>'),
+    dinheiro:w('<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 10v4M18 10v4"/>'),
+    moeda:   w('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M14.3 9.6c-.5-.8-1.4-1.2-2.3-1.2-1.4 0-2.4.8-2.4 1.9 0 2.6 4.8 1.4 4.8 4 0 1.2-1.1 2-2.5 2-1 0-2-.5-2.4-1.3"/>'),
+    industria:w('<path d="M3 21V10l6 4V10l6 4V6.5h6V21z"/><path d="M2 21h20"/><path d="M18 10v0M18 14v0"/>'),
+    agro:    w('<path d="M12 21V9"/><path d="M12 9c0-3 2.2-5.5 5.5-6C17 6.5 15 9 12 9z"/><path d="M12 13c-3 0-5-2.2-5.5-5.5C9.8 8 12 10.2 12 13z"/><path d="M5 21h14"/>'),
+    servicos:w('<path d="M3 9.5 4.6 5h14.8L21 9.5"/><path d="M3 9.5h18"/><path d="M4.5 9.5V21h15V9.5"/><path d="M9 21v-6h6v6"/>'),
+    governo: w('<path d="M3 10 12 4l9 6"/><path d="M2.5 21h19"/><path d="M5.5 10v11M10 10v11M14 10v11M18.5 10v11"/>'),
+    trabalho:w('<rect x="2.5" y="7" width="19" height="13" rx="2"/><path d="M8.5 7V5.4c0-.8.6-1.4 1.4-1.4h4.2c.8 0 1.4.6 1.4 1.4V7"/><path d="M2.5 12.5h19"/>'),
+    escola:  w('<path d="M12 3 2.5 8 12 13l9.5-5z"/><path d="M6 10.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-5.5"/><path d="M21.5 8v5"/>'),
+    livro:   w('<path d="M3.5 4.5h5c1.9 0 3.5 1.1 3.5 2.5v12c0-1.2-1.6-2.2-3.5-2.2h-5z"/><path d="M20.5 4.5h-5C13.6 4.5 12 5.6 12 7v12c0-1.2 1.6-2.2 3.5-2.2h5z"/>'),
+    agua:    w('<path d="M12 3.5c3.4 4 6 6.9 6 10a6 6 0 1 1-12 0c0-3.1 2.6-6 6-10z"/>'),
+    cano:    w('<path d="M3 8h6v8H3z"/><path d="M9 12h6"/><path d="M15 6h6v12h-6z"/><path d="M9 9v6M15 9v6"/>'),
+    filtro:  w('<path d="M3.5 4.5h17l-6.5 8v7l-4 2v-9z"/>'),
+    escudo:  w('<path d="M12 3 4.5 6v6c0 4.5 3.2 8 7.5 9 4.3-1 7.5-4.5 7.5-9V6z"/>'),
+    alerta:  w('<path d="M12 4 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v0"/>'),
+    mapa:    w('<circle cx="12" cy="10" r="3"/><path d="M12 21c4.5-5.2 7-8.6 7-11a7 7 0 1 0-14 0c0 2.4 2.5 5.8 7 11z"/>'),
+  };
+})();
+const ICONE_TEMA = {demografia:'pessoas', economia:'dinheiro', educacao:'escola',
+                    saneamento:'agua', seguranca:'escudo'};
+const ICONE_IND = {
+  pop_total:'pessoas', area_km2:'area', dens_dem:'densidade',
+  pop_urbana:'predios', pop_rural:'mato', prop_pop_urb:'predios', prop_area_urb:'area',
+  pct_homens:'homem', pct_mulheres:'mulher',
+  pib_total:'dinheiro', pib_pc:'moeda', vab_total:'dinheiro',
+  vab_agro:'agro', part_vab_agro:'agro', vab_ind:'industria', part_vab_ind:'industria',
+  vab_adm:'governo', part_vab_adm:'governo', vab_serv:'servicos', part_vab_serv:'servicos',
+  pct_ocupada:'trabalho', salario_medio:'moeda', caged_estoque:'trabalho',
+  caged_admissoes:'trabalho', caged_deslig:'trabalho', caged_saldo:'trabalho', caged_var:'trabalho',
+  idhm:'moeda', ifdm:'moeda', gini:'moeda',
+  taxa_analf:'livro', agua_cob:'agua', esgoto_cob:'cano', esgoto_trat:'filtro',
+  perdas:'cano', consumo:'agua', emp_agua:'agua', emp_esgoto:'cano',
+  tx_homicidios:'alerta', tx_roubos:'alerta',
+};
+const icone = (nome,cor) => (IC[nome]||IC.mapa).replace('<svg',
+  `<svg style="color:${cor||'currentColor'}"`);
+
+/* ================= página do município ================= */
+function valorMun(id,i){
+  const bloco=cacheUF.get(META.ufSiglas[META.uf[i]]);
+  if(!bloco||!bloco[id]) return null;
+  const p=munsByUF.get(META.uf[i]).indexOf(i);
+  const v=p>=0?bloco[id][p]:null;
+  return v===undefined?null:v;
+}
+/* posição e percentil do município dentro do estado */
+function posicaoNoEstado(id,i){
+  const bloco=cacheUF.get(META.ufSiglas[META.uf[i]]);
+  if(!bloco||!bloco[id]) return null;
+  const v=valorMun(id,i);
+  if(v===null||typeof v!=='number') return null;
+  const lim=bloco[id].filter(x=>x!==null&&x!==undefined).sort(d3.ascending);
+  if(lim.length<2) return null;
+  return {pos:lim.length-d3.bisect(lim,v)+1, tot:lim.length,
+          pct:d3.bisect(lim,v)/lim.length};
+}
+function cartaoIndicador(id,i,tm){
+  const m=DIC[id], v=valorMun(id,i), txt=m.formato==='texto';
+  const nulo=(v===null||v===undefined||v==='');
+  const P=nulo||txt?null:posicaoNoEstado(id,i);
+  const uf=META.uf[i];
+  const vUF=(META.agregados[uf]||{})[id], vBR=(META.agregados.BR||{})[id];
+  let ref='';
+  if(!nulo&&!txt&&typeof v==='number'&&typeof vUF==='number'&&vUF!==0){
+    const d=(v/vUF-1)*100;
+    // Somáveis se comparam como parcela do estado; taxas e índices, como
+    // distância da média. Dizer que a população de BH está "88% abaixo de MG"
+    // seria absurdo — ela é 11% do estado.
+    let como;
+    if(m.somavel){
+      const parte=v/vUF*100;
+      como=`${br(f1(parte))}% do total do estado`;
+    }else{
+      const dif=br(f1(Math.abs(d)));
+      como = Math.abs(d)<1 ? 'na média do estado'
+           : `${dif}% ${d>0?'acima':'abaixo'} da média do estado`;
+    }
+    ref=`<div class="ref">${como}${typeof vBR==='number'&&!m.somavel?` · Brasil ${fmt(vBR,id,true)}`:''}</div>`;
+  }
+  return `<div class="card">
+    <div class="n">${icone(ICONE_IND[id]||ICONE_TEMA[m.tema],tm.ramp[4])}<span>${nomeLongo(id)}</span></div>
+    <div class="v${nulo?' na':''}${txt&&!nulo?' txt':''}">${fmt(v,id,false)}${
+      (m.unidade&&m.formato!=='pct'&&!nulo&&!txt)?` <small>${m.unidade}</small>`:''}</div>
+    ${P?`<div class="tr"><i style="width:${Math.max(2,P.pct*100)}%;background:${tm.ramp[4]}"></i></div>
+        <div class="pos">${P.pos}º de ${P.tot} no estado</div>`:''}
+    ${ref}
+    <div class="fonte">${m.fonte}${m.ano?' · '+m.ano:''}</div>
+  </div>`;
+}
+function kpi(id,i,rot){
+  const m=DIC[id], v=valorMun(id,i);
+  const nulo=(v===null||v===undefined);
+  const P=nulo?null:posicaoNoEstado(id,i);
+  const tm=TEMAS[m.tema];
+  return `<div class="kpi">
+    <div class="ic">${icone(ICONE_IND[id]||'mapa',tm.ramp[4])}<span>${rot||m.nome}</span></div>
+    <div class="vl">${fmt(v,id,true)}${(m.unidade&&m.formato!=='pct'&&!nulo)?` <small>${m.unidade}</small>`:''}</div>
+    ${P?`<div class="cmp"><b>${P.pos}º</b> de ${P.tot} no estado</div>`:'<div class="cmp">&nbsp;</div>'}
+  </div>`;
+}
+function parVisual(titulo,a,b,i,icA,icB,corA,corB){
+  const va=valorMun(a,i), vb=valorMun(b,i);
+  if(va===null&&vb===null) return '';
+  const ta=(va||0)+(vb||0);
+  const pa=ta?(va||0)/ta*100:50, pb=100-pa;
+  const linha=(id,ic,cor,val,perc)=>`<div class="lado">${icone(ic,cor)}
+    <div class="tx"><div class="n">${DIC[id].nome}</div>
+    <div class="v">${fmt(val,id,true)}</div>
+    <div class="p">${ta?perc.toFixed(1).replace('.',',')+'%':'—'}</div></div></div>`;
+  return `<div class="par"><h4>${titulo}</h4>
+    <div class="lados">${linha(a,icA,corA,va,pa)}${linha(b,icB,corB,vb,pb)}</div>
+    <div class="barra"><i style="width:${pa}%;background:${corA}"></i><i style="width:${pb}%;background:${corB}"></i></div>
+  </div>`;
+}
+
+/* mapa localizador: o estado inteiro, com o município em destaque */
+function desenhaLocalizador(i){
+  const cv=$('#munMapa'); if(!cv||!feats) return;
+  const uf=META.uf[i];
+  const daUF=munsByUF.get(uf);
+  const col=daUF.map(k=>feats[k]).filter(Boolean);
+  if(!col.length) return;
+  const L=250, A=180, dp=Math.min(2,window.devicePixelRatio||1);
+  cv.width=L*dp; cv.height=A*dp;
+  const pj=d3.geoMercator().fitExtent([[8,8],[L-8,A-8]],
+    {type:'FeatureCollection',features:col});
+  const c=cv.getContext('2d');
+  c.setTransform(dp,0,0,dp,0,0);
+  c.clearRect(0,0,L,A);
+  const gen=d3.geoPath(pj,c);
+  c.beginPath(); col.forEach(f=>gen(f));
+  c.fillStyle='#E7EAEC'; c.fill();
+  c.lineWidth=.4; c.strokeStyle='#fff'; c.stroke();
+  if(feats[i]){
+    c.beginPath(); gen(feats[i]);
+    c.fillStyle='#C4452B'; c.fill();
+    c.lineWidth=1.2; c.strokeStyle='#8E2F1B'; c.stroke();
+  }
+}
+
+async function montaMunicipio(){
+  const i=st.mun;
+  const alvo=$('#vistaMunicipio');
+  if(i===null||i===undefined){
+    alvo.innerHTML=`<div class="mun"><div class="aviso-sem">Nenhum município selecionado.
+      Use a busca no topo ou clique num município no mapa.</div></div>`;
+    return;
+  }
+  await garanteUF(META.uf[i]);
+  const uf=META.uf[i], sig=META.ufSiglas[uf], tmD=TEMAS.demografia;
+
+  // seções por tema, com os indicadores em cartões
+  let secoes='';
+  for(const [tema,tm] of Object.entries(TEMAS)){
+    // Aqui não há seletor de recorte: a ficha é o lugar de ver tudo, então
+    // entram todas as faixas do subgrupo, com o nome completo.
+    const avulsos=soltos(tema);
+    const doGrupo=IDS.filter(k=>DIC[k].tema===tema && DIC[k].grupo);
+    const ids=avulsos.concat(doGrupo);
+    if(!ids.length) continue;
+    const comDado=ids.filter(k=>{const v=valorMun(k,i); return v!==null&&v!==undefined&&v!=='';});
+    secoes+=`<section class="tema-bloco">
+      <div class="tema-cab">${icone(ICONE_TEMA[tema],tm.ramp[4])}
+        <h3>${tm.nome}</h3>
+        <span class="qt">${comDado.length} de ${ids.length} com dado</span></div>`;
+    secoes += comDado.length
+      ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
+      : `<div class="aviso-sem">Nenhuma fonte publica estes indicadores para este
+         município. Ausência de dado não significa ausência do fenômeno.</div>`;
+    secoes+='</section>';
+  }
+
+  alvo.innerHTML=`<div class="mun">
+    <div class="mun-topo">
+      <div class="mun-id">
+        <button class="volta" id="munVolta">&larr; voltar ao mapa</button>
+        <h2>${META.nomes[i]}</h2>
+        <p class="uf">${META.ufNomes[uf]} · ${sig}</p>
+        <p class="cod">código IBGE ${META.municipios[i]}</p>
+        <div class="acoesM">
+          <button class="btn sec" id="munMapaBtn">Ver no mapa</button>
+          <button class="btn sec" id="munCmp">Comparar</button>
+          <button class="btn sec" id="munPdf">Gerar PDF</button>
+        </div>
+      </div>
+      <div class="mun-mapa">
+        <canvas id="munMapa" width="250" height="180"
+          aria-label="Localização de ${META.nomes[i]} no estado"></canvas>
+        <div class="leg">posição em ${META.ufNomes[uf]}</div>
+      </div>
+    </div>
+
+    <div class="destaques">
+      ${kpi('pop_total',i,'População')}
+      ${kpi('area_km2',i,'Área')}
+      ${kpi('dens_dem',i,'Densidade')}
+      ${kpi('pib_total',i,'PIB')}
+      ${kpi('pib_pc',i,'PIB per capita')}
+      ${kpi('idhm',i,'IDHM')}
+    </div>
+
+    <div class="pares">
+      ${parVisual('Onde a população vive','pop_urbana','pop_rural',i,'predios','mato',
+                  tmD.ramp[5],'#5F8C4A')}
+      ${parVisual('Distribuição por sexo','pct_homens','pct_mulheres',i,'homem','mulher',
+                  tmD.ramp[3],tmD.ramp[5])}
+    </div>
+
+    ${secoes}
+  </div>`;
+
+  try{ desenhaLocalizador(i); }catch(e){ console.warn('localizador:',e); }
+  $('#munVolta').onclick=()=>trocaVista('mapa');
+  $('#munMapaBtn').onclick=()=>trocaVista('mapa');
+  $('#munCmp').onclick=()=>{
+    if(!selecao.some(x=>x.t==='mun'&&x.i===i) && selecao.length<5) selecao.push({t:'mun',i});
+    trocaVista('comparar');
+  };
+  $('#munPdf').onclick=()=>{
+    $$('input[name=escopo]').forEach(r=>{ r.checked = r.value==='mun'; });
+    $('#relMunInfo').textContent=META.nomes[i]+' — '+sig;
+    $('input[name=escopo][value=mun]').disabled=false;
+    $$('#relInds .cols input').forEach(c=>{ c.checked=true; });
+    infoRel(); gerarPDF();
+  };
 }
 
 /* ================= página Sobre ================= */
@@ -1878,10 +2208,19 @@ function trocaVista(v){
   $('#vistaMapa').style.display = v==='mapa' ? 'grid' : 'none';
   $('#vistaComparar').style.display = v==='comparar' ? 'block' : 'none';
   $('#vistaSobre').style.display = v==='sobre' ? 'block' : 'none';
+  $('#vistaMunicipio').style.display = v==='municipio' ? 'block' : 'none';
   // ao voltar para o mapa, remedir e redesenhar: enquanto ele estava escondido
   // a caixa media zero, e a medida pode ter mudado nesse meio-tempo
   if(v==='mapa'){ setTimeout(()=>{ dimensiona(); desenhar(); },30); gravarHash(); }
   else if(v==='comparar') comparar();
+  else if(v==='municipio'){
+    montaMunicipio().catch(e=>{
+      console.error(e);
+      $('#vistaMunicipio').innerHTML='<div class="mun"><div class="aviso-sem">'+
+        'Não foi possível montar a ficha: '+(e.message||e)+'</div></div>';
+    });
+    gravarHash();
+  }
   else { montaSobre(); gravarHash(); }
 }
 
