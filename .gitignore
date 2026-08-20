@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+
+# Os arquivos brutos do INEP ficam só na máquina de quem prepara a base: o CSV
+# do Censo tem 124 MB e não cabe no repositório. O que sobe é a versão enxuta e
+# comprimida em fonte/, gerada por scripts/preparar_fonte_edu.py.
+_fonte/

@@ -432,6 +432,98 @@ summary.tema-cab .qt{margin-left:auto}
   .mun-mapa canvas{width:100%}
 }
 
+/* ---------- matrículas: visão detalhada ---------- */
+.edu-cab{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.edu-cab h2{margin:0;font-size:26px;font-weight:700;letter-spacing:-.025em}
+.edu-cab .acoes{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.edu-sub{margin:0 0 20px;font-size:12.5px;color:var(--muted)}
+.edu-sub b{color:var(--ink-2);font-weight:600}
+.edu-redes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:12px}
+.edu-rede-kpi{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:12px 14px;
+  border-left:3px solid var(--navy)}
+.edu-rede-kpi .r{font-size:11.5px;color:var(--muted);margin-bottom:5px}
+.edu-rede-kpi .v{font-family:var(--f-num);font-size:20px;font-weight:600;letter-spacing:-.02em}
+.edu-rede-kpi .p{font-family:var(--f-num);font-size:10.5px;color:var(--muted);margin-top:2px}
+
+.edu-modo{display:flex;gap:0;margin:0 0 20px;border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;width:max-content;background:#fff}
+.edu-modo button{background:none;border:0;padding:6px 14px;font-size:12px;cursor:pointer;
+  color:var(--ink-2);font-family:var(--f-ui)}
+.edu-modo button+button{border-left:1px solid var(--line)}
+.edu-modo button[aria-pressed=true]{background:var(--navy);color:#fff;font-weight:600}
+
+.edu-bloco{background:var(--card);border:1px solid var(--line);border-radius:5px;
+  margin-bottom:14px;overflow:hidden}
+/* a regra geral de summary (usada na ficha do mapa) é maiúscula e monoespaçada;
+   aqui o texto é nome próprio e número, então volta ao normal */
+.edu-bloco>summary,.esc-item>summary{font-family:var(--f-ui);font-size:13px;font-weight:400;
+  letter-spacing:0;text-transform:none;color:var(--ink)}
+.edu-bloco>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;
+  padding:11px 15px;background:#FAFBFA;border-bottom:1px solid var(--line);user-select:none}
+.edu-bloco>summary::-webkit-details-marker{display:none}
+.edu-bloco>summary .seta{margin-left:0;font-size:9px;color:var(--muted);transition:transform .15s}
+.edu-bloco[open]>summary .seta{transform:rotate(90deg)}
+.edu-bloco>summary h3{margin:0;font-size:13.5px;font-weight:700;letter-spacing:-.01em}
+.edu-bloco>summary .tt{margin-left:auto;font-family:var(--f-num);font-size:14px;font-weight:600}
+.edu-bloco>summary .tt small{font-family:var(--f-ui);font-size:10.5px;font-weight:400;color:var(--muted)}
+.edu-tab{width:100%;border-collapse:collapse;font-size:13px}
+.edu-tab th,.edu-tab td{padding:7px 15px;text-align:right;white-space:nowrap;
+  border-bottom:1px solid var(--line-2);background:none;position:static;min-width:0;max-width:none}
+.edu-tab th:first-child,.edu-tab td:first-child{text-align:left;white-space:normal}
+.edu-tab thead th{font-family:var(--f-num);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;background:none}
+.edu-tab td{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.edu-tab td:first-child{font-family:var(--f-ui);color:var(--ink-2)}
+.edu-tab tbody tr:last-child td{border-bottom:0}
+.edu-tab tbody tr:hover td{background:#FAFBFA}
+.edu-tab .tot td{font-weight:600;background:#F7F9F9}
+.edu-tab .zero{color:#B9C0C4}
+.edu-nada{padding:13px 15px;font-size:12.5px;color:var(--muted)}
+.edu-legenda{background:#FDF9F0;border:1px solid #EBDCC0;border-radius:var(--r);
+  padding:12px 15px;font-size:12.5px;line-height:1.6;color:#6B5426;margin-bottom:20px}
+.edu-legenda b{color:#4A3A16}
+
+/* lista de escolas */
+.esc-filtros{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.esc-busca{position:relative;flex:1;min-width:220px;max-width:420px}
+.esc-busca input{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);
+  font-family:var(--f-ui);font-size:13px;background:#fff;color:var(--ink)}
+.esc-busca input:focus{outline:2px solid var(--navy);outline-offset:-1px}
+.esc-chips{display:flex;gap:6px;flex-wrap:wrap}
+.esc-chips button{background:#fff;border:1px solid var(--line);color:var(--ink-2);font-size:11.5px;
+  padding:5px 11px;border-radius:20px;cursor:pointer}
+.esc-chips button[aria-pressed=true]{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.esc-cont{font-family:var(--f-num);font-size:11px;color:var(--muted);margin-left:auto}
+.esc-lista{background:var(--card);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.esc-item{border-bottom:1px solid var(--line-2)}
+.esc-item:last-child{border-bottom:0}
+.esc-item>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;
+  padding:10px 15px;user-select:none}
+.esc-item>summary::-webkit-details-marker{display:none}
+.esc-item>summary:hover{background:#FAFBFA}
+.esc-item .nm{flex:1;min-width:0;font-size:13px;line-height:1.3}
+.esc-item .tag{font-family:var(--f-num);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 7px;border-radius:10px;background:var(--line-2);color:var(--ink-2);flex:none}
+.esc-item .tag.rural{background:#E8F0E4;color:#3F6030}
+.esc-item .qt{font-family:var(--f-num);font-size:14px;font-weight:600;flex:none;
+  min-width:70px;text-align:right;font-variant-numeric:tabular-nums}
+.esc-item .qt small{font-family:var(--f-ui);font-size:10px;font-weight:400;color:var(--muted)}
+.esc-det{padding:2px 15px 14px;background:#FAFBFA;border-top:1px solid var(--line-2)}
+.esc-det .cod{font-family:var(--f-num);font-size:10.5px;color:var(--muted);padding:8px 0 6px}
+.esc-det .grade-et{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.esc-det .et{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:9px 11px}
+.esc-det .et h5{margin:0 0 6px;font-family:var(--f-num);font-size:9.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);font-weight:600}
+.esc-det .et .l{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:1px 0}
+.esc-det .et .l b{font-family:var(--f-num);font-weight:600;font-variant-numeric:tabular-nums}
+.esc-mais{display:block;width:100%;background:#FAFBFA;border:0;border-top:1px solid var(--line);
+  padding:11px;font-family:var(--f-ui);font-size:12.5px;color:var(--navy);cursor:pointer;font-weight:600}
+.esc-mais:hover{background:var(--line-2)}
+@media (max-width:700px){
+  .edu-tab th,.edu-tab td{padding:6px 9px;font-size:12px}
+  .esc-item>summary{flex-wrap:wrap}
+}
+
 /* ---------- página Sobre ---------- */
 #vistaSobre{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
 .sobre{max-width:860px;margin:0 auto;padding:26px 28px 60px}
@@ -759,7 +851,8 @@ const recorteAtual = {};          // 'tema|grupo' -> recorte escolhido
 let malhaMun, feats, meshUF, geoUF;
 const cacheInd = new Map();     // id -> vetor nacional
 const cacheUF  = new Map();     // sigla -> {ind:[...]}
-const st = { nivel:'pais', uf:null, mun:null, ind:null, vista:'mapa', setor:null };
+const st = { nivel:'pais', uf:null, mun:null, ind:null, vista:'mapa',
+             setor:null, edu:null };
 let munsByUF = new Map(), idxByCode = new Map();
 
 /* ================= formatação ================= */
@@ -1627,6 +1720,7 @@ function montaHash(){
     if(st.mun!==null&&st.mun!==undefined) p.set('m',META.municipios[st.mun]);
     if(st.ind) p.set('i',st.ind);
     if(st.vista==='municipio'&&st.setor) p.set('set',st.setor);
+    if(st.vista==='municipio'&&st.edu) p.set('edu',st.edu);
   }
   return '#'+p.toString();
 }
@@ -1657,6 +1751,9 @@ function lerHash(){
   if(v==='comparar'||v==='sobre'||v==='municipio') st.vista=v;
   const se=p.get('set');
   st.setor = (se&&TEMAS[se]) ? se : null;
+  const ed=p.get('edu');
+  st.edu = (ed==='consolidado'||ed==='escolas') ? ed : null;
+  if(st.edu) st.setor='educacao';
   return true;
 }
 function montaCopiarLink(){
@@ -2033,6 +2130,8 @@ function secaoTema(tema,tm,i){
       ${icone(ICONE_TEMA[tema],tm.ramp[4])}
       <h3>${tm.nome}</h3>
       <span class="qt">${comDado.length} de ${ids.length} com dado</span>
+      ${tema==='educacao'?`<button type="button" class="tema-zoom" data-detalhe="1"
+        title="Matrículas por rede, etapa e série, e a lista de escolas">Visão detalhada</button>`:''}
       <button type="button" class="tema-zoom" data-zoom="${tema}"
         title="Abrir uma aba só com os indicadores de ${tm.nome}">Ampliar setor</button>
     </summary>
@@ -2054,21 +2153,28 @@ function montaSetor(i,tema){
     <p class="setor-sub"><b>${META.nomes[i]}</b> · ${sig} &nbsp;·&nbsp;
       ${comDado.length} de ${ids.length} indicadores com dado</p>
     <div class="setor-chips">${chips}</div>
+    ${tema==='educacao'?`<div class="mun-ferramentas">
+      <button type="button" class="btn-mini" data-detalhe="1">Visão detalhada das matrículas</button>
+    </div>`:''}
     ${comDado.length ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
                      : blocoSemDado()}
   </div>`;
 }
 
-/* Liga os botões "Ampliar setor" e os chips de troca de setor. */
+/* Liga os botões "Ampliar setor", os chips de troca de setor e a entrada da
+   visão detalhada de matrículas. */
 function ligaZoomSetor(alvo,i){
+  const ir=(ev,fn)=>{
+    // dentro de um <summary>, o clique também abriria/fecharia o setor
+    ev.preventDefault(); ev.stopPropagation();
+    fn(); montaMunicipio(); gravarHash();
+    $('#vistaMunicipio').scrollTop=0;
+  };
   alvo.querySelectorAll('[data-zoom]').forEach(b=>{
-    b.onclick=ev=>{
-      // dentro de um <summary>, o clique também abriria/fecharia o setor
-      ev.preventDefault(); ev.stopPropagation();
-      st.setor=b.dataset.zoom;
-      montaMunicipio(); gravarHash();
-      $('#vistaMunicipio').scrollTop=0;
-    };
+    b.onclick=ev=>ir(ev,()=>{ st.setor=b.dataset.zoom; st.edu=null; });
+  });
+  alvo.querySelectorAll('[data-detalhe]').forEach(b=>{
+    b.onclick=ev=>ir(ev,()=>{ st.setor='educacao'; st.edu='consolidado'; });
   });
 }
 
@@ -2078,7 +2184,7 @@ async function montaMunicipio(){
   const alvo=$('#vistaMunicipio');
   // Trocar de município volta para a ficha inteira: quem clica noutra cidade no
   // mapa espera o retrato completo, não o setor onde parou na cidade anterior.
-  if(ultimoMunFicha!==null && i!==ultimoMunFicha) st.setor=null;
+  if(ultimoMunFicha!==null && i!==ultimoMunFicha){ st.setor=null; st.edu=null; }
   ultimoMunFicha=i;
   if(i===null||i===undefined){
     alvo.innerHTML=`<div class="mun"><div class="aviso-sem">Nenhum município selecionado.
@@ -2087,6 +2193,21 @@ async function montaMunicipio(){
   }
   await garanteUF(META.uf[i]);
   const uf=META.uf[i], sig=META.ufSiglas[uf], tmD=TEMAS.demografia;
+
+  if(st.edu){
+    const monta = st.edu==='escolas' ? montaEduEscolas : montaEduDetalhe;
+    try{ await monta(i); }
+    catch(e){
+      console.error(e);
+      alvo.innerHTML=`<div class="mun">
+        <button class="volta" id="eduVolta">&larr; voltar para Educação</button>
+        <div class="aviso-sem">Não foi possível carregar os dados de matrículas:
+          ${e.message||e}. Se o painel acabou de ser publicado, os arquivos podem
+          ainda estar sendo gerados — tente de novo em alguns minutos.</div></div>`;
+      $('#eduVolta').onclick=voltaEdu;
+    }
+    return;
+  }
 
   if(st.setor && TEMAS[st.setor]){
     alvo.innerHTML=montaSetor(i,st.setor);
@@ -2171,6 +2292,274 @@ async function montaMunicipio(){
     $$('#relInds .cols input').forEach(c=>{ c.checked=true; });
     infoRel(); gerarPDF();
   };
+}
+
+/* ================= matrículas: visão detalhada ================= */
+/* Os dados do Censo Escolar são grandes demais para entrar no meta.json do
+   painel: 178 mil escolas, uma linha por escola. Ficam em arquivos próprios,
+   baixados só quando alguém pede — o consolidado do estado ao abrir a Visão
+   Detalhada, e o detalhe de um município só ao abrir a lista de escolas.
+   Quem nunca clicar não baixa nada disso. */
+let EDU=null;
+const cacheEduUF=new Map(), cacheEduMun=new Map();
+
+async function garanteEduMeta(){
+  if(!EDU) EDU = await baixar('dados/edu/meta.json', true);
+  return EDU;
+}
+async function garanteEduUF(sig){
+  if(!cacheEduUF.has(sig)) cacheEduUF.set(sig, await baixar('dados/edu/uf/'+sig+'.json'));
+  return cacheEduUF.get(sig);
+}
+async function garanteEduMun(cod){
+  if(!cacheEduMun.has(cod)) cacheEduMun.set(cod, await baixar('dados/edu/mun/'+cod+'.json'));
+  return cacheEduMun.get(cod);
+}
+const intBR = v => br(fInt(v||0));
+
+/* As redes presentes no município, na ordem oficial, já com o vetor de valores */
+function redesDo(dados){
+  return Object.keys(EDU.redes)
+    .filter(k=>dados[k])
+    .map(k=>({cod:k, nome:EDU.redes[k], v:dados[k]}));
+}
+function somaRedes(redes,i){ return redes.reduce((s,r)=>s+(r.v[i]||0),0); }
+
+/* Uma etapa só aparece se tiver matrícula em alguma rede. Município pequeno
+   não tem Ensino Médio nem EJA, e a tela não precisa dizer isso nove vezes. */
+function blocoTemDado(b,redes){
+  const idxs=b.itens.map(x=>x.i).concat(b.total!==null?[b.total]:[]);
+  return idxs.some(i=>somaRedes(redes,i)>0);
+}
+
+/* modo "comparar": uma tabela por etapa, uma coluna por rede */
+function tabelaEtapa(b,redes){
+  const cab=redes.map(r=>`<th>${r.nome}</th>`).join('');
+  const linha=(rot,i,cls)=>{
+    const cels=redes.map(r=>{const v=r.v[i]||0;
+      return `<td class="${v?'':'zero'}">${v?intBR(v):'—'}</td>`;}).join('');
+    const t=somaRedes(redes,i);
+    return `<tr class="${cls||''}"><td>${rot}</td>${cels}<td class="${t?'':'zero'}">${t?intBR(t):'—'}</td></tr>`;
+  };
+  let corpo=b.itens.map(x=>linha(x.n,x.i)).join('');
+  if(b.total!==null) corpo+=linha('Total da etapa',b.total,'tot');
+  // o nome da etapa já está no cabeçalho do bloco; repeti-lo aqui só ocupa linha
+  return `<table class="edu-tab"><thead><tr><th></th>${cab}<th>Total</th></tr></thead>
+    <tbody>${corpo}</tbody></table>`;
+}
+/* modo "por rede": um bloco por rede, etapas dentro */
+function tabelaRede(rede,blocos){
+  let corpo='';
+  for(const b of blocos){
+    const idxs=b.itens.map(x=>x.i).concat(b.total!==null?[b.total]:[]);
+    if(!idxs.some(i=>(rede.v[i]||0)>0)) continue;
+    corpo+=`<tr class="tot"><td colspan="2"><b>${b.nome}</b></td></tr>`;
+    for(const x of b.itens){
+      const v=rede.v[x.i]||0;
+      corpo+=`<tr><td style="padding-left:28px">${x.n}</td>
+        <td class="${v?'':'zero'}">${v?intBR(v):'—'}</td></tr>`;
+    }
+    if(b.total!==null&&b.itens.length)
+      corpo+=`<tr><td style="padding-left:28px;font-style:italic">Total da etapa</td>
+        <td>${intBR(rede.v[b.total])}</td></tr>`;
+    else if(b.total!==null)
+      corpo+=`<tr><td style="padding-left:28px">Matrículas</td><td>${intBR(rede.v[b.total])}</td></tr>`;
+  }
+  return corpo ? `<table class="edu-tab"><tbody>${corpo}</tbody></table>`
+               : `<div class="edu-nada">Sem matrículas nesta rede.</div>`;
+}
+
+let eduModo='comparar';   // 'comparar' | 'rede'
+
+async function montaEduDetalhe(i){
+  const alvo=$('#vistaMunicipio');
+  const uf=META.uf[i], sig=META.ufSiglas[uf], cod=String(META.municipios[i]);
+  alvo.innerHTML=`<div class="mun"><div class="aviso-sem">Carregando as matrículas…</div></div>`;
+
+  await garanteEduMeta();
+  const bloco=await garanteEduUF(sig);
+  const dados=(bloco.mun||{})[cod];
+
+  if(!dados){
+    alvo.innerHTML=`<div class="mun">
+      <button class="volta" id="eduVolta">&larr; voltar para Educação</button>
+      <div class="aviso-sem">O Censo Escolar de ${EDU.ano} não registra nenhuma escola
+        em ${META.nomes[i]}.</div></div>`;
+    $('#eduVolta').onclick=voltaEdu;
+    return;
+  }
+
+  const redes=redesDo(dados);
+  const total=somaRedes(redes,EDU.total);
+  const blocos=EDU.blocos.filter(b=>blocoTemDado(b,redes));
+
+  const kpis=redes.map(r=>`<div class="edu-rede-kpi">
+      <div class="r">${r.nome}</div>
+      <div class="v">${intBR(r.v[EDU.total])}</div>
+      <div class="p">${total?br(f1(r.v[EDU.total]/total*100)):'0,0'}% do município</div>
+    </div>`).join('');
+
+  const corpo = eduModo==='comparar'
+    ? blocos.map(b=>`<details class="edu-bloco" open>
+        <summary><span class="seta">&#9654;</span><h3>${b.nome}</h3>
+          <span class="tt">${b.total!==null?intBR(somaRedes(redes,b.total)):'&nbsp;'}
+            ${b.total!==null?'<small>matrículas</small>':''}</span></summary>
+        ${tabelaEtapa(b,redes)}</details>`).join('')
+    : redes.map(r=>`<details class="edu-bloco" open>
+        <summary><span class="seta">&#9654;</span><h3>${r.nome}</h3>
+          <span class="tt">${intBR(r.v[EDU.total])} <small>matrículas</small></span></summary>
+        ${tabelaRede(r,blocos)}</details>`).join('');
+
+  alvo.innerHTML=`<div class="mun">
+    <button class="volta" id="eduVolta">&larr; voltar para Educação</button>
+    <div class="edu-cab">
+      <div>
+        <h2>Matrículas · ${META.nomes[i]}</h2>
+      </div>
+      <div class="acoes">
+        <button class="btn sec" id="eduEscolas">Visualização por escola</button>
+      </div>
+    </div>
+    <p class="edu-sub"><b>${intBR(total)}</b> matrículas na educação básica ·
+      ${redes.length} rede${redes.length>1?'s':''} · ${EDU.fonte}</p>
+
+    <div class="edu-legenda">
+      Cada número é o total de matrículas <b>informado pelas escolas do município</b>,
+      não o de alunos que moram nele — quem estuda na cidade vizinha conta lá.
+      <b>Os blocos não se somam entre si</b>: são recortes diferentes da mesma base, e um
+      aluno do técnico integrado aparece no Ensino Médio e na Educação Profissional.
+      O total do município é o da educação básica, no alto da página. "Total da etapa"
+      também pode ser maior que a soma das séries, porque inclui turmas multisseriadas
+      e não seriadas.
+    </div>
+
+    <div class="edu-redes">${kpis}</div>
+
+    <div class="edu-modo" role="group" aria-label="Como organizar a tabela">
+      <button data-modo="comparar" aria-pressed="${eduModo==='comparar'}">Comparar redes</button>
+      <button data-modo="rede" aria-pressed="${eduModo==='rede'}">Agrupar por rede</button>
+    </div>
+
+    ${corpo}
+  </div>`;
+
+  $('#eduVolta').onclick=voltaEdu;
+  $('#eduEscolas').onclick=()=>{ st.edu='escolas'; montaMunicipio(); gravarHash();
+                                 $('#vistaMunicipio').scrollTop=0; };
+  alvo.querySelectorAll('.edu-modo button').forEach(b=>{
+    b.onclick=()=>{ eduModo=b.dataset.modo; montaEduDetalhe(i); };
+  });
+}
+
+function voltaEdu(){
+  st.edu=null; st.setor='educacao';
+  montaMunicipio(); gravarHash(); $('#vistaMunicipio').scrollTop=0;
+}
+
+/* ---- lista de escolas ---- */
+/* São Paulo tem 7.187 escolas. Baixar isso é barato (900 KB, comprimido pelo
+   servidor); desenhar 7 mil linhas de uma vez é que trava o navegador. Daí a
+   lista abrir com 50 e crescer sob demanda, e a busca filtrar antes de montar. */
+const ESC_PAGINA=50;
+let escFiltro={q:'', rede:'todas', mostrando:ESC_PAGINA};
+
+function detalheEscola(e){
+  const off=4;
+  const partes=EDU.blocos.map(b=>{
+    const linhas=b.itens.filter(x=>(e[off+x.i]||0)>0)
+      .map(x=>`<div class="l"><span>${x.n}</span><b>${intBR(e[off+x.i])}</b></div>`).join('');
+    const tot=b.total!==null?(e[off+b.total]||0):0;
+    if(!linhas&&!tot) return '';
+    return `<div class="et"><h5>${b.nome}${tot?' · '+intBR(tot):''}</h5>
+      ${linhas||'<div class="l"><span style="color:var(--muted)">sem detalhe por série</span></div>'}</div>`;
+  }).filter(Boolean).join('');
+  return `<div class="esc-det">
+    <div class="cod">código INEP ${e[1]}</div>
+    <div class="grade-et">${partes||'<div class="edu-nada">Sem matrículas registradas.</div>'}</div>
+  </div>`;
+}
+
+function pintaEscolas(lista,alvo){
+  const q=escFiltro.q.trim().toLowerCase();
+  const filtradas=lista.filter(e=>
+    (escFiltro.rede==='todas'||String(e[2])===escFiltro.rede) &&
+    (!q||e[0].toLowerCase().includes(q)));
+  const fatia=filtradas.slice(0,escFiltro.mostrando);
+  const off=4;
+  $('#escCont').textContent =
+    filtradas.length===lista.length
+      ? `${intBR(lista.length)} escolas`
+      : `${intBR(filtradas.length)} de ${intBR(lista.length)} escolas`;
+  if(!filtradas.length){
+    alvo.innerHTML='<div class="edu-nada">Nenhuma escola encontrada com esse filtro.</div>';
+    return;
+  }
+  alvo.innerHTML=fatia.map(e=>`<details class="esc-item">
+    <summary>
+      <span class="nm">${e[0]}</span>
+      <span class="tag">${EDU.redes[e[2]]||'—'}</span>
+      ${e[3]===2?'<span class="tag rural">Rural</span>':''}
+      <span class="qt">${intBR(e[off+EDU.total])} <small>mat.</small></span>
+    </summary>
+    ${detalheEscola(e)}
+  </details>`).join('')
+  + (filtradas.length>fatia.length
+      ? `<button class="esc-mais" id="escMais">Mostrar mais ${
+          Math.min(ESC_PAGINA,filtradas.length-fatia.length)} de ${
+          intBR(filtradas.length-fatia.length)} restantes</button>`
+      : '');
+  const mais=$('#escMais');
+  if(mais) mais.onclick=()=>{ escFiltro.mostrando+=ESC_PAGINA; pintaEscolas(lista,alvo); };
+}
+
+async function montaEduEscolas(i){
+  const alvo=$('#vistaMunicipio');
+  const cod=String(META.municipios[i]);
+  alvo.innerHTML=`<div class="mun"><div class="aviso-sem">Carregando as escolas…</div></div>`;
+  await garanteEduMeta();
+  let dados;
+  try{ dados=await garanteEduMun(cod); }
+  catch(e){ dados={escolas:[]}; }
+  const lista=dados.escolas||[];
+  escFiltro={q:'', rede:'todas', mostrando:ESC_PAGINA};
+
+  const chips=['todas'].concat(Object.keys(EDU.redes))
+    .filter(k=>k==='todas'||lista.some(e=>String(e[2])===k))
+    .map(k=>`<button data-rede="${k}" aria-pressed="${k==='todas'}">${
+      k==='todas'?'Todas':EDU.redes[k]}</button>`).join('');
+
+  alvo.innerHTML=`<div class="mun">
+    <button class="volta" id="escVolta">&larr; voltar para a visão detalhada</button>
+    <div class="edu-cab"><div><h2>Escolas · ${META.nomes[i]}</h2></div></div>
+    <p class="edu-sub">${intBR(lista.length)} escolas · ordenadas da maior para a menor ·
+      ${EDU.fonte}. Clique numa escola para ver as matrículas por etapa e série.</p>
+    <div class="esc-filtros">
+      <div class="esc-busca">
+        <input id="escBusca" type="text" placeholder="Buscar escola pelo nome…"
+               autocomplete="off" spellcheck="false" aria-label="Buscar escola pelo nome">
+      </div>
+      <div class="esc-chips" id="escChips">${chips}</div>
+      <span class="esc-cont" id="escCont"></span>
+    </div>
+    <div class="esc-lista" id="escLista"></div>
+  </div>`;
+
+  const box=$('#escLista');
+  pintaEscolas(lista,box);
+  $('#escVolta').onclick=()=>{ st.edu='consolidado'; montaMunicipio(); gravarHash();
+                               $('#vistaMunicipio').scrollTop=0; };
+  let t;
+  $('#escBusca').oninput=ev=>{ clearTimeout(t);
+    t=setTimeout(()=>{ escFiltro.q=ev.target.value; escFiltro.mostrando=ESC_PAGINA;
+                       pintaEscolas(lista,box); },160); };
+  $('#escChips').querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{
+      escFiltro.rede=b.dataset.rede; escFiltro.mostrando=ESC_PAGINA;
+      $('#escChips').querySelectorAll('button').forEach(x=>
+        x.setAttribute('aria-pressed',String(x===b)));
+      pintaEscolas(lista,box);
+    };
+  });
 }
 
 /* ================= página Sobre ================= */
