@@ -27,6 +27,8 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FONTE = os.path.join(RAIZ, 'fonte')
 SAIDA = os.path.join(RAIZ, 'dados', 'edu')
 
+COL_NOTA = 25          # coluna "Notas Importantes" do dicionário do INEP
+
 REDES = {1: 'Federal', 2: 'Estadual', 3: 'Municipal', 4: 'Privada'}
 LOCAL = {1: 'Urbana', 2: 'Rural'}
 
@@ -96,7 +98,9 @@ ROTULO = {
     'QT_MAT_ZR_RUR': 'Mora em zona rural',
     'QT_MAT_ZR_NA': 'Não se aplica',
     'QT_MAT_PROF_TEC': 'Técnica',
-    'QT_MAT_PROF_NAO_TEC': 'Não-técnica (qualificação profissional)',
+    # "Não-Técnica" é o termo do INEP, mas diz o que a linha não é. Na tela vale
+    # mais dizer o que ela é; o termo oficial fica na explicação.
+    'QT_MAT_PROF_NAO_TEC': 'Qualificação profissional',
     'QT_MAT_MED_1': '1ª série',
     'QT_MAT_MED_2': '2ª série',
     'QT_MAT_MED_3': '3ª série',
@@ -111,6 +115,31 @@ ROTULO = {
     'QT_MAT_ESP_MED': 'no Ensino Médio',
     'QT_MAT_ESP_EJA': 'na EJA',
     'QT_MAT_ESP_PROF': 'na Educação Profissional',
+}
+# Explicação em português corrente para as linhas cujo nome, sozinho, não diz o
+# que está sendo contado. O texto oficial do INEP vai junto, embaixo — ele é
+# preciso, mas escrito para quem já conhece a nomenclatura da área.
+EXPLICA = {
+    'QT_MAT_PROF_TEC':
+        'Cursos técnicos de nível médio: os que formam um técnico, com diploma. '
+        'Entram aqui o técnico integrado ao Ensino Médio, o concomitante (cursado '
+        'em paralelo, às vezes em outra escola), o subsequente (depois de concluir '
+        'o Médio), o integrado à EJA e o magistério.',
+    'QT_MAT_PROF_NAO_TEC':
+        'Cursos curtos de qualificação, que dão certificado mas não formam técnico '
+        '— os chamados FIC, de Formação Inicial e Continuada, e os itinerários de '
+        'qualificação profissional do Ensino Médio. Servem para aprender um ofício '
+        'específico sem cursar uma habilitação técnica inteira.',
+    'QT_MAT_ESP_CC':
+        'Alunos com deficiência, transtorno do espectro autista ou altas '
+        'habilidades/superdotação que estudam na turma regular, junto com os demais.',
+    'QT_MAT_ESP_CE':
+        'Os mesmos alunos, mas em classe especial ou em escola exclusivamente '
+        'especializada, separados da turma regular.',
+    'QT_MAT_MED_IFTP_CT':
+        'Alunos do Ensino Médio que cursam um técnico junto com a formação geral. '
+        'São os mesmos que aparecem em Educação Profissional → Técnica: contam nos '
+        'dois lugares, e por isso esta linha fica fora da soma.',
 }
 TOTAL_GERAL = 'QT_MAT_BAS'
 TOTAL_FUND = 'QT_MAT_FUND'
@@ -130,13 +159,19 @@ def ler_legendas():
     if not os.path.exists(caminho):
         aviso('fonte/legendas.csv não encontrado — os rótulos vão sair como o '
               'nome cru da coluna. Coloque o dicionário do INEP nesse caminho.')
-        return {}
-    d = {}
+        return {}, {}
+    d, obs = {}, {}
     with open(caminho, encoding='utf-8-sig', newline='') as f:
         for linha in csv.reader(f, delimiter=';'):
             if len(linha) > 2 and linha[1].startswith('QT_MAT'):
-                d[linha[1].strip()] = re.sub(r'\s+', ' ', linha[2]).strip()
-    return d
+                col = linha[1].strip()
+                d[col] = re.sub(r'\s+', ' ', linha[2]).strip()
+                # a última coluna do dicionário é "Notas Importantes", onde o
+                # INEP diz o que cada agregado inclui — é o que responde
+                # "afinal, o que está sendo contado nesta linha?"
+                if len(linha) > COL_NOTA and linha[COL_NOTA].strip():
+                    obs[col] = re.sub(r'\s+', ' ', linha[COL_NOTA]).strip()
+    return d, obs
 
 
 def curto(col, desc):
@@ -229,7 +264,7 @@ def grava(caminho, obj):
 
 
 def main():
-    legendas = ler_legendas()
+    legendas, notas = ler_legendas()
 
     cols = [TOTAL_GERAL, TOTAL_FUND]
     for _, _grupo, total, itens, extras, _nota in BLOCOS:
@@ -282,8 +317,14 @@ def main():
 
     # ---- meta
     idx = {c: i for i, c in enumerate(cols)}
-    linha = lambda c: {'i': idx[c], 'n': curto(c, legendas.get(c)),
-                       'd': legendas.get(c, ''), 'c': c}
+    def linha(c):
+        it = {'i': idx[c], 'n': curto(c, legendas.get(c)),
+              'd': legendas.get(c, ''), 'c': c}
+        if c in EXPLICA:
+            it['expl'] = EXPLICA[c]
+        if c in notas:
+            it['obs'] = notas[c]
+        return it
     blocos = []
     for nome, grupo, total, itens, extras, nota in BLOCOS:
         blocos.append({
