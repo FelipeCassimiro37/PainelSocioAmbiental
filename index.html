@@ -1748,12 +1748,17 @@ function lerHash(){
   st.nivel = (n==='mun'&&st.mun!==null) ? 'mun' : (n==='uf'&&st.uf ? 'uf' : 'pais');
   if(st.nivel!=='mun') st.mun=null;
   if(st.nivel==='pais') st.uf=null;
-  if(v==='comparar'||v==='sobre'||v==='municipio') st.vista=v;
+  // sem "else" aqui, um link de volta ao mapa não tirava a vista anterior da
+  // tela: o estado mudava por baixo e a página continuava a mesma
+  st.vista = (v==='comparar'||v==='sobre'||v==='municipio') ? v : 'mapa';
   const se=p.get('set');
   st.setor = (se&&TEMAS[se]) ? se : null;
   const ed=p.get('edu');
   st.edu = (ed==='consolidado'||ed==='escolas') ? ed : null;
   if(st.edu) st.setor='educacao';
+  // A URL manda: sem isto, a regra "trocar de município volta para a ficha
+  // inteira" apagaria o setor e a visão detalhada pedidos no próprio link.
+  ultimoMunFicha = st.mun;
   return true;
 }
 function montaCopiarLink(){
@@ -2818,6 +2823,22 @@ async function iniciar(){
       rt=setTimeout(()=>{ if(st.vista==='mapa') dimensiona(); },120); };
     addEventListener('resize',remedir);
     if(window.ResizeObserver) new ResizeObserver(remedir).observe($('.mapwrap'));
+
+    // Colar outro link na barra de endereço com o painel já aberto trocava a URL
+    // e não mudava nada na tela. Como o painel só grava a URL com replaceState,
+    // que não dispara este evento, todo hashchange que chega aqui veio de fora.
+    addEventListener('hashchange',async()=>{
+      if(location.hash===montaHash()) return;
+      try{
+        lerHash();
+        if(st.uf) await garanteUF(st.uf);
+        await garanteInd(st.ind);
+        preencheMun();
+        if(st.vista==='mapa'){ await aplicar(true); }
+        else{ sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking(); }
+        trocaVista(st.vista);
+      }catch(e){ console.error('hashchange:',e); }
+    });
   }catch(e){ falhar(e); }
 }
 iniciar();
