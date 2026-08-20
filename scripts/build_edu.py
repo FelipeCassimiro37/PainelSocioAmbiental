@@ -385,6 +385,31 @@ def main():
         grava(os.path.join(SAIDA, 'uf', sig + '.json'), {'ano': int(ano), 'mun': muns})
     print('  %d arquivos de UF' % len(porUF))
 
+    # Agregado do Brasil e de cada estado, num arquivo só (~24 KB). É o que
+    # permite abrir a Visão Detalhada sem escolher um município: sem isso o
+    # painel teria de baixar os 27 arquivos de UF e somar tudo no navegador.
+    br = defaultdict(lambda: [0] * len(cols))
+    porSigla = defaultdict(lambda: defaultdict(lambda: [0] * len(cols)))
+    for mun, redes in consolidado.items():
+        if do_painel is not None and mun not in do_painel:
+            continue
+        sig = uf_do_mun.get(mun)
+        if not sig:
+            continue
+        for dep, v in redes.items():
+            for k in range(len(cols)):
+                br[dep][k] += v[k]
+                porSigla[sig][dep][k] += v[k]
+    grava(os.path.join(SAIDA, 'agregados.json'), {
+        'ano': int(ano),
+        'BR': {str(d): v for d, v in sorted(br.items()) if any(v)},
+        'uf': {sig: {str(d): v for d, v in sorted(r.items()) if any(v)}
+               for sig, r in sorted(porSigla.items())},
+    })
+    print('  agregados.json: Brasil + %d UFs \u00b7 %s matrículas no país'
+          % (len(porSigla),
+             format(sum(v[idx[TOTAL_GERAL]] for v in br.values()), ',').replace(',', '.')))
+
     # ---- detalhe por escola, um arquivo por município
     maior, maior_mun, total_bytes = 0, None, 0
     for mun, lista in escolas.items():
