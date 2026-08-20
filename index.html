@@ -478,6 +478,20 @@ summary.tema-cab .qt{margin-left:auto}
 .edu-tab tbody tr:hover td{background:#FAFBFA}
 .edu-tab .tot td{font-weight:600;background:#F7F9F9}
 .edu-tab .zero{color:#B9C0C4}
+/* linhas que não somam o total: existem para localizar a sobreposição */
+.edu-tab .extra td{color:var(--muted);font-style:italic;border-top:1px dashed var(--line)}
+.edu-tab .extra td:first-child{padding-left:26px}
+
+.edu-grupo{margin:26px 0 12px}
+.edu-grupo:first-of-type{margin-top:6px}
+.edu-grupo h4{margin:0;font-family:var(--f-num);font-size:11px;font-weight:600;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--navy)}
+.edu-grupo p{margin:4px 0 0;font-size:12px;color:var(--muted);max-width:70ch}
+.edu-nota-bloco{padding:9px 15px;font-size:12px;color:#6B5426;background:#FDF9F0;
+  border-bottom:1px solid var(--line)}
+.esc-det .et.tv{border-left:3px solid #EBDCC0}
+.esc-det .et .l.extra{color:var(--muted);font-style:italic;
+  border-top:1px dashed var(--line);margin-top:3px;padding-top:3px}
 .edu-nada{padding:13px 15px;font-size:12.5px;color:var(--muted)}
 .edu-legenda{background:#FDF9F0;border:1px solid #EBDCC0;border-radius:var(--r);
   padding:12px 15px;font-size:12.5px;line-height:1.6;color:#6B5426;margin-bottom:20px}
@@ -2332,12 +2346,18 @@ function somaRedes(redes,i){ return redes.reduce((s,r)=>s+(r.v[i]||0),0); }
 
 /* Uma etapa só aparece se tiver matrícula em alguma rede. Município pequeno
    não tem Ensino Médio nem EJA, e a tela não precisa dizer isso nove vezes. */
+function indicesDo(b){
+  return b.itens.map(x=>x.i)
+    .concat((b.extras||[]).map(x=>x.i))
+    .concat(b.total!==null?[b.total]:[]);
+}
 function blocoTemDado(b,redes){
-  const idxs=b.itens.map(x=>x.i).concat(b.total!==null?[b.total]:[]);
-  return idxs.some(i=>somaRedes(redes,i)>0);
+  return indicesDo(b).some(i=>somaRedes(redes,i)>0);
 }
 
-/* modo "comparar": uma tabela por etapa, uma coluna por rede */
+/* modo "comparar": uma tabela por bloco, uma coluna por rede.
+   As linhas de `extras` não somam o total — existem para mostrar onde está a
+   sobreposição — então vão depois do total, separadas e em itálico. */
 function tabelaEtapa(b,redes){
   const cab=redes.map(r=>`<th>${r.nome}</th>`).join('');
   const linha=(rot,i,cls)=>{
@@ -2347,28 +2367,32 @@ function tabelaEtapa(b,redes){
     return `<tr class="${cls||''}"><td>${rot}</td>${cels}<td class="${t?'':'zero'}">${t?intBR(t):'—'}</td></tr>`;
   };
   let corpo=b.itens.map(x=>linha(x.n,x.i)).join('');
-  if(b.total!==null) corpo+=linha('Total da etapa',b.total,'tot');
-  // o nome da etapa já está no cabeçalho do bloco; repeti-lo aqui só ocupa linha
+  if(b.total!==null) corpo+=linha(b.itens.length?'Total':'Matrículas',b.total,'tot');
+  const extras=(b.extras||[]).filter(x=>somaRedes(redes,x.i)>0);
+  if(extras.length) corpo+=extras.map(x=>linha(x.n,x.i,'extra')).join('');
+  // o nome do bloco já está no cabeçalho; repeti-lo aqui só ocupa linha
   return `<table class="edu-tab"><thead><tr><th></th>${cab}<th>Total</th></tr></thead>
     <tbody>${corpo}</tbody></table>`;
 }
-/* modo "por rede": um bloco por rede, etapas dentro */
+/* modo "por rede": um bloco por rede, com os blocos dentro */
 function tabelaRede(rede,blocos){
   let corpo='';
   for(const b of blocos){
-    const idxs=b.itens.map(x=>x.i).concat(b.total!==null?[b.total]:[]);
-    if(!idxs.some(i=>(rede.v[i]||0)>0)) continue;
+    if(!indicesDo(b).some(i=>(rede.v[i]||0)>0)) continue;
     corpo+=`<tr class="tot"><td colspan="2"><b>${b.nome}</b></td></tr>`;
     for(const x of b.itens){
       const v=rede.v[x.i]||0;
       corpo+=`<tr><td style="padding-left:28px">${x.n}</td>
         <td class="${v?'':'zero'}">${v?intBR(v):'—'}</td></tr>`;
     }
-    if(b.total!==null&&b.itens.length)
-      corpo+=`<tr><td style="padding-left:28px;font-style:italic">Total da etapa</td>
-        <td>${intBR(rede.v[b.total])}</td></tr>`;
-    else if(b.total!==null)
-      corpo+=`<tr><td style="padding-left:28px">Matrículas</td><td>${intBR(rede.v[b.total])}</td></tr>`;
+    if(b.total!==null)
+      corpo+=`<tr><td style="padding-left:28px${b.itens.length?';font-style:italic':''}">${
+        b.itens.length?'Total':'Matrículas'}</td><td>${intBR(rede.v[b.total])}</td></tr>`;
+    for(const x of (b.extras||[])){
+      if(!(rede.v[x.i]||0)) continue;
+      corpo+=`<tr class="extra"><td style="padding-left:28px">${x.n}</td>
+        <td>${intBR(rede.v[x.i])}</td></tr>`;
+    }
   }
   return corpo ? `<table class="edu-tab"><tbody>${corpo}</tbody></table>`
                : `<div class="edu-nada">Sem matrículas nesta rede.</div>`;
@@ -2404,12 +2428,23 @@ async function montaEduDetalhe(i){
       <div class="p">${total?br(f1(r.v[EDU.total]/total*100)):'0,0'}% do município</div>
     </div>`).join('');
 
+  const umBloco=b=>`<details class="edu-bloco" open>
+      <summary><span class="seta">&#9654;</span><h3>${b.nome}</h3>
+        <span class="tt">${b.total!==null?intBR(somaRedes(redes,b.total)):'&nbsp;'}
+          ${b.total!==null?'<small>matrículas</small>':''}</span></summary>
+      ${b.nota?`<div class="edu-nota-bloco">${b.nota}</div>`:''}
+      ${tabelaEtapa(b,redes)}</details>`;
+
+  // Agrupar não é enfeite: é o que diz, sem precisar de aviso, que somar um
+  // bloco de "etapa" com um de "transversal" conta o mesmo aluno duas vezes.
   const corpo = eduModo==='comparar'
-    ? blocos.map(b=>`<details class="edu-bloco" open>
-        <summary><span class="seta">&#9654;</span><h3>${b.nome}</h3>
-          <span class="tt">${b.total!==null?intBR(somaRedes(redes,b.total)):'&nbsp;'}
-            ${b.total!==null?'<small>matrículas</small>':''}</span></summary>
-        ${tabelaEtapa(b,redes)}</details>`).join('')
+    ? (EDU.grupos||[{id:null,nome:'',nota:''}]).map(g=>{
+        const doGrupo=blocos.filter(b=>b.grupo===g.id);
+        if(!doGrupo.length) return '';
+        return `<div class="edu-grupo">
+          <h4>${g.nome}</h4><p>${g.nota||''}</p>
+        </div>${doGrupo.map(umBloco).join('')}`;
+      }).join('')
     : redes.map(r=>`<details class="edu-bloco" open>
         <summary><span class="seta">&#9654;</span><h3>${r.nome}</h3>
           <span class="tt">${intBR(r.v[EDU.total])} <small>matrículas</small></span></summary>
@@ -2429,13 +2464,8 @@ async function montaEduDetalhe(i){
       ${redes.length} rede${redes.length>1?'s':''} · ${EDU.fonte}</p>
 
     <div class="edu-legenda">
-      Cada número é o total de matrículas <b>informado pelas escolas do município</b>,
-      não o de alunos que moram nele — quem estuda na cidade vizinha conta lá.
-      <b>Os blocos não se somam entre si</b>: são recortes diferentes da mesma base, e um
-      aluno do técnico integrado aparece no Ensino Médio e na Educação Profissional.
-      O total do município é o da educação básica, no alto da página. "Total da etapa"
-      também pode ser maior que a soma das séries, porque inclui turmas multisseriadas
-      e não seriadas.
+      Matrículas <b>informadas pelas escolas do município</b>, não alunos que moram
+      nele — quem estuda na cidade vizinha conta lá.
     </div>
 
     <div class="edu-redes">${kpis}</div>
@@ -2471,12 +2501,17 @@ let escFiltro={q:'', rede:'todas', mostrando:ESC_PAGINA};
 function detalheEscola(e){
   const off=4;
   const partes=EDU.blocos.map(b=>{
-    const linhas=b.itens.filter(x=>(e[off+x.i]||0)>0)
-      .map(x=>`<div class="l"><span>${x.n}</span><b>${intBR(e[off+x.i])}</b></div>`).join('');
+    const lin=(x,cls)=>`<div class="l${cls?' '+cls:''}">
+      <span>${x.n}</span><b>${intBR(e[off+x.i])}</b></div>`;
+    const linhas=b.itens.filter(x=>(e[off+x.i]||0)>0).map(x=>lin(x)).join('');
+    const extras=(b.extras||[]).filter(x=>(e[off+x.i]||0)>0)
+      .map(x=>lin(x,'extra')).join('');
     const tot=b.total!==null?(e[off+b.total]||0):0;
-    if(!linhas&&!tot) return '';
-    return `<div class="et"><h5>${b.nome}${tot?' · '+intBR(tot):''}</h5>
-      ${linhas||'<div class="l"><span style="color:var(--muted)">sem detalhe por série</span></div>'}</div>`;
+    if(!linhas&&!extras&&!tot) return '';
+    return `<div class="et${b.grupo==='transversal'?' tv':''}">
+      <h5>${b.nome}${tot?' · '+intBR(tot):''}</h5>
+      ${linhas||'<div class="l"><span style="color:var(--muted)">sem detalhe por série</span></div>'}
+      ${extras}</div>`;
   }).filter(Boolean).join('');
   return `<div class="esc-det">
     <div class="cod">código INEP ${e[1]}</div>
