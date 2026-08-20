@@ -1,0 +1,51 @@
+name: Atualizar matrículas (Censo Escolar)
+
+# Não roda sozinha. A base do Censo muda uma vez por ano — não faz sentido
+# reprocessar 178 mil escolas de 6 em 6 horas junto com a planilha.
+# Para rodar: aba Actions -> Atualizar matrículas -> Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Mesmo grupo da rotina da planilha: as duas mexem em dados/ e empurram para o
+# main, então nunca devem rodar ao mesmo tempo.
+concurrency:
+  group: atualizar-dados
+  cancel-in-progress: false
+
+jobs:
+  matriculas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Conferir se a fonte está no lugar
+        run: |
+          if ! ls fonte/matriculas-*.csv.gz >/dev/null 2>&1; then
+            echo "::error::Nenhum arquivo em fonte/matriculas-<ano>.csv.gz."
+            echo "Gere com: python scripts/preparar_fonte_edu.py \"<csv do INEP>\""
+            exit 1
+          fi
+          ls -lh fonte/
+
+      - name: Gerar os arquivos de matrículas
+        run: python scripts/build_edu.py
+
+      - name: Publicar se algo mudou
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados/edu
+          if git diff --staged --quiet; then
+            echo "Nenhuma mudança nas matrículas. Nada a publicar."
+          else
+            git commit -m "Atualiza as matrículas a partir do Censo Escolar"
+            git push
+            echo "Matrículas atualizadas e publicadas."
+          fi
