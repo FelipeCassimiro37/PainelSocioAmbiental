@@ -481,6 +481,18 @@ summary.tema-cab .qt{margin-left:auto}
 /* linhas que não somam o total: existem para localizar a sobreposição */
 .edu-tab .extra td{color:var(--muted);font-style:italic;border-top:1px dashed var(--line)}
 .edu-tab .extra td:first-child{padding-left:26px}
+/* rótulo que abre a explicação da linha */
+.expl-bt{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:help;
+  text-align:left;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+.expl-bt:hover{color:var(--navy);text-decoration-color:var(--navy)}
+.expl-bt[aria-expanded=true]{color:var(--navy);font-weight:600}
+.edu-tab tr.expl td{background:#F7F9FA;text-align:left;white-space:normal;
+  font-family:var(--f-ui);font-size:12.5px;line-height:1.6;color:var(--ink-2);
+  padding:11px 15px 12px}
+.edu-tab tr.expl p{margin:0}
+.edu-tab tr.expl p+p{margin-top:7px}
+.edu-tab tr.expl .oficial{font-size:11.5px;color:var(--muted)}
+.edu-tab tr.expl .oficial b{color:var(--ink-2);font-weight:600}
 
 .edu-grupo{margin:26px 0 12px}
 .edu-grupo:first-of-type{margin-top:6px}
@@ -2358,18 +2370,50 @@ function blocoTemDado(b,redes){
 /* modo "comparar": uma tabela por bloco, uma coluna por rede.
    As linhas de `extras` não somam o total — existem para mostrar onde está a
    sobreposição — então vão depois do total, separadas e em itálico. */
+/* "Qualificação profissional" ou "Em classes exclusivas" não dizem, sozinhas,
+   o que está sendo contado. Quando há explicação, o rótulo vira clicável e o
+   texto abre na própria tabela — perto da dúvida, e não num glossário no pé da
+   página que ninguém vai procurar. */
+let explAberta=null;
+function rotuloExpl(x){
+  if(!x.expl&&!x.obs) return x.n;
+  return `<button type="button" class="expl-bt" data-expl="${x.c}"
+    aria-expanded="false" title="O que entra nesta linha">${x.n}</button>`;
+}
+function linhaExpl(x,cols){
+  if(!x.expl&&!x.obs) return '';
+  return `<tr class="expl" data-para="${x.c}" hidden><td colspan="${cols}">
+    ${x.expl?`<p>${x.expl}</p>`:''}
+    ${x.obs?`<p class="oficial"><b>Definição do INEP:</b> ${x.obs}</p>`:''}
+  </td></tr>`;
+}
+function ligaExplicacoes(alvo){
+  alvo.querySelectorAll('[data-expl]').forEach(bt=>{
+    bt.onclick=ev=>{
+      ev.preventDefault(); ev.stopPropagation();
+      const tab=bt.closest('table');
+      const alvoTr=tab&&tab.querySelector(`tr.expl[data-para="${bt.dataset.expl}"]`);
+      if(!alvoTr) return;
+      const abrir=alvoTr.hidden;
+      alvoTr.hidden=!abrir;
+      bt.setAttribute('aria-expanded',String(abrir));
+    };
+  });
+}
+
 function tabelaEtapa(b,redes){
   const cab=redes.map(r=>`<th>${r.nome}</th>`).join('');
+  const nCols=redes.length+2;
   const linha=(rot,i,cls)=>{
     const cels=redes.map(r=>{const v=r.v[i]||0;
       return `<td class="${v?'':'zero'}">${v?intBR(v):'—'}</td>`;}).join('');
     const t=somaRedes(redes,i);
     return `<tr class="${cls||''}"><td>${rot}</td>${cels}<td class="${t?'':'zero'}">${t?intBR(t):'—'}</td></tr>`;
   };
-  let corpo=b.itens.map(x=>linha(x.n,x.i)).join('');
+  let corpo=b.itens.map(x=>linha(rotuloExpl(x),x.i)+linhaExpl(x,nCols)).join('');
   if(b.total!==null) corpo+=linha(b.itens.length?'Total':'Matrículas',b.total,'tot');
   const extras=(b.extras||[]).filter(x=>somaRedes(redes,x.i)>0);
-  if(extras.length) corpo+=extras.map(x=>linha(x.n,x.i,'extra')).join('');
+  if(extras.length) corpo+=extras.map(x=>linha(rotuloExpl(x),x.i,'extra')+linhaExpl(x,nCols)).join('');
   // o nome do bloco já está no cabeçalho; repeti-lo aqui só ocupa linha
   return `<table class="edu-tab"><thead><tr><th></th>${cab}<th>Total</th></tr></thead>
     <tbody>${corpo}</tbody></table>`;
@@ -2382,16 +2426,16 @@ function tabelaRede(rede,blocos){
     corpo+=`<tr class="tot"><td colspan="2"><b>${b.nome}</b></td></tr>`;
     for(const x of b.itens){
       const v=rede.v[x.i]||0;
-      corpo+=`<tr><td style="padding-left:28px">${x.n}</td>
-        <td class="${v?'':'zero'}">${v?intBR(v):'—'}</td></tr>`;
+      corpo+=`<tr><td style="padding-left:28px">${rotuloExpl(x)}</td>
+        <td class="${v?'':'zero'}">${v?intBR(v):'—'}</td></tr>`+linhaExpl(x,2);
     }
     if(b.total!==null)
       corpo+=`<tr><td style="padding-left:28px${b.itens.length?';font-style:italic':''}">${
         b.itens.length?'Total':'Matrículas'}</td><td>${intBR(rede.v[b.total])}</td></tr>`;
     for(const x of (b.extras||[])){
       if(!(rede.v[x.i]||0)) continue;
-      corpo+=`<tr class="extra"><td style="padding-left:28px">${x.n}</td>
-        <td>${intBR(rede.v[x.i])}</td></tr>`;
+      corpo+=`<tr class="extra"><td style="padding-left:28px">${rotuloExpl(x)}</td>
+        <td>${intBR(rede.v[x.i])}</td></tr>`+linhaExpl(x,2);
     }
   }
   return corpo ? `<table class="edu-tab"><tbody>${corpo}</tbody></table>`
@@ -2479,6 +2523,7 @@ async function montaEduDetalhe(i){
   </div>`;
 
   $('#eduVolta').onclick=voltaEdu;
+  ligaExplicacoes(alvo);
   $('#eduEscolas').onclick=()=>{ st.edu='escolas'; montaMunicipio(); gravarHash();
                                  $('#vistaMunicipio').scrollTop=0; };
   alvo.querySelectorAll('.edu-modo button').forEach(b=>{
