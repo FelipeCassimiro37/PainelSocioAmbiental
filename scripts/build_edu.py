@@ -30,19 +30,61 @@ SAIDA = os.path.join(RAIZ, 'dados', 'edu')
 REDES = {1: 'Federal', 2: 'Estadual', 3: 'Municipal', 4: 'Privada'}
 LOCAL = {1: 'Urbana', 2: 'Rural'}
 
-# A estrutura da tela. Cada bloco tem um total (a etapa) e as linhas de dentro.
+# A estrutura da tela, em três grupos:
+#
+#   etapa       o caminho do aluno pela educação básica; um bloco não repete
+#               o aluno do outro
+#   transversal outro corte dos MESMOS alunos — o do técnico integrado está no
+#               Ensino Médio e na Educação Profissional ao mesmo tempo
+#   perfil      quebras do total geral por característica do aluno
+#
+# `itens` são as linhas que somam o total do bloco. `extras` são linhas que
+# NÃO somam: existem para localizar a sobreposição, e por isso aparecem
+# separadas, depois do total.
+#
 # Os rótulos NÃO estão aqui: vêm do dicionário do INEP, em fonte/legendas.csv.
 BLOCOS = [
-    ('Educação Infantil',                 'QT_MAT_INF',      ['QT_MAT_INF_CRE', 'QT_MAT_INF_PRE']),
-    ('Ensino Fundamental — Anos Iniciais', 'QT_MAT_FUND_AI',  ['QT_MAT_FUND_AI_%d' % n for n in range(1, 6)]),
-    ('Ensino Fundamental — Anos Finais',   'QT_MAT_FUND_AF',  ['QT_MAT_FUND_AF_%d' % n for n in range(6, 10)]),
-    ('Ensino Médio',                       'QT_MAT_MED',      ['QT_MAT_MED_%s' % n for n in (1, 2, 3, 4, 'NS')]),
-    ('Educação de Jovens e Adultos',       'QT_MAT_EJA',      ['QT_MAT_EJA_FUND', 'QT_MAT_EJA_MED']),
-    ('Educação Profissional',              'QT_MAT_PROF',     ['QT_MAT_PROF_TEC']),
-    ('Educação Especial',                  'QT_MAT_ESP',      []),
-    ('Sexo dos alunos',                    None,              ['QT_MAT_BAS_FEM', 'QT_MAT_BAS_MASC']),
-    ('Onde o aluno mora',                  None,              ['QT_MAT_ZR_URB', 'QT_MAT_ZR_RUR',
-                                                               'QT_MAT_ZR_NA']),
+    ('Educação Infantil', 'etapa', 'QT_MAT_INF',
+     ['QT_MAT_INF_CRE', 'QT_MAT_INF_PRE'], [], None),
+
+    ('Ensino Fundamental — Anos Iniciais', 'etapa', 'QT_MAT_FUND_AI',
+     ['QT_MAT_FUND_AI_%d' % n for n in range(1, 6)], [], None),
+
+    ('Ensino Fundamental — Anos Finais', 'etapa', 'QT_MAT_FUND_AF',
+     ['QT_MAT_FUND_AF_%d' % n for n in range(6, 10)], [], None),
+
+    ('Ensino Médio', 'etapa', 'QT_MAT_MED',
+     ['QT_MAT_MED_%s' % n for n in (1, 2, 3, 4, 'NS')],
+     ['QT_MAT_MED_IFTP_CT'],
+     None),
+
+    ('Educação de Jovens e Adultos', 'etapa', 'QT_MAT_EJA',
+     ['QT_MAT_EJA_FUND', 'QT_MAT_EJA_MED'], [], None),
+
+    ('Educação Profissional', 'transversal', 'QT_MAT_PROF',
+     ['QT_MAT_PROF_TEC', 'QT_MAT_PROF_NAO_TEC'], [],
+     'Quem faz curso técnico integrado ao Ensino Médio está contado aqui e lá.'),
+
+    ('Educação Especial', 'transversal', 'QT_MAT_ESP',
+     ['QT_MAT_ESP_CC', 'QT_MAT_ESP_CE'],
+     ['QT_MAT_ESP_INF', 'QT_MAT_ESP_FUND', 'QT_MAT_ESP_MED', 'QT_MAT_ESP_EJA',
+      'QT_MAT_ESP_PROF'],
+     'Estes alunos já estão contados nas etapas acima; abaixo, em quais.'),
+
+    ('Sexo dos alunos', 'perfil', None,
+     ['QT_MAT_BAS_FEM', 'QT_MAT_BAS_MASC'], [], None),
+
+    ('Onde o aluno mora', 'perfil', None,
+     ['QT_MAT_ZR_URB', 'QT_MAT_ZR_RUR', 'QT_MAT_ZR_NA'], [], None),
+]
+
+GRUPOS = [
+    ('etapa', 'Etapas de ensino',
+     'O caminho do aluno pela educação básica. Um bloco não repete o aluno do outro.'),
+    ('transversal', 'Recortes que atravessam as etapas',
+     'Outro corte dos mesmos alunos — não some estes blocos com os de cima.'),
+    ('perfil', 'Perfil dos alunos',
+     'Quebras do total de matrículas da educação básica.'),
 ]
 
 # O rótulo curto sai do dicionário do INEP, mas em alguns casos o último trecho
@@ -54,11 +96,21 @@ ROTULO = {
     'QT_MAT_ZR_RUR': 'Mora em zona rural',
     'QT_MAT_ZR_NA': 'Não se aplica',
     'QT_MAT_PROF_TEC': 'Técnica',
+    'QT_MAT_PROF_NAO_TEC': 'Não-técnica (qualificação profissional)',
     'QT_MAT_MED_1': '1ª série',
     'QT_MAT_MED_2': '2ª série',
     'QT_MAT_MED_3': '3ª série',
     'QT_MAT_MED_4': '4ª série',
     'QT_MAT_MED_NS': 'Não seriado',
+    # a linha da sobreposição: o mesmo aluno aparece na Educação Profissional
+    'QT_MAT_MED_IFTP_CT': 'das quais, articuladas a curso técnico',
+    'QT_MAT_ESP_CC': 'Em classes comuns',
+    'QT_MAT_ESP_CE': 'Em classes exclusivas',
+    'QT_MAT_ESP_INF': 'na Educação Infantil',
+    'QT_MAT_ESP_FUND': 'no Ensino Fundamental',
+    'QT_MAT_ESP_MED': 'no Ensino Médio',
+    'QT_MAT_ESP_EJA': 'na EJA',
+    'QT_MAT_ESP_PROF': 'na Educação Profissional',
 }
 TOTAL_GERAL = 'QT_MAT_BAS'
 TOTAL_FUND = 'QT_MAT_FUND'
@@ -180,10 +232,10 @@ def main():
     legendas = ler_legendas()
 
     cols = [TOTAL_GERAL, TOTAL_FUND]
-    for _, total, itens in BLOCOS:
+    for _, _grupo, total, itens, extras, _nota in BLOCOS:
         if total and total not in cols:
             cols.append(total)
-        for c in itens:
+        for c in itens + extras:
             if c not in cols:
                 cols.append(c)
 
@@ -230,14 +282,37 @@ def main():
 
     # ---- meta
     idx = {c: i for i, c in enumerate(cols)}
+    linha = lambda c: {'i': idx[c], 'n': curto(c, legendas.get(c)),
+                       'd': legendas.get(c, ''), 'c': c}
     blocos = []
-    for nome, total, itens in BLOCOS:
+    for nome, grupo, total, itens, extras, nota in BLOCOS:
         blocos.append({
             'nome': nome,
+            'grupo': grupo,
             'total': idx[total] if total else None,
-            'itens': [{'i': idx[c], 'n': curto(c, legendas.get(c)),
-                       'd': legendas.get(c, ''), 'c': c} for c in itens],
+            'itens': [linha(c) for c in itens],
+            'extras': [linha(c) for c in extras],
+            'nota': nota,
         })
+    # Confere, no total nacional, a promessa que a tela faz: as linhas de um
+    # bloco somam o total dele. Foi exatamente essa conta que não fechava
+    # quando a Educação Profissional aparecia só com a linha "Técnica".
+    nacional = [0] * len(cols)
+    for redes in consolidado.values():
+        for v in redes.values():
+            for k in range(len(cols)):
+                nacional[k] += v[k]
+    for nome, _g, total, itens, _e, _n in BLOCOS:
+        if not (total and itens):
+            continue
+        t = nacional[idx[total]]
+        s = sum(nacional[idx[c]] for c in itens)
+        if t != s:
+            aviso('"%s": as linhas somam %s mas o total do bloco é %s (diferença de %s). '
+                  'Falta uma linha para a conta fechar na tela.'
+                  % (nome, format(s, ',').replace(',', '.'),
+                     format(t, ',').replace(',', '.'),
+                     format(t - s, ',').replace(',', '.')))
     sem_rotulo = [c for c in cols if c not in legendas]
     if sem_rotulo:
         aviso('sem descrição no dicionário: %s' % ', '.join(sem_rotulo))
@@ -250,6 +325,7 @@ def main():
         'cols': cols,
         'total': idx[TOTAL_GERAL],
         'totalFund': idx[TOTAL_FUND],
+        'grupos': [{'id': g, 'nome': n, 'nota': d} for g, n, d in GRUPOS],
         'blocos': blocos,
         'municipios': sorted(consolidado),
     })
