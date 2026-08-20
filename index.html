@@ -207,7 +207,7 @@ details.grp{border-bottom:1px solid var(--line-2)}
   background:none;padding:0;white-space:nowrap}
 /* ---------- comparação ---------- */
 #vistaComparar{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
-.cmp-wrap{padding:20px 24px 40px;max-width:1500px}
+.cmp-wrap{padding:20px 24px 40px;max-width:1500px;margin:0 auto}
 .cmp-wrap h2{margin:0 0 4px;font-size:19px;font-weight:700}
 .cmp-wrap .lead{margin:0 0 16px;color:var(--muted);font-size:13px;max-width:62ch}
 .picker{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
@@ -323,14 +323,14 @@ summary .rot{flex:1}
 
 /* ---------- página do município ---------- */
 #vistaMunicipio{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
-.mun{max-width:1180px;padding:22px 26px 60px}
+.mun{max-width:1180px;margin:0 auto;padding:22px 26px 60px}
 
 .mun-topo{display:flex;gap:24px;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap}
 .mun-id{flex:1;min-width:230px}
-.mun-id .volta{background:none;border:0;padding:0;margin-bottom:8px;cursor:pointer;
+.mun .volta{background:none;border:0;padding:0;margin-bottom:8px;cursor:pointer;
   font-family:var(--f-num);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--muted)}
-.mun-id .volta:hover{color:var(--navy)}
+.mun .volta:hover{color:var(--navy)}
 .mun-id h2{margin:0;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
 .mun-id .uf{margin:5px 0 0;font-size:14px;color:var(--ink-2)}
 .mun-id .cod{margin:2px 0 0;font-family:var(--f-num);font-size:11px;color:var(--muted)}
@@ -370,12 +370,49 @@ summary .rot{flex:1}
   border-bottom:1px solid var(--line);padding-bottom:8px}
 .tema-cab svg{width:19px;height:19px;flex:none}
 .tema-cab h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em}
-.tema-cab .qt{margin-left:auto;font-family:var(--f-num);font-size:10px;color:var(--muted)}
+.tema-cab .qt{font-family:var(--f-num);font-size:10px;color:var(--muted)}
+
+/* setores retráteis: o cabeçalho vira o <summary> de um <details> */
+details.tema-bloco > summary.tema-cab{cursor:pointer;list-style:none;user-select:none}
+details.tema-bloco > summary.tema-cab::-webkit-details-marker{display:none}
+summary.tema-cab:hover h3{color:var(--navy)}
+/* margin-left:0 anula o "margin-left:auto" da seta da ficha lateral, que
+   empurraria o título do setor para o meio da linha */
+summary.tema-cab .seta{font-size:9px;color:var(--muted);transition:transform .15s;
+  display:inline-block;margin-left:0;margin-right:1px}
+details[open] > summary.tema-cab .seta{transform:rotate(90deg)}
+summary.tema-cab .qt{margin-left:auto}
+.tema-zoom{background:#fff;border:1px solid var(--line);color:var(--ink-2);
+  font-family:var(--f-ui);font-size:11px;padding:3px 9px;border-radius:var(--r);
+  cursor:pointer;white-space:nowrap;flex:none}
+.tema-zoom:hover{background:var(--navy);border-color:var(--navy);color:#fff}
+.mun-ferramentas{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.mun-ferramentas .btn-mini{background:#fff;border:1px solid var(--line);color:var(--ink-2);
+  font-size:11.5px;padding:4px 11px;border-radius:var(--r);cursor:pointer}
+.mun-ferramentas .btn-mini:hover{background:var(--line-2)}
+
+/* visão de um setor só */
+.setor-topo{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+.setor-topo svg{width:26px;height:26px;flex:none}
+.setor-topo h2{margin:0;font-size:26px;font-weight:700;letter-spacing:-.025em}
+.setor-sub{margin:0 0 18px;font-size:13px;color:var(--muted)}
+.setor-sub b{color:var(--ink-2);font-weight:600}
+.setor-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:22px}
+.setor-chips button{background:#fff;border:1px solid var(--line);color:var(--ink-2);
+  font-size:12px;padding:5px 12px;border-radius:20px;cursor:pointer}
+.setor-chips button:hover{border-color:var(--navy);color:var(--navy)}
+.setor-chips button[aria-pressed=true]{background:var(--navy);border-color:var(--navy);
+  color:#fff;font-weight:600}
+.mun.foco .grade{grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:12px}
+.mun.foco .card{padding:13px 15px}
+.mun.foco .card .n{font-size:14px}
+.mun.foco .card .v{font-size:19px}
+
 .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:10px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
-.card .n{font-size:12px;color:var(--ink-2);line-height:1.35;margin-bottom:5px;
+.card .n{font-size:13.5px;color:var(--ink-2);line-height:1.35;margin-bottom:6px;
   display:flex;align-items:baseline;gap:6px}
-.card .n svg{width:13px;height:13px;flex:none;align-self:center}
+.card .n svg{width:14px;height:14px;flex:none;align-self:center}
 .card .v{font-family:var(--f-num);font-size:16px;font-weight:600;letter-spacing:-.02em}
 .card .v.na{font-size:12.5px;font-weight:400;color:#A6AEB2;font-family:var(--f-ui)}
 .card .v.txt{font-family:var(--f-ui);font-size:12.5px;font-weight:500;line-height:1.35}
@@ -397,7 +434,7 @@ summary .rot{flex:1}
 
 /* ---------- página Sobre ---------- */
 #vistaSobre{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
-.sobre{max-width:860px;padding:26px 28px 60px}
+.sobre{max-width:860px;margin:0 auto;padding:26px 28px 60px}
 .sobre h2{margin:0 0 4px;font-size:22px;font-weight:700;letter-spacing:-.02em}
 .sobre .lead{margin:0 0 26px;color:var(--ink-2);font-size:14px;line-height:1.6;max-width:68ch}
 .sobre section{margin-bottom:30px}
@@ -715,13 +752,14 @@ if(typeof d3==='undefined' || typeof topojson==='undefined'){
 /* ================= estado ================= */
 let META, DIC, TEMAS, N, UFCODES, MAPEAVEIS, IDS;
 let selecao = [];                 // lugares escolhidos na aba Comparar
-const fechadosFicha = new Set();  // temas recolhidos na ficha
+const fechadosFicha = new Set();  // temas recolhidos na ficha lateral do mapa
+const fechadosMun   = new Set();  // setores recolhidos na página do município
 const GRUPOS = {};                // tema -> grupo -> {recortes, itens, nomes}
 const recorteAtual = {};          // 'tema|grupo' -> recorte escolhido
 let malhaMun, feats, meshUF, geoUF;
 const cacheInd = new Map();     // id -> vetor nacional
 const cacheUF  = new Map();     // sigla -> {ind:[...]}
-const st = { nivel:'pais', uf:null, mun:null, ind:null, vista:'mapa' };
+const st = { nivel:'pais', uf:null, mun:null, ind:null, vista:'mapa', setor:null };
 let munsByUF = new Map(), idxByCode = new Map();
 
 /* ================= formatação ================= */
@@ -755,6 +793,20 @@ function fmt(v,id,curto){
 function nomeLongo(id){
   const m=DIC[id];
   return (m.grupo&&m.recorte) ? m.nome+' — '+m.recorte : m.nome;
+}
+/* Citação da fonte com o ano de referência.
+   Metade das fontes já traz o ano no próprio nome ("Censo Demográfico 2022") e
+   a outra metade não ("CAGED — Ministério do Trabalho e Emprego"). Anexar o ano
+   sempre produzia "… 2023 · 2023"; nunca anexar deixava o CAGED sem ano. Então
+   anexa só quando o ano ainda não aparece no texto. */
+function fonteAno(m){
+  const f=String(m.fonte||'').trim();
+  const a=m.ano===0||m.ano ? String(m.ano).trim() : '';
+  if(!a) return f;
+  if(!f) return a;
+  // \b não serve: em "2022/2023" o ano está colado a uma barra, e ainda assim
+  // está lá. O teste é por vizinhança de dígito.
+  return new RegExp('(^|[^0-9])'+a+'([^0-9]|$)').test(f) ? f : f+' · '+a;
 }
 function montarGrupos(){
   for(const id of IDS){
@@ -1052,7 +1104,7 @@ function linhaFicha(id,bloco,pl,chave,tm,curto){
     '</span></div>'+
     (pct!==null?'<div class="bar"><i style="width:'+Math.max(2,pct*100)+'%;background:'+tm.ramp[4]+'"></i></div>':'')+
     (pos!==null?'<div class="pos">'+pos+'º de '+tot+' '+(st.nivel==='mun'?'no estado':'entre as UFs')+'</div>':'')+
-    '<div class="src">'+m.fonte+origem+'</div>';
+    '<div class="src">'+fonteAno(m)+origem+'</div>';
   return row;
 }
 function ficha(){
@@ -1574,6 +1626,7 @@ function montaHash(){
     if(st.uf) p.set('uf',st.uf);
     if(st.mun!==null&&st.mun!==undefined) p.set('m',META.municipios[st.mun]);
     if(st.ind) p.set('i',st.ind);
+    if(st.vista==='municipio'&&st.setor) p.set('set',st.setor);
   }
   return '#'+p.toString();
 }
@@ -1602,6 +1655,8 @@ function lerHash(){
   if(st.nivel!=='mun') st.mun=null;
   if(st.nivel==='pais') st.uf=null;
   if(v==='comparar'||v==='sobre'||v==='municipio') st.vista=v;
+  const se=p.get('set');
+  st.setor = (se&&TEMAS[se]) ? se : null;
   return true;
 }
 function montaCopiarLink(){
@@ -1898,7 +1953,7 @@ function cartaoIndicador(id,i,tm){
     ${P?`<div class="tr"><i style="width:${Math.max(2,P.pct*100)}%;background:${tm.ramp[4]}"></i></div>
         <div class="pos">${P.pos}º de ${P.tot} no estado</div>`:''}
     ${ref}
-    <div class="fonte">${m.fonte}${m.ano?' · '+m.ano:''}</div>
+    <div class="fonte" title="${fonteAno(m)}">${fonteAno(m)}</div>
   </div>`;
 }
 function kpi(id,i,rot){
@@ -1952,9 +2007,79 @@ function desenhaLocalizador(i){
   }
 }
 
+/* Os indicadores de um setor, na ordem em que aparecem na ficha: primeiro os
+   avulsos, depois os que pertencem a subgrupos. Aqui não há seletor de recorte
+   — a ficha é o lugar de ver tudo, então entram todas as faixas, com o nome
+   completo. */
+function idsDoTema(tema){
+  return soltos(tema).concat(IDS.filter(k=>DIC[k].tema===tema && DIC[k].grupo));
+}
+function temComDado(ids,i){
+  return ids.filter(k=>{ const v=valorMun(k,i); return v!==null&&v!==undefined&&v!==''; });
+}
+function blocoSemDado(){
+  return `<div class="aviso-sem">Nenhuma fonte publica estes indicadores para este
+    município. Ausência de dado não significa ausência do fenômeno.</div>`;
+}
+/* Um setor recolhível. O <details> guarda o estado em fechadosMun, para que
+   recolher um setor sobreviva a um redesenho da página. */
+function secaoTema(tema,tm,i){
+  const ids=idsDoTema(tema);
+  if(!ids.length) return '';
+  const comDado=temComDado(ids,i);
+  return `<details class="tema-bloco" data-tema="${tema}"${fechadosMun.has(tema)?'':' open'}>
+    <summary class="tema-cab">
+      <span class="seta">&#9654;</span>
+      ${icone(ICONE_TEMA[tema],tm.ramp[4])}
+      <h3>${tm.nome}</h3>
+      <span class="qt">${comDado.length} de ${ids.length} com dado</span>
+      <button type="button" class="tema-zoom" data-zoom="${tema}"
+        title="Abrir uma aba só com os indicadores de ${tm.nome}">Ampliar setor</button>
+    </summary>
+    ${comDado.length ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
+                     : blocoSemDado()}
+  </details>`;
+}
+
+/* Página de um setor só: mesmo município, um tema, cartões maiores. */
+function montaSetor(i,tema){
+  const tm=TEMAS[tema], uf=META.uf[i], sig=META.ufSiglas[uf];
+  const ids=idsDoTema(tema), comDado=temComDado(ids,i);
+  const chips=Object.entries(TEMAS).filter(([t])=>idsDoTema(t).length)
+    .map(([t,x])=>`<button type="button" data-zoom="${t}"
+        aria-pressed="${t===tema}">${x.nome}</button>`).join('');
+  return `<div class="mun foco">
+    <button class="volta" id="munVolta">&larr; voltar para todos os setores</button>
+    <div class="setor-topo">${icone(ICONE_TEMA[tema],tm.ramp[4])}<h2>${tm.nome}</h2></div>
+    <p class="setor-sub"><b>${META.nomes[i]}</b> · ${sig} &nbsp;·&nbsp;
+      ${comDado.length} de ${ids.length} indicadores com dado</p>
+    <div class="setor-chips">${chips}</div>
+    ${comDado.length ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
+                     : blocoSemDado()}
+  </div>`;
+}
+
+/* Liga os botões "Ampliar setor" e os chips de troca de setor. */
+function ligaZoomSetor(alvo,i){
+  alvo.querySelectorAll('[data-zoom]').forEach(b=>{
+    b.onclick=ev=>{
+      // dentro de um <summary>, o clique também abriria/fecharia o setor
+      ev.preventDefault(); ev.stopPropagation();
+      st.setor=b.dataset.zoom;
+      montaMunicipio(); gravarHash();
+      $('#vistaMunicipio').scrollTop=0;
+    };
+  });
+}
+
+let ultimoMunFicha=null;
 async function montaMunicipio(){
   const i=st.mun;
   const alvo=$('#vistaMunicipio');
+  // Trocar de município volta para a ficha inteira: quem clica noutra cidade no
+  // mapa espera o retrato completo, não o setor onde parou na cidade anterior.
+  if(ultimoMunFicha!==null && i!==ultimoMunFicha) st.setor=null;
+  ultimoMunFicha=i;
   if(i===null||i===undefined){
     alvo.innerHTML=`<div class="mun"><div class="aviso-sem">Nenhum município selecionado.
       Use a busca no topo ou clique num município no mapa.</div></div>`;
@@ -1963,26 +2088,16 @@ async function montaMunicipio(){
   await garanteUF(META.uf[i]);
   const uf=META.uf[i], sig=META.ufSiglas[uf], tmD=TEMAS.demografia;
 
-  // seções por tema, com os indicadores em cartões
-  let secoes='';
-  for(const [tema,tm] of Object.entries(TEMAS)){
-    // Aqui não há seletor de recorte: a ficha é o lugar de ver tudo, então
-    // entram todas as faixas do subgrupo, com o nome completo.
-    const avulsos=soltos(tema);
-    const doGrupo=IDS.filter(k=>DIC[k].tema===tema && DIC[k].grupo);
-    const ids=avulsos.concat(doGrupo);
-    if(!ids.length) continue;
-    const comDado=ids.filter(k=>{const v=valorMun(k,i); return v!==null&&v!==undefined&&v!=='';});
-    secoes+=`<section class="tema-bloco">
-      <div class="tema-cab">${icone(ICONE_TEMA[tema],tm.ramp[4])}
-        <h3>${tm.nome}</h3>
-        <span class="qt">${comDado.length} de ${ids.length} com dado</span></div>`;
-    secoes += comDado.length
-      ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
-      : `<div class="aviso-sem">Nenhuma fonte publica estes indicadores para este
-         município. Ausência de dado não significa ausência do fenômeno.</div>`;
-    secoes+='</section>';
+  if(st.setor && TEMAS[st.setor]){
+    alvo.innerHTML=montaSetor(i,st.setor);
+    $('#munVolta').onclick=()=>{ st.setor=null; montaMunicipio(); gravarHash();
+                                 $('#vistaMunicipio').scrollTop=0; };
+    ligaZoomSetor(alvo,i);
+    return;
   }
+
+  let secoes='';
+  for(const [tema,tm] of Object.entries(TEMAS)) secoes+=secaoTema(tema,tm,i);
 
   alvo.innerHTML=`<div class="mun">
     <div class="mun-topo">
@@ -2020,10 +2135,29 @@ async function montaMunicipio(){
                   tmD.ramp[3],tmD.ramp[5])}
     </div>
 
+    <div class="mun-ferramentas">
+      <button type="button" class="btn-mini" id="munRecolher">Recolher todos os setores</button>
+      <button type="button" class="btn-mini" id="munExpandir">Expandir todos</button>
+    </div>
+
     ${secoes}
   </div>`;
 
   try{ desenhaLocalizador(i); }catch(e){ console.warn('localizador:',e); }
+
+  // guarda quais setores ficam recolhidos, para sobreviver ao próximo redesenho
+  alvo.querySelectorAll('details.tema-bloco').forEach(d=>{
+    d.addEventListener('toggle',()=>{
+      d.open ? fechadosMun.delete(d.dataset.tema) : fechadosMun.add(d.dataset.tema);
+    });
+  });
+  const todos=(abrir)=>{
+    alvo.querySelectorAll('details.tema-bloco').forEach(d=>{ d.open=abrir; });
+  };
+  $('#munRecolher').onclick=()=>todos(false);
+  $('#munExpandir').onclick=()=>todos(true);
+  ligaZoomSetor(alvo,i);
+
   $('#munVolta').onclick=()=>trocaVista('mapa');
   $('#munMapaBtn').onclick=()=>trocaVista('mapa');
   $('#munCmp').onclick=()=>{
