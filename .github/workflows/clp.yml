@@ -1,0 +1,42 @@
+name: Atualizar Ranking de Competitividade (CLP)
+
+# Roda só quando você aperta "Run workflow": o CLP publica uma edição por ano,
+# não faz sentido reprocessar de hora em hora como os dados do painel.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atualizar-clp
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install --quiet openpyxl
+
+      - name: Ler a planilha do CLP e gerar os dados
+        run: python scripts/build_clp.py
+
+      - name: Publicar se algo mudou
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados/clp
+          if git diff --staged --quiet; then
+            echo "Nenhuma mudança no ranking. Nada a publicar."
+          else
+            git commit -m "Atualiza o Ranking de Competitividade a partir da planilha do CLP"
+            git push
+            echo "Ranking atualizado e publicado."
+          fi
