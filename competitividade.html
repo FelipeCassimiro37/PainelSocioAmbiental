@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ranking de Competitividade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" as="fetch" href="dados/clp/meta.json" crossorigin>
+<link rel="preload" as="fetch" href="dados/clp/ranking.json" crossorigin>
+<style>
+:root{
+  --ink:#10161C; --ink-2:#3A454C; --muted:#6E787E;
+  --paper:#F2F4F2; --card:#FFFFFF; --line:#DCE1DF; --line-2:#EDF0EE;
+  --navy:#17405F; --navy-d:#0E2C43; --sel:#C4452B;
+  --sobe:#2E6B4F; --desce:#B03A24;
+  --r:3px;
+  --f-ui:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-num:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--f-ui);color:var(--ink);background:var(--paper);font-size:15.5px;
+  line-height:1.45;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+button,select,input{font-family:inherit;font-size:inherit;color:inherit}
+::selection{background:#FBD9AE}
+
+/* ---------- topo (mesma estrutura do painel: busca centrada de verdade) ---------- */
+.top{background:var(--navy);color:#fff;flex:none;display:grid;align-items:center;
+  grid-template-columns:minmax(0,1fr) minmax(240px,clamp(280px,30vw,440px)) minmax(0,1fr);
+  gap:18px;padding:0 20px;height:60px;border-bottom:3px solid var(--navy-d)}
+.top-esq{display:flex;align-items:center;gap:16px;min-width:0}
+.top-marca{display:flex;flex-direction:column;justify-content:center;flex:none}
+.top-marca h1,.top-marca .sub{white-space:nowrap}
+.top-esq .nav{min-width:0;overflow:hidden}
+.top .acoes{justify-self:end;min-width:0;display:flex;align-items:center;gap:9px}
+.top h1{margin:0;font-size:16.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.top .sub{font-family:var(--f-num);font-size:11.5px;color:#9FC0D6;letter-spacing:.04em;margin-top:2px}
+.nav{display:flex;gap:3px}
+.nav a,.nav button{background:none;border:0;color:#B9D2E3;padding:9px 16px;border-radius:var(--r);
+  cursor:pointer;font-size:13.5px;font-weight:600;text-decoration:none;display:inline-block}
+.nav a:hover,.nav button:hover{background:#ffffff18;color:#fff}
+.nav button[aria-pressed=true]{background:#ffffff26;color:#fff}
+.nav a.volta-painel{border:1px solid #ffffff33}
+.btn-link{background:#ffffff1f;border:1px solid #ffffff33;color:#DCE9F1;font-size:13px;
+  padding:7px 11px;border-radius:var(--r);cursor:pointer;white-space:nowrap}
+.btn-link:hover{background:#ffffff33;color:#fff}
+.btn-link.ok{background:#CFE8CF;border-color:#CFE8CF;color:#245024}
+.btn-rel{background:#FBD9AE;border:0;color:#5B3B12;font-weight:600;font-size:13px;
+  padding:7px 11px;border-radius:var(--r);cursor:pointer;white-space:nowrap}
+.btn-rel:hover{background:#F7CB90}
+
+.ir{position:relative;width:100%}
+.ir svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;
+  fill:none;stroke:#9FC0D6;stroke-width:1.6;pointer-events:none}
+.ir input{width:100%;padding:8px 26px 8px 28px;border:1px solid #ffffff33;border-radius:var(--r);
+  background:#ffffff1a;color:#fff;font-size:14px}
+.ir input::placeholder{color:#9FC0D6}
+.ir input:focus{background:#fff;color:var(--ink);border-color:#fff;outline:none}
+.ir input:focus ~ svg{stroke:var(--muted)}
+.ir ul{position:absolute;top:calc(100% + 5px);left:0;right:0;margin:0;padding:4px;list-style:none;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:0 10px 28px #0000002e;max-height:340px;overflow-y:auto;z-index:40}
+.ir li{padding:8px 10px;border-radius:var(--r);cursor:pointer;display:flex;align-items:baseline;
+  gap:8px;color:var(--ink)}
+.ir li[aria-selected=true]{background:var(--line-2)}
+.ir li .nm{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ir li .nm b{font-weight:700}
+.ir li .tp{font-family:var(--f-num);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.ir li.vazio{color:var(--muted);font-size:13px;cursor:default}
+
+@media (max-width:1600px){
+  .top{grid-template-columns:minmax(0,1fr) minmax(220px,clamp(240px,22vw,360px)) minmax(0,1fr);
+       gap:12px;padding:0 14px}
+  .top-esq{gap:12px}
+  .nav a,.nav button{padding:8px 11px}
+}
+@media (max-width:1150px){
+  .top{display:flex;height:auto;flex-wrap:wrap;padding:9px 14px;gap:10px}
+  .top-esq{flex:1 1 100%;gap:10px}
+  .ir{order:5;flex:1 1 100%;width:auto}
+  .top .acoes{margin-left:auto}
+}
+
+/* ---------- corpo ---------- */
+.pagina{flex:1;overflow-y:auto;min-height:0}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 26px 70px}
+.wrap.largo{max-width:1400px}
+
+.intro{margin:0 0 20px}
+.intro h2{margin:0 0 6px;font-size:26px;font-weight:700;letter-spacing:-.025em}
+.intro p{margin:0;font-size:14px;color:var(--ink-2);line-height:1.6;max-width:76ch}
+.intro p b{color:var(--ink)}
+
+.filtros{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;
+  background:var(--card);border:1px solid var(--line);border-radius:5px;padding:12px 14px}
+.filtros label{font-family:var(--f-num);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);margin-right:-4px}
+.filtros select,.filtros input{border:1px solid var(--line);border-radius:var(--r);
+  padding:7px 10px;font-size:13.5px;background:#fff;color:var(--ink)}
+.filtros input{min-width:210px}
+.filtros .cont{margin-left:auto;font-family:var(--f-num);font-size:11.5px;color:var(--muted)}
+.filtros .limpar{background:none;border:0;color:var(--navy);font-size:13px;cursor:pointer;
+  text-decoration:underline;padding:4px}
+
+table.rk{width:100%;border-collapse:collapse;background:var(--card);
+  border:1px solid var(--line);border-radius:5px;overflow:hidden;font-size:14px}
+table.rk thead th{background:#FAFBFA;font-family:var(--f-num);font-size:10.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;
+  text-align:right;padding:10px 12px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:2;cursor:pointer;white-space:nowrap}
+table.rk thead th:first-child,table.rk thead th.esq{text-align:left}
+table.rk thead th:hover{color:var(--navy)}
+table.rk thead th[aria-sort]{color:var(--navy)}
+table.rk td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line-2);
+  font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+table.rk td.esq{text-align:left;font-family:var(--f-ui);white-space:normal}
+table.rk tbody tr{cursor:pointer}
+table.rk tbody tr:hover td{background:#F7F9FA}
+table.rk tbody tr:last-child td{border-bottom:0}
+table.rk .pos{font-weight:600;font-size:15px}
+table.rk .nome{font-weight:600}
+table.rk .nome small{display:block;font-family:var(--f-num);font-size:10.5px;
+  color:var(--muted);font-weight:400;margin-top:1px}
+table.rk .tag{display:inline-block;font-family:var(--f-num);font-size:9.5px;letter-spacing:.06em;
+  text-transform:uppercase;padding:2px 6px;border-radius:10px;background:var(--line-2);
+  color:var(--ink-2);margin-left:6px;vertical-align:1px}
+.barra-nota{display:inline-block;width:64px;height:6px;background:var(--line-2);border-radius:3px;
+  overflow:hidden;margin-left:8px;vertical-align:middle}
+.barra-nota i{display:block;height:100%;background:var(--navy)}
+
+.var{font-family:var(--f-num);font-size:13px;white-space:nowrap}
+.var.sobe{color:var(--sobe)}
+.var.desce{color:var(--desce)}
+.var.igual{color:var(--muted)}
+.var.novo{color:var(--muted);font-style:italic;font-family:var(--f-ui);font-size:12px}
+
+.vazio-lista{background:var(--card);border:1px dashed var(--line);border-radius:5px;
+  padding:22px;text-align:center;color:var(--muted);font-size:14px}
+.mais{display:block;width:100%;background:var(--card);border:1px solid var(--line);border-top:0;
+  padding:12px;font-family:var(--f-ui);font-size:13.5px;color:var(--navy);cursor:pointer;
+  font-weight:600;border-radius:0 0 5px 5px}
+.mais:hover{background:var(--line-2)}
+
+/* ---------- página do município ---------- */
+.volta{background:none;border:0;padding:0;margin-bottom:10px;cursor:pointer;
+  font-family:var(--f-num);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted)}
+.volta:hover{color:var(--navy)}
+.m-topo{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:22px}
+.m-id{flex:1;min-width:250px}
+.m-id h2{margin:0;font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.m-id .uf{margin:5px 0 0;font-size:14.5px;color:var(--ink-2)}
+.m-id .meta{margin:3px 0 0;font-family:var(--f-num);font-size:11.5px;color:var(--muted)}
+.m-geral{flex:none;background:var(--navy);color:#fff;border-radius:5px;padding:16px 22px;
+  min-width:230px}
+.m-geral .r{font-family:var(--f-num);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:#9FC0D6;margin-bottom:6px}
+.m-geral .p{font-family:var(--f-num);font-size:38px;font-weight:600;letter-spacing:-.03em;
+  line-height:1}
+.m-geral .p small{font-size:15px;font-weight:400;color:#9FC0D6}
+.m-geral .n{margin-top:7px;font-family:var(--f-num);font-size:12.5px;color:#CBDDE9}
+.m-geral .var{color:#fff}
+.m-geral .var.sobe{color:#8FD6AE}
+.m-geral .var.desce{color:#F0A78F}
+
+.dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;
+  margin-bottom:26px}
+.dim{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:14px 16px;
+  border-left:3px solid var(--navy)}
+.dim .n{font-size:13.5px;color:var(--muted);margin-bottom:7px}
+.dim .p{font-family:var(--f-num);font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1}
+.dim .p small{font-size:13px;font-weight:400;color:var(--muted)}
+.dim .nt{margin-top:5px;font-family:var(--f-num);font-size:11.5px;color:var(--muted)}
+.dim .peso{font-family:var(--f-num);font-size:10px;color:#A6AEB2;margin-top:3px}
+
+.grupo{margin:26px 0 12px}
+.grupo h3{margin:0;font-family:var(--f-num);font-size:11.5px;font-weight:600;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--navy)}
+.grupo p{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
+
+details.pilar{background:var(--card);border:1px solid var(--line);border-radius:5px;
+  margin-bottom:11px;overflow:hidden}
+details.pilar>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;
+  padding:13px 16px;user-select:none;background:#FAFBFA;border-bottom:1px solid var(--line)}
+details.pilar>summary::-webkit-details-marker{display:none}
+details.pilar>summary .seta{font-size:9px;color:var(--muted);transition:transform .15s;flex:none}
+details.pilar[open]>summary .seta{transform:rotate(90deg)}
+details.pilar>summary h4{margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.01em;flex:1}
+details.pilar>summary .qt{font-family:var(--f-num);font-size:10.5px;color:var(--muted);flex:none}
+details.pilar>summary .cifras{display:flex;align-items:baseline;gap:14px;flex:none}
+details.pilar>summary .cif{font-family:var(--f-num);font-variant-numeric:tabular-nums;
+  font-size:16px;font-weight:600}
+details.pilar>summary .cif small{font-size:11px;font-weight:400;color:var(--muted)}
+
+table.ind{width:100%;border-collapse:collapse;font-size:13.5px}
+table.ind th,table.ind td{padding:8px 16px;text-align:right;border-bottom:1px solid var(--line-2);
+  white-space:nowrap}
+table.ind th:first-child,table.ind td:first-child{text-align:left;white-space:normal}
+table.ind thead th{font-family:var(--f-num);font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--muted);font-weight:600}
+table.ind td{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+table.ind td:first-child{font-family:var(--f-ui);color:var(--ink-2)}
+table.ind tbody tr:last-child td{border-bottom:0}
+table.ind tbody tr:hover td{background:#FAFBFA}
+table.ind .na{color:#B9C0C4;font-family:var(--f-ui);font-size:12.5px}
+.ind-bt{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:help;text-align:left;
+  text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+.ind-bt:hover{color:var(--navy);text-decoration-color:var(--navy)}
+.ind-bt[aria-expanded=true]{color:var(--navy);font-weight:600}
+table.ind tr.expl td{background:#F7F9FA;text-align:left;white-space:normal;font-family:var(--f-ui);
+  font-size:12.5px;line-height:1.6;color:var(--ink-2);padding:11px 16px 12px}
+table.ind tr.expl p{margin:0}
+table.ind tr.expl p+p{margin-top:6px}
+table.ind tr.expl .fonte{font-size:11.5px;color:var(--muted)}
+.pol{font-family:var(--f-num);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 6px;border-radius:10px;background:var(--line-2);color:var(--ink-2);margin-left:7px}
+
+.nota-rodape{background:#FDF9F0;border:1px solid #EBDCC0;border-radius:var(--r);padding:13px 16px;
+  font-size:13px;line-height:1.6;color:#6B5426;margin-top:26px;max-width:80ch}
+.nota-rodape b{color:#4A3A16}
+.sem-clp{background:var(--card);border:1px dashed var(--line);border-radius:5px;padding:26px;
+  font-size:14px;color:var(--ink-2);line-height:1.6;max-width:70ch}
+.sem-clp b{color:var(--ink)}
+
+#boot{position:fixed;inset:0;background:var(--paper);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;z-index:99}
+#boot p{margin:0;font-family:var(--f-num);font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted)}
+#boot .bar{width:230px;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+#boot .bar i{display:block;height:100%;width:0;background:var(--navy);transition:width .3s}
+#falha{display:none;max-width:540px;padding:20px;border:1px solid #E0B4A8;background:#FDF3F0;
+  border-radius:var(--r);color:#7A2E1A;font-size:13.5px;line-height:1.6}
+
+@media (max-width:760px){
+  .wrap{padding:18px 14px 60px}
+  .m-id h2{font-size:25px}
+  .m-geral{width:100%}
+  table.rk td,table.rk thead th{padding:8px 8px;font-size:13px}
+  table.rk .ocultavel{display:none}
+  details.pilar>summary{flex-wrap:wrap}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- impressão / PDF ---------- */
+#impressao{display:none}
+@media print{
+  body>*{display:none!important}
+  #impressao{display:block!important;font-size:10.5pt}
+  #impressao h1{font-size:17pt;margin:0 0 2mm}
+  #impressao .sub{font-size:9pt;color:#555;margin:0 0 6mm}
+  #impressao h2{font-size:11.5pt;margin:6mm 0 2mm;border-bottom:1px solid #999;padding-bottom:1mm}
+  #impressao table{width:100%;border-collapse:collapse;font-size:9pt}
+  #impressao th,#impressao td{padding:1.2mm 2mm;text-align:right;border-bottom:.3pt solid #ccc}
+  #impressao th:first-child,#impressao td:first-child{text-align:left}
+  #impressao .rodape{margin-top:8mm;font-size:8pt;color:#666;border-top:.5pt solid #999;
+    padding-top:2mm}
+  @page{margin:14mm}
+}
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <p id="bootMsg">Carregando</p>
+  <div class="bar"><i id="bootBar"></i></div>
+  <div id="falha"></div>
+</div>
+
+<header class="top">
+  <div class="top-esq">
+    <div class="top-marca">
+      <h1>Ranking de Competitividade</h1>
+      <div class="sub" id="subtitulo">—</div>
+    </div>
+    <nav class="nav">
+      <a class="volta-painel" href="index.html">&larr; Painel Socioambiental</a>
+    </nav>
+  </div>
+  <div class="ir" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-owns="irLista">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="M10.4 10.4 14 14"/></svg>
+    <input id="irBusca" type="text" autocomplete="off" spellcheck="false"
+           placeholder="Ir para um município…" aria-label="Ir para um município"
+           aria-autocomplete="list" aria-controls="irLista">
+    <ul id="irLista" role="listbox" hidden></ul>
+  </div>
+  <div class="acoes">
+    <button class="btn-link" id="copiarLink" title="Copiar um link que abre esta mesma tela">Copiar link</button>
+    <button class="btn-rel" id="gerarPdf">Gerar relatório</button>
+  </div>
+</header>
+
+<div class="pagina" id="pagina"></div>
+<div id="impressao"></div>
+
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const boot=$('#boot'), bootMsg=$('#bootMsg'), bootBar=$('#bootBar');
+function progresso(m,p){ bootMsg.textContent=m; bootBar.style.width=p+'%'; }
+function falhar(e){
+  boot.style.display='flex';
+  bootMsg.textContent='Não foi possível carregar';
+  bootBar.parentElement.style.display='none';
+  const f=$('#falha'); f.style.display='block';
+  f.innerHTML='<b>'+(e&&e.message?e.message:e)+'</b><br><br>'+
+    'Se você abriu o arquivo com duplo clique, é isso: o navegador bloqueia a '+
+    'leitura dos dados quando a página vem do disco. Use o <code>ver-local.bat</code> '+
+    'ou o endereço publicado.';
+  console.error(e);
+}
+async function baixar(url){
+  const r=await fetch(url,{cache:'default'});
+  if(!r.ok) throw new Error('Falha ao carregar '+url+' ('+r.status+')');
+  return r.json();
+}
+
+/* ================= estado ================= */
+let META=null, RANK=null, PORCOD=new Map();
+const cacheMun=new Map();
+const st={vista:'lista', mun:null, uf:'', faixa:'', q:'', ordem:'pos', asc:true, mostrando:60};
+const PAGINA=60;
+
+/* ================= formatação ================= */
+const br=s=>String(s).replace(/,/g,' ').replace(/\./g,',').replace(/ /g,'.');
+const int=v=>v===null||v===undefined?'—':br(v.toLocaleString('en-US'));
+function dec(v,casas){
+  if(v===null||v===undefined) return '—';
+  return br(v.toFixed(casas===undefined?2:casas));
+}
+function pos(v){ return v===null||v===undefined?'—':br(String(v))+'º'; }
+
+/* A variação vem do CLP como diferença de colocação: positiva = subiu.
+   Quem entrou nesta edição não tem com o que comparar. */
+function variacao(v,titulo){
+  if(v===null||v===undefined)
+    return '<span class="var novo" title="Entrou no ranking nesta edição">novo</span>';
+  if(v===0) return '<span class="var igual" title="Manteve a posição">—</span>';
+  const sobe=v>0;
+  return '<span class="var '+(sobe?'sobe':'desce')+'" title="'+
+    (titulo||'')+(sobe?'Subiu ':'Caiu ')+Math.abs(v)+' posições em relação à 5ª edição">'+
+    (sobe?'▲':'▼')+' '+Math.abs(v)+'</span>';
+}
+function esc(t){ return String(t==null?'':t)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ================= URL ================= */
+function gravarHash(){
+  const p=new URLSearchParams();
+  p.set('v',st.vista);
+  if(st.vista==='municipio'&&st.mun) p.set('m',st.mun);
+  else{
+    if(st.uf) p.set('uf',st.uf);
+    if(st.faixa) p.set('f',st.faixa);
+    if(st.q) p.set('q',st.q);
+    if(st.ordem!=='pos') p.set('o',st.ordem);
+  }
+  try{ history.replaceState(null,'',location.pathname+location.search+'#'+p.toString()); }catch(e){}
+}
+function lerHash(){
+  const h=(location.hash||'').replace(/^#/,'');
+  if(!h) return;
+  const p=new URLSearchParams(h);
+  const m=p.get('m');
+  if(p.get('v')==='municipio'&&m&&PORCOD.has(m)){ st.vista='municipio'; st.mun=m; return; }
+  st.uf=p.get('uf')||''; st.faixa=p.get('f')||''; st.q=p.get('q')||'';
+  st.ordem=p.get('o')||'pos';
+}
+
+/* ================= lista ================= */
+const COLUNAS=[
+  {id:'pos',   rot:'#',        esq:true},
+  {id:'nome',  rot:'Município',esq:true},
+  {id:'nota',  rot:'Nota'},
+  {id:'var',   rot:'Variação'},
+  {id:'pop',   rot:'População', ocultavel:true},
+];
+
+function filtrada(){
+  const q=st.q.trim().toLowerCase();
+  let l=RANK.municipios.filter(m=>
+    (!st.uf||m.uf===st.uf) && (!st.faixa||m.faixa===st.faixa) &&
+    (!q||m.nome.toLowerCase().includes(q)));
+  const dimIdx=META.dimensoes.findIndex(d=>d.nome===st.ordem);
+  const val=m=>{
+    if(dimIdx>=0) return m.dim[dimIdx];
+    if(st.ordem==='nota') return -m.nota;
+    if(st.ordem==='pop') return -m.pop;
+    if(st.ordem==='var') return -(m.var===null?-999:m.var);
+    if(st.ordem==='nome') return m.nome;
+    return m.pos;
+  };
+  l.sort((a,b)=>{
+    const x=val(a), y=val(b);
+    if(x===null||x===undefined) return 1;
+    if(y===null||y===undefined) return -1;
+    const c = typeof x==='string' ? x.localeCompare(y,'pt') : x-y;
+    return st.asc?c:-c;
+  });
+  return l;
+}
+
+function montaLista(){
+  const ufs=[...new Set(RANK.municipios.map(m=>m.uf))].sort();
+  const faixas=[...new Set(RANK.municipios.map(m=>m.faixa))]
+    .sort((a,b)=>{
+      const n=s=>parseInt(String(s).replace(/\D/g,'').slice(0,3),10)||999;
+      return n(a)-n(b);
+    });
+  const dimOpts=META.dimensoes.map(d=>`<option value="${esc(d.nome)}">Posição em ${esc(d.nome)}</option>`).join('');
+
+  $('#pagina').innerHTML=`<div class="wrap largo">
+    <div class="intro">
+      <h2>Ranking de Competitividade dos Municípios</h2>
+      <p><b>${RANK.municipios.length} municípios</b> avaliados em <b>${META.indicadores.length} indicadores</b>,
+      agrupados em ${META.pilares.length} pilares e ${META.dimensoes.length} dimensões.
+      ${esc(META.fonte)}. Entram no ranking apenas municípios com
+      <b>80 mil habitantes ou mais</b> — os demais 5.152 do país não são avaliados pelo CLP.</p>
+    </div>
+
+    <div class="filtros">
+      <label for="fBusca">Buscar</label>
+      <input id="fBusca" type="text" placeholder="Nome do município…" value="${esc(st.q)}"
+             autocomplete="off" spellcheck="false">
+      <label for="fUf">Estado</label>
+      <select id="fUf"><option value="">Todos</option>
+        ${ufs.map(u=>`<option value="${u}"${u===st.uf?' selected':''}>${u}</option>`).join('')}</select>
+      <label for="fFaixa">Porte</label>
+      <select id="fFaixa"><option value="">Todos</option>
+        ${faixas.map(f=>`<option value="${esc(f)}"${f===st.faixa?' selected':''}>${esc(f)}</option>`).join('')}</select>
+      <label for="fOrdem">Ordenar por</label>
+      <select id="fOrdem">
+        <option value="pos">Ranking geral</option>
+        <option value="var">Maior variação</option>
+        <option value="pop">População</option>
+        <option value="nome">Nome</option>
+        ${dimOpts}
+      </select>
+      <button class="limpar" id="fLimpar" hidden>limpar filtros</button>
+      <span class="cont" id="fCont"></span>
+    </div>
+
+    <div id="tabela"></div>
+  </div>`;
+
+  $('#fOrdem').value=st.ordem;
+  const redesenha=()=>{ st.mostrando=PAGINA; pintaTabela(); gravarHash(); };
+  let t;
+  $('#fBusca').oninput=e=>{ clearTimeout(t); t=setTimeout(()=>{ st.q=e.target.value; redesenha(); },160); };
+  $('#fUf').onchange=e=>{ st.uf=e.target.value; redesenha(); };
+  $('#fFaixa').onchange=e=>{ st.faixa=e.target.value; redesenha(); };
+  $('#fOrdem').onchange=e=>{ st.ordem=e.target.value; st.asc=true; redesenha(); };
+  $('#fLimpar').onclick=()=>{ st.q=''; st.uf=''; st.faixa=''; st.ordem='pos'; st.asc=true;
+    montaLista(); gravarHash(); };
+  pintaTabela();
+}
+
+function pintaTabela(){
+  const l=filtrada(), fatia=l.slice(0,st.mostrando);
+  const total=RANK.municipios.length;
+  $('#fCont').textContent = l.length===total ? `${total} municípios`
+                                             : `${l.length} de ${total} municípios`;
+  $('#fLimpar').hidden = !(st.q||st.uf||st.faixa||st.ordem!=='pos');
+
+  if(!l.length){
+    $('#tabela').innerHTML='<div class="vazio-lista">Nenhum município encontrado com esses filtros.</div>';
+    return;
+  }
+  const cab=COLUNAS.map(c=>`<th class="${c.esq?'esq':''}${c.ocultavel?' ocultavel':''}"
+      data-ord="${c.id}"${st.ordem===c.id?' aria-sort="ascending"':''}>${c.rot}</th>`).join('')
+    + META.dimensoes.map(d=>`<th class="ocultavel" data-ord="${esc(d.nome)}"
+        title="Posição do município na dimensão ${esc(d.nome)}">${esc(d.nome)}</th>`).join('');
+
+  $('#tabela').innerHTML=`<table class="rk"><thead><tr>${cab}</tr></thead><tbody>
+    ${fatia.map(m=>`<tr data-cod="${m.cod}">
+      <td class="esq pos">${pos(m.pos)}</td>
+      <td class="esq nome">${esc(m.nome)}${m.capital?'<span class="tag">capital</span>':''}
+        <small>${m.uf} · ${esc(m.regiao)}</small></td>
+      <td>${dec(m.nota)}<span class="barra-nota"><i style="width:${Math.max(2,(m.nota||0))}%"></i></span></td>
+      <td>${variacao(m.var)}</td>
+      <td class="ocultavel">${int(m.pop)}</td>
+      ${m.dim.map(p=>`<td class="ocultavel">${pos(p)}</td>`).join('')}
+    </tr>`).join('')}
+  </tbody></table>
+  ${l.length>fatia.length?`<button class="mais" id="btMais">Mostrar mais ${
+     Math.min(PAGINA,l.length-fatia.length)} de ${l.length-fatia.length} restantes</button>`:''}`;
+
+  document.querySelectorAll('table.rk tbody tr').forEach(tr=>{
+    tr.onclick=()=>abreMunicipio(tr.dataset.cod);
+  });
+  document.querySelectorAll('table.rk thead th').forEach(th=>{
+    th.onclick=()=>{
+      const o=th.dataset.ord;
+      if(st.ordem===o) st.asc=!st.asc; else { st.ordem=o; st.asc=true; }
+      st.mostrando=PAGINA; pintaTabela(); gravarHash();
+      const sel=$('#fOrdem'); if(sel) sel.value=[...sel.options].some(x=>x.value===o)?o:sel.value;
+    };
+  });
+  const mais=$('#btMais');
+  if(mais) mais.onclick=()=>{ st.mostrando+=PAGINA; pintaTabela(); };
+}
+
+/* ================= município ================= */
+async function garanteMun(cod){
+  if(!cacheMun.has(cod)) cacheMun.set(cod, await baixar('dados/clp/mun/'+cod+'.json'));
+  return cacheMun.get(cod);
+}
+async function abreMunicipio(cod){
+  st.vista='municipio'; st.mun=cod;
+  gravarHash();
+  $('#pagina').scrollTop=0;
+  await montaMunicipio();
+}
+function voltaLista(){
+  st.vista='lista'; st.mun=null;
+  gravarHash(); montaLista(); $('#pagina').scrollTop=0;
+}
+
+/* O valor bruto sai do CLP na escala em que ele publica — percentual como
+   fração. A escala de exibição vem calculada no meta.json, indicador a
+   indicador, a partir da mediana dos 418. */
+function valorBruto(m,v){
+  if(v===null||v===undefined) return '<span class="na">sem dado</span>';
+  return esc(m.pre||'')+dec(v*(m.esc||1),m.casas===undefined?2:m.casas)+esc(m.suf||'');
+}
+function linhaIndicador(m,v,n){
+  const [bruto,nota,colocacao,delt]=v;
+  const temExpl=m.desc||m.obs||m.fonte;
+  const rot=temExpl
+    ? `<button type="button" class="ind-bt" data-expl="${n}" aria-expanded="false">${esc(m.nome)}</button>`
+    : esc(m.nome);
+  const pol=m.pol==='negativa'
+    ? '<span class="pol" title="Quanto menor o valor, melhor a posição">menor é melhor</span>' : '';
+  return `<tr>
+      <td>${rot}${pol}</td>
+      <td>${valorBruto(m,bruto)}</td>
+      <td>${dec(nota,1)}</td>
+      <td>${pos(colocacao)}</td>
+      <td>${variacao(delt)}</td>
+    </tr>
+    ${temExpl?`<tr class="expl" data-para="${n}" hidden><td colspan="5">
+      ${m.desc?`<p>${esc(m.desc)}</p>`:''}
+      ${m.obs?`<p class="fonte"><b>Observação do CLP:</b> ${esc(m.obs)}</p>`:''}
+      <p class="fonte">Fonte: ${esc(m.fonte)||'não informada'}${
+        m.periodo?' · dados de '+esc(m.periodo):''}${
+        m.un?' · '+esc(m.un):''}${m.atualizado?'':' · não atualizado nesta edição'}</p>
+    </td></tr>`:''}`;
+}
+
+async function montaMunicipio(){
+  const cod=st.mun;
+  $('#pagina').innerHTML='<div class="wrap"><div class="vazio-lista">Carregando…</div></div>';
+  let d;
+  try{ d=await garanteMun(cod); }
+  catch(e){
+    $('#pagina').innerHTML=`<div class="wrap">
+      <button class="volta" id="btVolta">&larr; voltar ao ranking</button>
+      <div class="sem-clp">Não foi possível carregar os dados deste município.</div></div>`;
+    $('#btVolta').onclick=voltaLista; return;
+  }
+  const info=d.info, geral=d.blocos[META.geral]||[null,null,null];
+  const lista=PORCOD.get(cod)||{};
+
+  const dims=META.dimensoes.map(dm=>{
+    const b=d.blocos[dm.bloco]||[null,null,null];
+    return `<div class="dim">
+      <div class="n">${esc(dm.nome)}</div>
+      <div class="p">${pos(b[1])} <small>de ${RANK.municipios.length}</small></div>
+      <div class="nt">nota ${dec(b[0])} · ${variacao(b[2])}</div>
+      <div class="peso">peso de ${dec((dm.peso||0)*100,1)}% no ranking</div>
+    </div>`;
+  }).join('');
+
+  const porDim={};
+  META.pilares.forEach(p=>{ (porDim[p.dimensao]=porDim[p.dimensao]||[]).push(p); });
+
+  const grupos=META.dimensoes.map(dm=>{
+    const ps=porDim[dm.nome]||[];
+    if(!ps.length) return '';
+    return `<div class="grupo"><h3>${esc(dm.nome)}</h3>
+      <p>${ps.length} pilares · ${ps.reduce((s,p)=>s+p.indicadores.length,0)} indicadores</p></div>`
+      + ps.map(p=>{
+      const b=d.blocos[p.bloco]||[null,null,null];
+      const inds=p.indicadores.map(i=>linhaIndicador(META.indicadores[i], d.ind[i], i)).join('');
+      return `<details class="pilar">
+        <summary>
+          <span class="seta">&#9654;</span>
+          <h4>${esc(p.nome)}</h4>
+          <span class="qt">${p.indicadores.length} indicadores</span>
+          <span class="cifras">
+            <span class="cif">${pos(b[1])}</span>
+            <span class="cif">${dec(b[0],1)}<small> nota</small></span>
+            ${variacao(b[2])}
+          </span>
+        </summary>
+        <table class="ind">
+          <thead><tr><th>Indicador</th><th>Valor</th><th>Nota</th><th>Posição</th><th>Variação</th></tr></thead>
+          <tbody>${inds}</tbody>
+        </table>
+      </details>`;
+    }).join('');
+  }).join('');
+
+  $('#pagina').innerHTML=`<div class="wrap">
+    <button class="volta" id="btVolta">&larr; voltar ao ranking</button>
+    <div class="m-topo">
+      <div class="m-id">
+        <h2>${esc(info.nome)}</h2>
+        <p class="uf">${esc(info.uf)} · ${esc(info.regiao)}${info.capital?' · capital':''}</p>
+        <p class="meta">código IBGE ${esc(info.cod)} · ${int(info.pop)} habitantes ·
+          ${esc(info.faixa)}${info.setor?' · setor predominante: '+esc(info.setor):''}</p>
+      </div>
+      <div class="m-geral">
+        <div class="r">Ranking geral</div>
+        <div class="p">${pos(geral[1])} <small>de ${RANK.municipios.length}</small></div>
+        <div class="n">nota ${dec(geral[0])} de 100 · ${variacao(geral[2])}</div>
+      </div>
+    </div>
+
+    <div class="dims">${dims}</div>
+    ${grupos}
+
+    <div class="nota-rodape">
+      A variação compara com a 5ª edição, mas não mede só desempenho: o próprio CLP
+      alerta que ela também sofre efeito da <b>entrada e saída de municípios</b> — 14
+      entraram nesta edição — e de <b>mudanças de metodologia</b>. Nota vai de 0 a 100 e é
+      normalizada entre os ${RANK.municipios.length} avaliados: uma nota alta significa
+      estar bem <b>em relação aos outros</b>, não em termos absolutos.
+      Onde aparece <b>"sem dado"</b>, a fonte não publicou o valor para este município — e o
+      CLP atribui nota zero ao indicador nesse caso, o que puxa a posição para baixo.
+      Vale ler essas linhas como ausência de informação, não como desempenho ruim.
+    </div>
+  </div>`;
+
+  $('#btVolta').onclick=voltaLista;
+  document.querySelectorAll('[data-expl]').forEach(bt=>{
+    bt.onclick=ev=>{
+      ev.preventDefault();
+      const tab=bt.closest('table');
+      const tr=tab&&tab.querySelector(`tr.expl[data-para="${bt.dataset.expl}"]`);
+      if(!tr) return;
+      const abrir=tr.hidden; tr.hidden=!abrir;
+      bt.setAttribute('aria-expanded',String(abrir));
+    };
+  });
+  // primeiro pilar de cada dimensão já aberto: dá para ver o formato sem clicar
+  const abertos=new Set(META.dimensoes.map(dm=>(porDim[dm.nome]||[])[0]&&(porDim[dm.nome]||[])[0].nome));
+  document.querySelectorAll('details.pilar').forEach(el=>{
+    const h=el.querySelector('h4');
+    if(h&&abertos.has(h.textContent)) el.open=true;
+  });
+}
+
+/* ================= busca no topo ================= */
+function montaBusca(){
+  const inp=$('#irBusca'), ul=$('#irLista');
+  let itens=[], sel=-1;
+  const fecha=()=>{ ul.hidden=true; sel=-1; $('.ir').setAttribute('aria-expanded','false'); };
+  const pinta=()=>{
+    if(!itens.length){ ul.innerHTML='<li class="vazio">Nenhum município do ranking com esse nome.</li>'; }
+    else ul.innerHTML=itens.map((m,i)=>`<li role="option" data-cod="${m.cod}"
+        aria-selected="${i===sel}"><span class="nm">${esc(m.nome)}</span>
+        <span class="tp">${m.uf} · ${pos(m.pos)}</span></li>`).join('');
+    ul.hidden=false; $('.ir').setAttribute('aria-expanded','true');
+    ul.querySelectorAll('li[data-cod]').forEach(li=>{
+      li.onmousedown=e=>{ e.preventDefault(); inp.value=''; fecha(); abreMunicipio(li.dataset.cod); };
+    });
+  };
+  inp.oninput=()=>{
+    const q=inp.value.trim().toLowerCase();
+    if(!q){ fecha(); return; }
+    itens=RANK.municipios.filter(m=>m.nome.toLowerCase().includes(q)).slice(0,12);
+    sel=itens.length?0:-1; pinta();
+  };
+  inp.onkeydown=e=>{
+    if(ul.hidden) return;
+    if(e.key==='ArrowDown'){ e.preventDefault(); sel=Math.min(sel+1,itens.length-1); pinta(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(sel-1,0); pinta(); }
+    else if(e.key==='Enter'&&itens[sel]){ e.preventDefault(); const c=itens[sel].cod;
+      inp.value=''; fecha(); abreMunicipio(c); }
+    else if(e.key==='Escape') fecha();
+  };
+  inp.onblur=()=>setTimeout(fecha,120);
+}
+
+/* ================= copiar link e PDF ================= */
+function montaAcoes(){
+  $('#copiarLink').onclick=async()=>{
+    gravarHash();
+    const b=$('#copiarLink');
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText)
+        await navigator.clipboard.writeText(location.href);
+      else{
+        const t=document.createElement('textarea'); t.value=location.href;
+        t.style.position='fixed'; t.style.opacity='0';
+        document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+      }
+      b.textContent='Link copiado'; b.classList.add('ok');
+      setTimeout(()=>{ b.textContent='Copiar link'; b.classList.remove('ok'); },1800);
+    }catch(e){ prompt('Copie o link:',location.href); }
+  };
+  $('#gerarPdf').onclick=async()=>{
+    const alvo=$('#impressao');
+    if(st.vista==='municipio'&&st.mun){
+      const d=await garanteMun(st.mun), info=d.info;
+      const g=d.blocos[META.geral]||[null,null,null];
+      const varTexto=v=>v===null||v===undefined?'novo no ranking'
+        :(v===0?'sem mudança':(v>0?'subiu '+v:'caiu '+Math.abs(v)));
+      let corpo='';
+      META.dimensoes.forEach(dm=>{
+        const ps=META.pilares.filter(p=>p.dimensao===dm.nome);
+        const b=d.blocos[dm.bloco]||[null,null,null];
+        corpo+=`<h2>${esc(dm.nome)} — ${pos(b[1])} (nota ${dec(b[0])}, ${varTexto(b[2])})</h2>`;
+        ps.forEach(p=>{
+          const pb=d.blocos[p.bloco]||[null,null,null];
+          corpo+=`<table><thead><tr><th>${esc(p.nome)} — ${pos(pb[1])}</th>
+            <th>Valor</th><th>Nota</th><th>Posição</th><th>Variação</th></tr></thead><tbody>`;
+          p.indicadores.forEach(i=>{
+            const m=META.indicadores[i], v=d.ind[i];
+            corpo+=`<tr><td>${esc(m.nome)}</td><td>${
+              v[0]===null?'sem dado':(m.pre||'')+dec(v[0]*(m.esc||1),m.casas)+(m.suf||'')}</td>
+              <td>${dec(v[1],1)}</td><td>${pos(v[2])}</td><td>${varTexto(v[3])}</td></tr>`;
+          });
+          corpo+='</tbody></table>';
+        });
+      });
+      alvo.innerHTML=`<h1>${esc(info.nome)} — ${esc(info.uf)}</h1>
+        <p class="sub">Ranking de Competitividade dos Municípios · ${esc(META.fonte)}<br>
+        Posição geral: ${pos(g[1])} de ${RANK.municipios.length} · nota ${dec(g[0])} de 100 ·
+        ${varTexto(g[2])} em relação à 5ª edição<br>
+        ${int(info.pop)} habitantes · ${esc(info.faixa)}</p>
+        ${corpo}
+        <div class="rodape">Os dados são do CLP — Centro de Liderança Pública e mantêm a
+        autoria de seus produtores. A variação de posição também sofre efeito da entrada e
+        saída de municípios e de mudanças metodológicas entre edições. Gerado a partir do
+        painel em ${esc(location.host||'arquivo local')}.</div>`;
+    }else{
+      const l=filtrada();
+      alvo.innerHTML=`<h1>Ranking de Competitividade dos Municípios</h1>
+        <p class="sub">${esc(META.fonte)} · ${l.length} municípios
+        ${st.uf?'· estado: '+esc(st.uf):''} ${st.faixa?'· porte: '+esc(st.faixa):''}</p>
+        <table><thead><tr><th>#</th><th>Município</th><th>UF</th><th>Nota</th>
+          <th>Variação</th><th>População</th></tr></thead><tbody>
+        ${l.map(m=>`<tr><td>${pos(m.pos)}</td><td>${esc(m.nome)}</td><td>${m.uf}</td>
+          <td>${dec(m.nota)}</td><td>${m.var===null?'novo':(m.var>0?'+':'')+m.var}</td>
+          <td>${int(m.pop)}</td></tr>`).join('')}
+        </tbody></table>
+        <div class="rodape">Dados do CLP — Centro de Liderança Pública.</div>`;
+    }
+    setTimeout(()=>window.print(),60);
+  };
+}
+
+/* ================= início ================= */
+async function iniciar(){
+  try{
+    progresso('Carregando o ranking',20);
+    META=await baixar('dados/clp/meta.json');
+    progresso('Carregando os municípios',60);
+    RANK=await baixar('dados/clp/ranking.json');
+    RANK.municipios.forEach(m=>PORCOD.set(m.cod,m));
+
+    $('#subtitulo').textContent=
+      `${RANK.municipios.length} municípios · ${META.indicadores.length} indicadores · ${META.edicao}ª edição`;
+
+    progresso('Montando a tela',88);
+    lerHash();
+    montaBusca(); montaAcoes();
+    if(st.vista==='municipio'&&st.mun) await montaMunicipio(); else montaLista();
+    gravarHash();
+    boot.style.display='none';
+    addEventListener('hashchange',()=>{
+      const antes=st.vista+'|'+st.mun;
+      lerHash();
+      if(antes!==st.vista+'|'+st.mun){
+        if(st.vista==='municipio'&&st.mun) montaMunicipio(); else montaLista();
+      }
+    });
+  }catch(e){ falhar(e); }
+}
+iniciar();
+})();
+</script>
+</body>
+</html>

@@ -205,6 +205,9 @@ details.grp{border-bottom:1px solid var(--line-2)}
 .nav button{background:none;border:0;color:#B9D2E3;padding:9px 16px;border-radius:var(--r);
   cursor:pointer;font-size:14.5px;font-weight:600}
 .nav button:hover{background:#ffffff18;color:#fff}
+.nav-externo{color:#FBD9AE;padding:9px 16px;border-radius:var(--r);font-size:13.5px;
+  font-weight:600;text-decoration:none;border:1px solid #FBD9AE55;white-space:nowrap}
+.nav-externo:hover{background:#FBD9AE;color:#5B3B12}
 .nav button[aria-pressed="true"]{background:#ffffff26;color:#fff;font-weight:600}
 .acoes{margin-left:auto;display:flex;align-items:center;gap:12px}
 .btn-rel{background:#FBD9AE;border:0;color:#5B3B12;font-weight:600;font-size:13.5px;
@@ -520,6 +523,24 @@ summary.tema-cab .qt{margin-left:auto}
 .edu-tab tr.expl .oficial{font-size:12.5px;color:var(--muted)}
 .edu-tab tr.expl .oficial b{color:var(--ink-2);font-weight:600}
 
+/* elo com o Ranking de Competitividade, na página do município */
+.clp-cartao{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--card);
+  border:1px solid var(--line);border-left:3px solid #C98A2E;border-radius:5px;
+  padding:14px 18px;margin-bottom:24px}
+.clp-cartao .tx{flex:1;min-width:240px}
+.clp-cartao .r{font-family:var(--f-num);font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.clp-cartao .v{font-family:var(--f-num);font-size:22px;font-weight:600;letter-spacing:-.02em}
+.clp-cartao .v small{font-family:var(--f-ui);font-size:13px;font-weight:400;color:var(--muted)}
+.clp-cartao .d{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.clp-cartao .sobe{color:#2E6B4F}
+.clp-cartao .desce{color:#B03A24}
+.clp-cartao a.btn{background:var(--navy);color:#fff;text-decoration:none;padding:10px 18px;
+  border-radius:var(--r);font-size:13.5px;font-weight:600;white-space:nowrap}
+.clp-cartao a.btn:hover{background:var(--navy-d)}
+.clp-cartao.sem{border-left-color:var(--line)}
+.clp-cartao.sem .d{max-width:74ch}
+
 .ficha-detalhe{display:block;width:calc(100% - 32px);margin:10px 16px 12px;
   background:#fff;border:1.5px solid var(--navy);color:var(--navy);font-family:var(--f-ui);
   font-size:14px;font-weight:600;padding:9px 12px;border-radius:var(--r);cursor:pointer}
@@ -678,6 +699,8 @@ summary.tema-cab .qt{margin-left:auto}
     <button data-v="municipio" aria-pressed="false" hidden>Município</button>
     <button data-v="comparar" aria-pressed="false">Comparar</button>
     <button data-v="sobre" aria-pressed="false">Sobre</button>
+    <a class="nav-externo" href="competitividade.html"
+       title="Ranking de Competitividade dos Municípios, do CLP">Ranking de Competitividade &rarr;</a>
   </nav>
   </div>
   <div class="ir" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-owns="irLista">
@@ -2294,6 +2317,7 @@ async function montaMunicipio(){
     return;
   }
   await garanteUF(META.uf[i]);
+  await garanteCLP();
   const uf=META.uf[i], sig=META.ufSiglas[uf], tmD=TEMAS.demografia;
 
   if(st.edu){
@@ -2358,6 +2382,8 @@ async function montaMunicipio(){
                   tmD.ramp[3],tmD.ramp[5])}
     </div>
 
+    ${cartaoCLP(i)}
+
     <div class="mun-ferramentas">
       <button type="button" class="btn-mini" id="munRecolher">Recolher todos os setores</button>
       <button type="button" class="btn-mini" id="munExpandir">Expandir todos</button>
@@ -2409,6 +2435,50 @@ async function garanteEduMeta(){
   if(!EDU) EDU = await baixar('dados/edu/meta.json', true);
   return EDU;
 }
+/* Resumo do Ranking de Competitividade: 8 KB, buscado só quando alguém abre a
+   página de um município. Serve para responder uma pergunta que o painel não
+   conseguia responder — "este município é avaliado pelo CLP?" — inclusive
+   quando a resposta é não, que é o caso de 5.152 dos 5.571. */
+let CLP=null, clpTentado=false;
+async function garanteCLP(){
+  if(clpTentado) return CLP;
+  clpTentado=true;
+  try{ CLP=await baixar('dados/clp/resumo.json'); }
+  catch(e){ CLP=null; console.warn('resumo do CLP indisponível:',e.message||e); }
+  return CLP;
+}
+function cartaoCLP(i){
+  if(!CLP) return '';
+  const cod=String(META.municipios[i]);
+  const r=(CLP.mun||{})[cod];
+  if(!r){
+    return `<div class="clp-cartao sem">
+      <div class="tx">
+        <div class="r">Ranking de Competitividade</div>
+        <div class="v"><small>não avaliado</small></div>
+        <div class="d">O ranking do CLP cobre apenas municípios com 80 mil habitantes
+          ou mais — ${CLP.total} dos 5.571 do país. ${META.nomes[i]} está fora desse
+          recorte, então não há posição a mostrar.</div>
+      </div>
+      <a class="btn" href="competitividade.html">Ver o ranking &rarr;</a>
+    </div>`;
+  }
+  const [p,v]=r;
+  const varTx = v===null||v===undefined
+    ? '<span style="font-style:italic">entrou nesta edição</span>'
+    : (v===0 ? 'manteve a posição'
+             : `<span class="${v>0?'sobe':'desce'}">${v>0?'subiu':'caiu'} ${Math.abs(v)} posi${
+                Math.abs(v)===1?'ção':'ções'}</span> desde a edição anterior`);
+  return `<div class="clp-cartao">
+    <div class="tx">
+      <div class="r">Ranking de Competitividade</div>
+      <div class="v">${br(fInt(p))}º <small>de ${CLP.total} municípios</small></div>
+      <div class="d">${varTx} · ${CLP.fonte}</div>
+    </div>
+    <a class="btn" href="competitividade.html#v=municipio&m=${cod}">Ver o detalhamento &rarr;</a>
+  </div>`;
+}
+
 let EDU_AGG=null;
 async function garanteEduAgregados(){
   if(!EDU_AGG) EDU_AGG = await baixar('dados/edu/agregados.json');
