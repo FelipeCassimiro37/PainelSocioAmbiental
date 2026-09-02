@@ -90,7 +90,9 @@ def contexto_tls(host):
     if host in _CONTEXTO:
         return _CONTEXTO[host]
     ctx = ssl.create_default_context()
-    extras = _intermediarios(host)
+    passos = []
+    extras = _intermediarios(host, diagnostico=passos)
+    _CONTEXTO[host + '/passos'] = passos
     if extras:
         with tempfile.NamedTemporaryFile('w', suffix='.pem', delete=False) as f:
             f.write('\n'.join(extras))
@@ -100,48 +102,80 @@ def contexto_tls(host):
     return _CONTEXTO[host]
 
 
-def _intermediarios(host, porta=443, limite=4):
+def _cert_do_servidor(host, porta=443, espera=20):
+    """
+    Pega o certificado que o servidor apresenta, em DER.
+
+    A verificação é desligada NESTA conexão de propósito, e só aqui: o objetivo
+    é ler o certificado, não buscar dado. Nada do conteúdo desta conexão é
+    usado. Depois de completar a cadeia, o download real acontece numa conexão
+    plenamente verificada — se o certificado for falso, a verificação de lá
+    reprova, porque um intermediário forjado não fecha com nenhuma raiz
+    confiável do sistema.
+    """
+    import socket
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    with socket.create_connection((host, porta), timeout=espera) as cru:
+        with ctx.wrap_socket(cru, server_hostname=host) as tls:
+            return tls.getpeercert(binary_form=True)
+
+
+def _uri_do_emissor(der):
+    """
+    O endereço do certificado que assinou este, lido do próprio certificado.
+
+    O campo se chama "Authority Information Access — CA Issuers" e é exatamente
+    o que o navegador consulta quando o servidor esquece de mandar a cadeia.
+    Procuro a URL como texto dentro do DER em vez de decodificar ASN.1: o
+    endereço aparece ali literalmente, e assim o script não depende de nenhuma
+    biblioteca extra nem do openssl de linha de comando.
+    """
+    urls = re.findall(rb'https?://[A-Za-z0-9\-\._~:/\?#\[\]@!\$&\'\(\)\*\+,;=%]+', der)
+    for u in urls:
+        texto = u.decode('ascii', 'ignore')
+        if re.search(r'\.(crt|cer|der|p7c|p7b)$', texto, re.I):
+            return texto
+    return None
+
+
+def _intermediarios(host, limite=4, diagnostico=None):
     """Segue o campo 'CA Issuers' até fechar a cadeia. Devolve PEMs."""
-    import subprocess
+    import base64
     achados = []
+    anota = diagnostico.append if diagnostico is not None else (lambda *_: None)
     try:
-        p = subprocess.run(
-            ['openssl', 's_client', '-connect', '%s:%d' % (host, porta),
-             '-servername', host, '-showcerts'],
-            input=b'', capture_output=True, timeout=30)
-        pems = re.findall(
-            r'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',
-            p.stdout.decode('utf-8', 'replace'), re.S)
-        if not pems:
-            return achados
-        atual = pems[-1]                      # o topo do que o servidor mandou
-        for _ in range(limite):
-            texto = subprocess.run(['openssl', 'x509', '-noout', '-text'],
-                                   input=atual.encode(), capture_output=True,
-                                   timeout=20).stdout.decode('utf-8', 'replace')
-            emissor = re.search(r'Issuer:\s*(.+)', texto)
-            sujeito = re.search(r'Subject:\s*(.+)', texto)
-            if emissor and sujeito and emissor.group(1).strip() == sujeito.group(1).strip():
-                break                          # chegou numa raiz: acabou
-            uri = re.search(r'CA Issuers - URI:(\S+)', texto)
-            if not uri:
-                break
-            bruto = subprocess.run(
-                ['curl', '-sS', '-L', '--max-time', '20', uri.group(1)],
-                capture_output=True, timeout=30).stdout
-            if not bruto:
-                break
-            if b'-----BEGIN CERTIFICATE-----' in bruto:
-                atual = bruto.decode('utf-8', 'replace')
-            else:                              # quase sempre vem em DER
-                atual = subprocess.run(['openssl', 'x509', '-inform', 'DER'],
-                                       input=bruto, capture_output=True,
-                                       timeout=20).stdout.decode('utf-8', 'replace')
-            if '-----BEGIN CERTIFICATE-----' not in atual:
-                break
-            achados.append(atual.strip())
-    except Exception:
-        pass
+        der = _cert_do_servidor(host)
+        anota('certificado do servidor lido: %d bytes' % len(der))
+    except Exception as e:
+        anota('não consegui ler o certificado do servidor: %s' % e)
+        return achados
+
+    for volta in range(limite):
+        uri = _uri_do_emissor(der)
+        if not uri:
+            anota('o certificado não aponta para o emissor (fim da busca)')
+            break
+        anota('emissor apontado: %s' % uri)
+        try:
+            with urllib.request.urlopen(
+                    urllib.request.Request(uri, headers=UAS[1]), timeout=20) as r:
+                bruto = r.read()
+        except Exception as e:
+            anota('não consegui baixar o intermediário: %s' % e)
+            break
+        if bruto.lstrip().startswith(b'-----BEGIN'):
+            pem = bruto.decode('ascii', 'ignore').strip()
+            der = base64.b64decode(''.join(
+                l for l in pem.splitlines() if not l.startswith('-----')))
+        else:
+            der = bruto
+            pem = ssl.DER_cert_to_PEM_cert(der).strip()
+        achados.append(pem)
+        anota('intermediário %d obtido (%d bytes)' % (volta + 1, len(der)))
+        if not _uri_do_emissor(der):
+            break
     return achados
 
 
@@ -310,8 +344,10 @@ def sondar():
     alvo_host = urllib.parse.urlparse(url).hostname
     t0 = time.time()
     _, n_extras = contexto_tls(alvo_host)
-    print('  cadeia do certificado: %d intermediário(s) buscado(s) e adicionado(s) '
-          '(%.1fs)' % (n_extras, time.time() - t0))
+    print('  cadeia do certificado: %d intermediário(s) adicionado(s) (%.1fs)'
+          % (n_extras, time.time() - t0))
+    for passo in _CONTEXTO.get(alvo_host + '/passos', []):
+        print('    · %s' % passo)
 
     # Cada teste abaixo tem prazo curto e uma tentativa só. Uma sondagem tem de
     # terminar rápido, mesmo (principalmente) quando tudo dá errado.
