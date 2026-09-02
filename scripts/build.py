@@ -303,8 +303,8 @@ def main():
     # puladas linha a linha, sem um único aviso.
     oficiais_fonte = {}
 
-    def processa(aba, tipo):
-        cols, linhas = tabela(ler(aba), aba)
+    def processa(aba, tipo, cruas=None):
+        cols, linhas = tabela(ler(aba) if cruas is None else cruas, aba)
         if not linhas:
             avisos.append(f"aba '{aba}' vazia ou ausente")
             return None
@@ -395,9 +395,43 @@ def main():
     for aba in nomes_fonte:
         processa(aba, "fonte")
 
+    # ------------------------------------------------------- camada automática
+    # Arquivos gerados pelos vigias (scripts/monitor_*.py) e versionados em
+    # fonte/auto/. Entram DEPOIS da planilha de propósito: quando um robô já
+    # trouxe o dado direto da fonte oficial, ele vale mais que a digitação
+    # manual. Cada CSV pode vir com um .meta.json ao lado para atualizar o ano
+    # e a citação da fonte dos indicadores que ele preenche — assim o rodapé do
+    # painel acompanha o dado sem ninguém precisar editar o dicionário.
+    pasta_auto = RAIZ / "fonte" / "auto"
+    for csv_auto in sorted(pasta_auto.glob("*.csv")) if pasta_auto.exists() else []:
+        import csv as _csv
+        with csv_auto.open(encoding="utf-8-sig", newline="") as f:
+            amostra = f.read(4096); f.seek(0)
+            try:
+                dial = _csv.Sniffer().sniff(amostra, delimiters=";,\t")
+            except _csv.Error:
+                dial = _csv.excel; dial.delimiter = ";"
+            cruas = [linha for linha in _csv.reader(f, dial)]
+        processa(f"auto/{csv_auto.name}", "fonte", cruas=cruas)
+
+        meta_auto = csv_auto.with_suffix(".meta.json")
+        if meta_auto.exists():
+            for ind, campos in json.loads(meta_auto.read_text(encoding="utf-8")).items():
+                if ind not in DIC:
+                    avisos.append(f"{meta_auto.name}: indicador '{ind}' não existe "
+                                  f"no dicionário — ano/fonte ignorados")
+                    continue
+                for campo in ("ano", "fonte", "unidade"):
+                    if campos.get(campo):
+                        DIC[ind][campo] = str(campos[campo]).strip()
+
     for (ind, aba), qtd in sorted(conflitos.items()):
-        avisos.append(f"'{ind}': a aba '{aba}' sobrescreveu {qtd} valores vindos "
-                      f"das abas de estado")
+        if aba.startswith("auto/"):
+            # aqui sobrescrever é o objetivo, não um acidente
+            print(f"  '{ind}': {qtd} valores atualizados por {aba}")
+        else:
+            avisos.append(f"'{ind}': a aba '{aba}' sobrescreveu {qtd} valores vindos "
+                          f"das abas de estado")
 
     com_dado = sorted({ufs[i] for i in range(n) for k in series if series[k][i] is not None})
 
