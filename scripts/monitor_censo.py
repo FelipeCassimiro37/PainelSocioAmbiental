@@ -39,7 +39,7 @@ Se o servidor aceitar requisição por faixa de bytes (`Range`), dá para ler s�
 do pacote inteiro. Se não aceitar, cai no download completo. O `--sondar` existe
 para descobrir qual dos dois caminhos vale, sem gravar nada.
 """
-import argparse, io, json, os, re, sys, unicodedata, zipfile
+import argparse, io, json, os, re, ssl, sys, tempfile, unicodedata, zipfile
 from datetime import datetime, timezone
 
 import urllib.parse, urllib.request
@@ -67,6 +67,84 @@ def chave(s):
     return re.sub(r'\s+', ' ', ''.join(c for c in t if not unicodedata.combining(c))).strip()
 
 
+# ------------------------------------------- consertar a cadeia do certificado
+_CONTEXTO = {}
+
+
+def contexto_tls(host):
+    """
+    Contexto TLS que completa a cadeia que o servidor do INEP não manda.
+
+    O `download.inep.gov.br` apresenta só o certificado dele, sem o intermediário
+    que liga esse certificado a uma autoridade conhecida. Navegador nenhum
+    reclama porque o navegador vai buscar o pedaço que falta: o endereço dele
+    vem dentro do próprio certificado, no campo "CA Issuers". O Python e o curl
+    não fazem essa busca e recusam a conexão.
+
+    Aqui a busca é feita à mão, uma vez, e o resultado entra no contexto. Repare
+    que isto NÃO afrouxa a verificação: continua exigindo certificado válido,
+    assinado por uma autoridade confiável. Só supre o elo que o servidor
+    esqueceu. Desligar a verificação seria a saída preguiçosa e abriria a porta
+    para alguém no meio do caminho servir dados falsos ao painel.
+    """
+    if host in _CONTEXTO:
+        return _CONTEXTO[host]
+    ctx = ssl.create_default_context()
+    extras = _intermediarios(host)
+    if extras:
+        with tempfile.NamedTemporaryFile('w', suffix='.pem', delete=False) as f:
+            f.write('\n'.join(extras))
+            caminho = f.name
+        ctx.load_verify_locations(cafile=caminho)
+    _CONTEXTO[host] = (ctx, len(extras))
+    return _CONTEXTO[host]
+
+
+def _intermediarios(host, porta=443, limite=4):
+    """Segue o campo 'CA Issuers' até fechar a cadeia. Devolve PEMs."""
+    import subprocess
+    achados = []
+    try:
+        p = subprocess.run(
+            ['openssl', 's_client', '-connect', '%s:%d' % (host, porta),
+             '-servername', host, '-showcerts'],
+            input=b'', capture_output=True, timeout=30)
+        pems = re.findall(
+            r'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',
+            p.stdout.decode('utf-8', 'replace'), re.S)
+        if not pems:
+            return achados
+        atual = pems[-1]                      # o topo do que o servidor mandou
+        for _ in range(limite):
+            texto = subprocess.run(['openssl', 'x509', '-noout', '-text'],
+                                   input=atual.encode(), capture_output=True,
+                                   timeout=20).stdout.decode('utf-8', 'replace')
+            emissor = re.search(r'Issuer:\s*(.+)', texto)
+            sujeito = re.search(r'Subject:\s*(.+)', texto)
+            if emissor and sujeito and emissor.group(1).strip() == sujeito.group(1).strip():
+                break                          # chegou numa raiz: acabou
+            uri = re.search(r'CA Issuers - URI:(\S+)', texto)
+            if not uri:
+                break
+            bruto = subprocess.run(
+                ['curl', '-sS', '-L', '--max-time', '20', uri.group(1)],
+                capture_output=True, timeout=30).stdout
+            if not bruto:
+                break
+            if b'-----BEGIN CERTIFICATE-----' in bruto:
+                atual = bruto.decode('utf-8', 'replace')
+            else:                              # quase sempre vem em DER
+                atual = subprocess.run(['openssl', 'x509', '-inform', 'DER'],
+                                       input=bruto, capture_output=True,
+                                       timeout=20).stdout.decode('utf-8', 'replace')
+            if '-----BEGIN CERTIFICATE-----' not in atual:
+                break
+            achados.append(atual.strip())
+    except Exception:
+        pass
+    return achados
+
+
 def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2):
     """
     Requisição com repetição, e com prazo curto por padrão.
@@ -84,8 +162,13 @@ def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2):
         h = dict(ua or UAS[min(tentativa, len(UAS) - 1)])
         h.update(cabecalhos or {})
         try:
+            alvo = urllib.parse.urlparse(url).hostname or ''
+            # só o host de download precisa do remendo de cadeia; o portal do
+            # INEP tem certificado bem configurado e usa o contexto padrão
+            ctx = contexto_tls(alvo)[0] if 'download.inep' in alvo else None
             return urllib.request.urlopen(
-                urllib.request.Request(url, headers=h, method=metodo), timeout=espera)
+                urllib.request.Request(url, headers=h, method=metodo),
+                timeout=espera, context=ctx)
         except Exception as e:
             ultimo = e
     raise ultimo
@@ -223,9 +306,15 @@ def sondar():
     print('Mais recente: %d' % ano)
     print('  %s' % url)
 
+    import time
+    alvo_host = urllib.parse.urlparse(url).hostname
+    t0 = time.time()
+    _, n_extras = contexto_tls(alvo_host)
+    print('  cadeia do certificado: %d intermediário(s) buscado(s) e adicionado(s) '
+          '(%.1fs)' % (n_extras, time.time() - t0))
+
     # Cada teste abaixo tem prazo curto e uma tentativa só. Uma sondagem tem de
     # terminar rápido, mesmo (principalmente) quando tudo dá errado.
-    import time
     for i, ua in enumerate(UAS):
         rotulo = 'sóbrio' if i == 0 else 'navegador'
         for nome, kw in (('Range', {'cabecalhos': {'Range': 'bytes=0-1'}}),
