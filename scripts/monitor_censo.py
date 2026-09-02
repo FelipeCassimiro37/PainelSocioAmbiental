@@ -134,22 +134,33 @@ def _cert_do_servidor(host, porta=443, espera=20):
     raise erro
 
 
-def _uri_do_emissor(der):
+def _uris_do_emissor(der):
     """
-    O endereço do certificado que assinou este, lido do próprio certificado.
+    Endereços onde pode estar o certificado que assinou este.
 
-    O campo se chama "Authority Information Access — CA Issuers" e é exatamente
-    o que o navegador consulta quando o servidor esquece de mandar a cadeia.
-    Procuro a URL como texto dentro do DER em vez de decodificar ASN.1: o
-    endereço aparece ali literalmente, e assim o script não depende de nenhuma
-    biblioteca extra nem do openssl de linha de comando.
+    O campo se chama "Authority Information Access — CA Issuers" e é o que o
+    navegador consulta quando o servidor esquece de mandar a cadeia. Procuro as
+    URLs como texto dentro do DER em vez de decodificar ASN.1: elas aparecem ali
+    literalmente, e assim o script não depende de biblioteca extra nem do
+    openssl de linha de comando.
+
+    Devolvo uma LISTA, e não um palpite. Cada autoridade escreve esse endereço
+    de um jeito — uns terminam em `.crt`, outros em `.cer`, outros em nada — e
+    exigir uma terminação específica foi justamente o que fez a primeira versão
+    não achar nada num certificado que tinha o campo. Fora as de OCSP e de lista
+    de revogação, que servem para outra coisa, todas são tentadas na ordem.
     """
-    urls = re.findall(rb'https?://[A-Za-z0-9\-\._~:/\?#\[\]@!\$&\'\(\)\*\+,;=%]+', der)
-    for u in urls:
-        texto = u.decode('ascii', 'ignore')
-        if re.search(r'\.(crt|cer|der|p7c|p7b)$', texto, re.I):
-            return texto
-    return None
+    vistas, candidatas = set(), []
+    for u in re.findall(rb'https?://[A-Za-z0-9\-\._~:/\?#\[\]@!\$&\'\(\)\*\+,;=%]+', der):
+        texto = u.decode('ascii', 'ignore').rstrip('.,;')
+        baixo = texto.lower()
+        if texto in vistas or 'ocsp' in baixo or baixo.endswith('.crl') or '/crl' in baixo:
+            continue
+        vistas.add(texto)
+        candidatas.append(texto)
+    # as que declaram extensão de certificado vêm primeiro
+    candidatas.sort(key=lambda t: 0 if re.search(r'\.(crt|cer|der|p7c|p7b)$', t, re.I) else 1)
+    return candidatas
 
 
 def _intermediarios(host, limite=4, diagnostico=None):
@@ -165,29 +176,38 @@ def _intermediarios(host, limite=4, diagnostico=None):
         return achados
 
     for volta in range(limite):
-        uri = _uri_do_emissor(der)
-        if not uri:
-            anota('o certificado não aponta para o emissor (fim da busca)')
+        candidatas = _uris_do_emissor(der)
+        if not candidatas:
+            anota('o certificado não traz endereço de emissor (fim da busca)')
             break
-        anota('emissor apontado: %s' % uri)
-        try:
-            with urllib.request.urlopen(
-                    urllib.request.Request(uri, headers=UAS[1]), timeout=20) as r:
-                bruto = r.read()
-        except Exception as e:
-            anota('não consegui baixar o intermediário: %s' % e)
+        anota('endereços no certificado: %s' % ', '.join(candidatas[:4]))
+        novo_der = None
+        for uri in candidatas:
+            try:
+                with urllib.request.urlopen(
+                        urllib.request.Request(uri, headers=UAS[1]), timeout=20) as r:
+                    bruto = r.read()
+            except Exception as e:
+                anota('  %s -> %s' % (uri, e))
+                continue
+            try:
+                if bruto.lstrip().startswith(b'-----BEGIN'):
+                    pem = bruto.decode('ascii', 'ignore').strip()
+                    novo_der = base64.b64decode(''.join(
+                        l for l in pem.splitlines() if not l.startswith('-----')))
+                else:
+                    novo_der = bruto
+                    pem = ssl.DER_cert_to_PEM_cert(novo_der).strip()
+            except Exception as e:
+                anota('  %s -> não é um certificado (%s)' % (uri, e))
+                novo_der = None
+                continue
+            anota('  %s -> certificado de %d bytes' % (uri, len(novo_der)))
+            achados.append(pem)
             break
-        if bruto.lstrip().startswith(b'-----BEGIN'):
-            pem = bruto.decode('ascii', 'ignore').strip()
-            der = base64.b64decode(''.join(
-                l for l in pem.splitlines() if not l.startswith('-----')))
-        else:
-            der = bruto
-            pem = ssl.DER_cert_to_PEM_cert(der).strip()
-        achados.append(pem)
-        anota('intermediário %d obtido (%d bytes)' % (volta + 1, len(der)))
-        if not _uri_do_emissor(der):
+        if novo_der is None:
             break
+        der = novo_der
     return achados
 
 
