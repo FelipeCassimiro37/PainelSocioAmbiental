@@ -227,10 +227,32 @@ def sondar():
                 print('  UA %-9s %s -> falhou em %.1fs: %s'
                       % (rotulo, nome, time.time() - t0, e))
 
+    # O certificado do download.inep.gov.br vem com a cadeia incompleta: falta o
+    # certificado intermediário. Navegadores e o curl buscam o que falta sozinhos
+    # (o endereço vem dentro do próprio certificado); o urllib do Python não faz
+    # isso e recusa a conexão. Por isso vale medir os dois transportes antes de
+    # decidir como o robô vai baixar.
+    import shutil, subprocess
+    if shutil.which('curl'):
+        t0 = time.time()
+        p = subprocess.run(['curl', '-sS', '-L', '--max-time', '30', '-r', '0-1048575',
+                            '-o', '/tmp/fatia.bin', '-w', '%{http_code} %{size_download}',
+                            '-A', UAS[1]['User-Agent'], url],
+                           capture_output=True, text=True)
+        print('  curl + Range -> %s (%.1fs) %s'
+              % (p.stdout.strip() or 'sem saída', time.time() - t0, p.stderr.strip()[:160]))
+        t0 = time.time()
+        p = subprocess.run(['curl', '-sSI', '-L', '--max-time', '30',
+                            '-A', UAS[1]['User-Agent'], url], capture_output=True, text=True)
+        cab = [l for l in p.stdout.splitlines()
+               if re.match(r'(?i)^(http/|content-length|accept-ranges|content-range)', l)]
+        print('  curl + HEAD  -> %s (%.1fs) %s'
+              % (' | '.join(cab) or 'sem cabeçalhos', time.time() - t0, p.stderr.strip()[:160]))
+
     try:
         remoto = ZipRemoto(url)
     except Exception as e:
-        print('  Leitura por faixas indisponível (%s).' % e)
+        print('  Leitura por faixas indisponível pelo Python (%s).' % e)
         print('  Caminho alternativo: baixar o pacote inteiro. Medindo a vazão…')
         try:
             t0 = time.time()
