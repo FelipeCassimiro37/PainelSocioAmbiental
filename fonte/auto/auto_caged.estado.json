@@ -1,0 +1,36 @@
+{
+  "divulgacao": "2026-07",
+  "arquivo": "3-tabelas_Julho de 2026.xlsx",
+  "sumarioExecutivo": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/acoes-e-programas/programas-projetos-acoes-obras-e-atividades/estatisticas-trabalho/novo-caged/2026/julho/sumario-executivo_julho-de-2026.pdf",
+  "mesEstoque": "2026-07",
+  "janelaFluxos": [
+    "2025-08",
+    "2025-09",
+    "2025-10",
+    "2025-11",
+    "2025-12",
+    "2026-01",
+    "2026-02",
+    "2026-03",
+    "2026-04",
+    "2026-05",
+    "2026-06",
+    "2026-07"
+  ],
+  "rotulos": {
+    "caged_estoque": "jul/2026",
+    "caged_admissoes": "ago/2025 a jul/2026",
+    "caged_deslig": "ago/2025 a jul/2026",
+    "caged_saldo": "ago/2025 a jul/2026",
+    "caged_var": "ago/2025 a jul/2026"
+  },
+  "verificadoEm": "2026-09-02 13:56 UTC",
+  "totais": {
+    "estoque": 48082866,
+    "admissoes": 26658253,
+    "desligamentos": 25777536,
+    "saldo": 880717,
+    "municipios": 5571,
+    "conferidoCom": "Tabela 7.1 (Brasil + 27 UFs)"
+  }
+}
