@@ -67,19 +67,25 @@ def chave(s):
     return re.sub(r'\s+', ' ', ''.join(c for c in t if not unicodedata.combining(c))).strip()
 
 
-def busca(url, cabecalhos=None, metodo='GET', ua=None):
+def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2):
     """
-    Requisição com repetição. O servidor do INEP às vezes reseta a conexão sem
-    dizer por quê; tentar de novo, e com outro User-Agent, resolve na prática.
-    Sem isso, uma queda de conexão viraria "a fonte mudou de formato".
+    Requisição com repetição, e com prazo curto por padrão.
+
+    O prazo importa mais do que parece. O servidor do INEP às vezes aceita a
+    conexão e simplesmente não responde; com prazo de 5 minutos e 4 tentativas,
+    UMA sondagem que devia levar segundos ficava 20 minutos pendurada — foi
+    exatamente o que aconteceu na primeira versão disto. Prazo curto transforma
+    "travou" em "falhou e seguiu adiante", que é o comportamento útil.
+
+    Quem vai baixar o arquivo de verdade passa um `espera` maior de propósito.
     """
     ultimo = None
-    for tentativa in range(4):
+    for tentativa in range(tentativas):
         h = dict(ua or UAS[min(tentativa, len(UAS) - 1)])
         h.update(cabecalhos or {})
         try:
             return urllib.request.urlopen(
-                urllib.request.Request(url, headers=h, method=metodo), timeout=300)
+                urllib.request.Request(url, headers=h, method=metodo), timeout=espera)
         except Exception as e:
             ultimo = e
     raise ultimo
@@ -201,22 +207,25 @@ def sondar():
     print('Mais recente: %d' % ano)
     print('  %s' % url)
 
-    # descobrir se dá para ler só um pedaço, e com qual User-Agent
+    # Cada teste abaixo tem prazo curto e uma tentativa só. Uma sondagem tem de
+    # terminar rápido, mesmo (principalmente) quando tudo dá errado.
+    import time
     for i, ua in enumerate(UAS):
-        try:
-            with busca(url, {'Range': 'bytes=0-1'}, ua=ua) as r:
-                print('  UA #%d + Range -> HTTP %s, Content-Range=%r'
-                      % (i + 1, r.status, r.headers.get('Content-Range')))
-        except Exception as e:
-            print('  UA #%d + Range -> falhou: %s' % (i + 1, e))
-        try:
-            with busca(url, {}, metodo='HEAD', ua=ua) as r:
-                n = r.headers.get('Content-Length')
-                print('  UA #%d + HEAD  -> HTTP %s, tamanho=%s, Accept-Ranges=%r'
-                      % (i + 1, r.status, ('%.0f MB' % (int(n) / 1e6)) if n else '?',
-                         r.headers.get('Accept-Ranges')))
-        except Exception as e:
-            print('  UA #%d + HEAD  -> falhou: %s' % (i + 1, e))
+        rotulo = 'sóbrio' if i == 0 else 'navegador'
+        for nome, kw in (('Range', {'cabecalhos': {'Range': 'bytes=0-1'}}),
+                         ('HEAD ', {'metodo': 'HEAD'})):
+            t0 = time.time()
+            try:
+                with busca(url, ua=ua, espera=20, tentativas=1, **kw) as r:
+                    n = r.headers.get('Content-Length')
+                    print('  UA %-9s %s -> HTTP %s · Content-Range=%r · tamanho=%s '
+                          '· Accept-Ranges=%r (%.1fs)'
+                          % (rotulo, nome, r.status, r.headers.get('Content-Range'),
+                             ('%.0f MB' % (int(n) / 1e6)) if n else '?',
+                             r.headers.get('Accept-Ranges'), time.time() - t0))
+            except Exception as e:
+                print('  UA %-9s %s -> falhou em %.1fs: %s'
+                      % (rotulo, nome, time.time() - t0, e))
 
     try:
         remoto = ZipRemoto(url)
@@ -224,12 +233,14 @@ def sondar():
         print('  Leitura por faixas indisponível (%s).' % e)
         print('  Caminho alternativo: baixar o pacote inteiro. Medindo a vazão…')
         try:
-            import time
             t0 = time.time()
             lidos = 0
-            with busca(url, ua=UAS[1]) as r:
+            with busca(url, ua=UAS[1], espera=60, tentativas=2) as r:
                 total = r.headers.get('Content-Length')
-                while lidos < 40 * 1024 * 1024:
+                # para no que vier primeiro: 40 MB ou 45 segundos. Sem o limite
+                # de tempo, uma conexão lenta seguraria a sondagem sem informar
+                # mais nada do que ela já informou.
+                while lidos < 40 * 1024 * 1024 and time.time() - t0 < 45:
                     pedaco = r.read(1024 * 1024)
                     if not pedaco:
                         break
@@ -237,9 +248,9 @@ def sondar():
             dt = max(time.time() - t0, 0.001)
             print('    tamanho total: %s' % (('%.0f MB' % (int(total) / 1e6))
                                              if total else 'não informado'))
-            print('    baixei %.0f MB em %.1f s (%.1f MB/s)'
+            print('    baixei %.1f MB em %.1f s (%.1f MB/s)'
                   % (lidos / 1e6, dt, lidos / 1e6 / dt))
-            if total:
+            if total and lidos:
                 print('    o pacote inteiro levaria ~%.0f s nesse ritmo'
                       % (int(total) / 1e6 / (lidos / 1e6 / dt)))
         except Exception as e2:
