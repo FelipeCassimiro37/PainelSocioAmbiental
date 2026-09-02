@@ -335,6 +335,24 @@ def main():
     grava(os.path.join(SAIDA, 'ranking.json'),
           {'edicao': int(edicao), 'municipios': lista})
 
+    # Posições de cada município em cada pilar e em cada indicador, para a lista
+    # poder ser ordenada por qualquer critério — não só pelas 3 dimensões. Vai
+    # num arquivo à parte (~130 KB) porque só é baixado quando alguém escolhe um
+    # critério fora do básico; deixá-lo no ranking.json dobraria o custo de
+    # abertura da página para todo mundo.
+    cods = [m['cod'] for m in lista]
+    grava(os.path.join(SAIDA, 'ordens.json'), {
+        'edicao': int(edicao),
+        'cods': cods,
+        'pilares': [{'nome': p['nome'],
+                     'pos': [pilares[c].get(p['bloco'], [None, None, None])[1] for c in cods]}
+                    for p in pilares_meta],
+        'indicadores': [{'i': m['i'], 'nome': m['nome'], 'pilar': m['pilar'],
+                         'dimensao': m['dimensao'],
+                         'pos': [indicadores[c][m['i']][2] for c in cods]}
+                        for m in ind_meta],
+    })
+
     # Resumo minúsculo (~10 KB) para o Painel Socioambiental saber, na página de
     # um município, se ele é avaliado pelo CLP e em que posição. Sem isso o
     # painel teria de baixar o ranking inteiro só para descobrir isso — ou, pior,
