@@ -26,10 +26,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Cinto de segurança: se algo travar, o passo morre em 5 minutos em vez de
+      # ficar pendurado consumindo minutos de execução até o limite de 6 horas.
       - name: Sondar a fonte
         if: inputs.sondar
+        timeout-minutes: 5
         run: python scripts/monitor_censo.py --sondar
 
       - name: Tem ano novo?
         if: ${{ !inputs.sondar }}
+        timeout-minutes: 5
         run: python scripts/monitor_censo.py --so-checar
