@@ -1,12 +1,29 @@
 name: Atualizar dados do painel
 
 on:
+  # Quem faz o trabalho de verdade é o gatilho de baixo: assim que um dado novo
+  # entra no main (um PR do CAGED aceito, por exemplo), o painel se reconstrói
+  # em minutos. O agendamento semanal é só a rede de segurança, para o caso de
+  # você editar a planilha e esquecer de avisar.
+  #
+  # Semanal e não mensal de propósito: o GitHub suspende sozinho o agendamento
+  # de repositório parado há 60 dias, e um cron mensal num repositório quieto
+  # corre esse risco — pararia de rodar sem avisar ninguém.
+  push:
+    branches: [main]
+    paths:
+      - "fonte/**"
+      - "scripts/build.py"
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 10 * * 1"      # segunda-feira, 07:00 em Brasília
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: atualizar-painel
+  cancel-in-progress: false
 
 jobs:
   atualizar:

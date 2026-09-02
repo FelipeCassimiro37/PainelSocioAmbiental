@@ -1,0 +1,73 @@
+name: Vigiar o CAGED
+
+# O MTE divulga o Novo CAGED uma vez por mês, sem dia fixo. Em vez de tentar
+# adivinhar a data, a verificação roda todo dia de manhã e custa alguns KB:
+# ela só olha para onde a página de divulgação redireciona. A planilha de 42 MB
+# só é baixada quando aparece um mês que ainda não foi processado.
+on:
+  schedule:
+    - cron: "0 11 * * *"      # 08:00 em Brasília
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Reprocessar mesmo sem mês novo"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vigiar-caged
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install --quiet openpyxl
+
+      # Passo barato: só descobre qual é o mês mais recente publicado e compara
+      # com o que já está gravado em fonte/auto/auto_caged.estado.json.
+      - name: Tem mês novo?
+        id: checar
+        run: python scripts/monitor_caged.py --so-checar
+
+      - name: Baixar e processar
+        if: steps.checar.outputs.novidade == 'true' || inputs.forcar
+        run: python scripts/monitor_caged.py ${{ inputs.forcar && '--forcar' || '' }}
+
+      # Nada é publicado sozinho: abre um Pull Request com o que mudou, para
+      # você olhar os números antes de entrarem no site. Depois que o PR é
+      # aceito, o "Atualizar dados do painel" (que roda de 6 em 6 horas)
+      # reconstrói a pasta dados/ com os valores novos.
+      - name: Abrir Pull Request com os dados novos
+        if: steps.checar.outputs.novidade == 'true' || inputs.forcar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIVULGACAO: ${{ steps.checar.outputs.divulgacao }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonte/auto
+          if git diff --staged --quiet; then
+            echo "O CAGED anunciou um mês novo, mas os números não mudaram. Nada a fazer."
+            exit 0
+          fi
+          ramo="caged/$DIVULGACAO"
+          git checkout -b "$ramo"
+          git commit -m "CAGED: dados de $DIVULGACAO"
+          git push --force origin "$ramo"
+          python scripts/monitor_caged.py --resumo > /tmp/corpo.md
+          gh pr create --base main --head "$ramo" \
+            --title "CAGED: dados de $DIVULGACAO" \
+            --body-file /tmp/corpo.md \
+            || gh pr edit "$ramo" --body-file /tmp/corpo.md
