@@ -1,0 +1,35 @@
+name: Vigiar o Censo Escolar
+
+# O Censo Escolar sai uma vez por ano (os microdados costumam aparecer no
+# primeiro trimestre, referentes ao ano anterior). Uma verificação por semana
+# é de sobra, e custa uma requisição à página de microdados.
+on:
+  schedule:
+    - cron: "0 12 * * 3"      # quarta-feira, 09:00 em Brasília
+  workflow_dispatch:
+    inputs:
+      sondar:
+        description: "Só investigar a fonte e relatar (não grava nada)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sondar a fonte
+        if: inputs.sondar
+        run: python scripts/monitor_censo.py --sondar
+
+      - name: Tem ano novo?
+        if: ${{ !inputs.sondar }}
+        run: python scripts/monitor_censo.py --so-checar
