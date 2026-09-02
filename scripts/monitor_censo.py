@@ -139,7 +139,7 @@ class ZipRemoto(io.RawIOBase):
         self.pos = 0
         self.baixado = 0
         self.pedidos = 0
-        with busca(url, {'Range': 'bytes=0-1'}, ua=UAS[1]) as r:
+        with busca(url, {'Range': 'bytes=0-1'}, ua=UAS[1], espera=15, tentativas=1) as r:
             if r.status != 206:
                 raise ValueError('servidor não aceita Range (devolveu %s)' % r.status)
             faixa = r.headers.get('Content-Range', '')
@@ -199,7 +199,23 @@ def escolhe_membro(nomes, ano):
 
 # ------------------------------------------------------------------ sondar
 def sondar():
-    """Investiga e conta o que achou. Não baixa o pacote inteiro nem grava nada."""
+    """
+    Investiga e conta o que achou. Não baixa o pacote inteiro nem grava nada.
+
+    Duas coisas aqui são deliberadas e foram aprendidas na marra:
+
+    1. A saída é destravada (`line_buffering`). Sem isso, o Python segura tudo
+       num buffer e só descarrega no fim — então, quando a execução era morta
+       por tempo, o relatório inteiro se perdia e o log ficava em branco. Uma
+       sonda que só fala se terminar bem não serve para investigar travamento.
+    2. Todo teste tem prazo curto, e a soma de todos cabe folgada dentro do
+       limite de 5 minutos do workflow. Diagnóstico incompleto é informação;
+       diagnóstico pendurado não é.
+    """
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
     anos = anos_publicados()
     print('Anos disponíveis no INEP: %s' % ', '.join(str(a) for a in sorted(anos)))
     ano = max(anos)
@@ -216,7 +232,7 @@ def sondar():
                          ('HEAD ', {'metodo': 'HEAD'})):
             t0 = time.time()
             try:
-                with busca(url, ua=ua, espera=20, tentativas=1, **kw) as r:
+                with busca(url, ua=ua, espera=10, tentativas=1, **kw) as r:
                     n = r.headers.get('Content-Length')
                     print('  UA %-9s %s -> HTTP %s · Content-Range=%r · tamanho=%s '
                           '· Accept-Ranges=%r (%.1fs)'
@@ -235,15 +251,15 @@ def sondar():
     import shutil, subprocess
     if shutil.which('curl'):
         t0 = time.time()
-        p = subprocess.run(['curl', '-sS', '-L', '--max-time', '30', '-r', '0-1048575',
+        p = subprocess.run(['curl', '-sS', '-L', '--max-time', '20', '-r', '0-1048575',
                             '-o', '/tmp/fatia.bin', '-w', '%{http_code} %{size_download}',
                             '-A', UAS[1]['User-Agent'], url],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, timeout=40)
         print('  curl + Range -> %s (%.1fs) %s'
               % (p.stdout.strip() or 'sem saída', time.time() - t0, p.stderr.strip()[:160]))
         t0 = time.time()
-        p = subprocess.run(['curl', '-sSI', '-L', '--max-time', '30',
-                            '-A', UAS[1]['User-Agent'], url], capture_output=True, text=True)
+        p = subprocess.run(['curl', '-sSI', '-L', '--max-time', '20',
+                            '-A', UAS[1]['User-Agent'], url], capture_output=True, text=True, timeout=40)
         cab = [l for l in p.stdout.splitlines()
                if re.match(r'(?i)^(http/|content-length|accept-ranges|content-range)', l)]
         print('  curl + HEAD  -> %s (%.1fs) %s'
@@ -257,12 +273,12 @@ def sondar():
         try:
             t0 = time.time()
             lidos = 0
-            with busca(url, ua=UAS[1], espera=60, tentativas=2) as r:
+            with busca(url, ua=UAS[1], espera=30, tentativas=1) as r:
                 total = r.headers.get('Content-Length')
                 # para no que vier primeiro: 40 MB ou 45 segundos. Sem o limite
                 # de tempo, uma conexão lenta seguraria a sondagem sem informar
                 # mais nada do que ela já informou.
-                while lidos < 40 * 1024 * 1024 and time.time() - t0 < 45:
+                while lidos < 40 * 1024 * 1024 and time.time() - t0 < 30:
                     pedaco = r.read(1024 * 1024)
                     if not pedaco:
                         break
