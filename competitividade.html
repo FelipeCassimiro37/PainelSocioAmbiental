@@ -33,7 +33,11 @@ button,select,input{font-family:inherit;font-size:inherit;color:inherit}
 .top-esq{display:flex;align-items:center;gap:16px;min-width:0}
 .top-marca{display:flex;flex-direction:column;justify-content:center;flex:none}
 .top-marca h1,.top-marca .sub{white-space:nowrap}
-.top-esq .nav{min-width:0;overflow:hidden}
+/* Mesma regra do painel: quem cede espaço é o título, nunca o menu — cortar
+   navegação pela metade é o defeito que essa linha existe para impedir. */
+.top-esq .nav{flex:none}
+.top-marca{flex:0 1 auto;min-width:0}
+.top-marca h1{overflow:hidden;text-overflow:ellipsis}
 .top .acoes{justify-self:end;min-width:0;display:flex;align-items:center;gap:9px}
 .top h1{margin:0;font-size:16.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
 .top .sub{font-family:var(--f-num);font-size:11.5px;color:#9FC0D6;letter-spacing:.04em;margin-top:2px}
@@ -70,17 +74,32 @@ button,select,input{font-family:inherit;font-size:inherit;color:inherit}
 .ir li .tp{font-family:var(--f-num);font-size:10.5px;color:var(--muted);white-space:nowrap}
 .ir li.vazio{color:var(--muted);font-size:13px;cursor:default}
 
+@media (max-width:1700px){
+  .top h1{letter-spacing:.07em}
+  .top .sub{font-size:11px;letter-spacing:.02em}
+  .nav a,.nav button{padding:9px 12px}
+}
 @media (max-width:1600px){
   .top{grid-template-columns:minmax(0,1fr) minmax(220px,clamp(240px,22vw,360px)) minmax(0,1fr);
        gap:12px;padding:0 14px}
   .top-esq{gap:12px}
   .nav a,.nav button{padding:8px 11px}
 }
-@media (max-width:1150px){
+@media (max-width:1450px){
+  .top h1{font-size:14px;letter-spacing:.06em}
+  .top .sub{font-size:10.5px}
+  .nav a,.nav button{padding:8px 9px;font-size:13px}
+}
+@media (max-width:1320px){
   .top{display:flex;height:auto;flex-wrap:wrap;padding:9px 14px;gap:10px}
   .top-esq{flex:1 1 100%;gap:10px}
   .ir{order:5;flex:1 1 100%;width:auto}
-  .top .acoes{margin-left:auto}
+  .top .acoes{margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+}
+@media (max-width:560px){
+  .top-esq{flex-wrap:wrap}
+  .top-marca{flex:1 1 100%}
+  .top-esq .nav{flex:1 1 100%}
 }
 
 /* ---------- corpo ---------- */
@@ -129,6 +148,11 @@ table.rk .tag{display:inline-block;font-family:var(--f-num);font-size:9.5px;lett
 .barra-nota{display:inline-block;width:64px;height:6px;background:var(--line-2);border-radius:3px;
   overflow:hidden;margin-left:8px;vertical-align:middle}
 .barra-nota i{display:block;height:100%;background:var(--navy)}
+/* a coluna do critério escolhido: é por ela que a lista está ordenada */
+table.rk th.criterio,table.rk td.criterio{background:#F2F6F9;font-weight:600;color:var(--navy)}
+table.rk th.criterio{max-width:190px;white-space:normal;text-transform:none;letter-spacing:.02em;
+  font-family:var(--f-ui);font-size:11.5px}
+table.rk tbody tr:hover td.criterio{background:#E8EFF4}
 
 .var{font-family:var(--f-num);font-size:13px;white-space:nowrap}
 .var.sobe{color:var(--sobe)}
@@ -319,6 +343,16 @@ async function baixar(url){
 
 /* ================= estado ================= */
 let META=null, RANK=null, PORCOD=new Map();
+/* Posições em cada pilar e indicador. 132 KB — baixado só quando alguém escolhe
+   ordenar por um critério que não seja o ranking geral, as dimensões ou os
+   campos que a lista já traz. Quem só olha o ranking não paga por isso. */
+let ORDENS=null, ordensCarregando=null;
+function garanteOrdens(){
+  if(ORDENS) return Promise.resolve(ORDENS);
+  if(!ordensCarregando)
+    ordensCarregando = baixar('dados/clp/ordens.json').then(d=>{ ORDENS=d; return d; });
+  return ordensCarregando;
+}
 const cacheMun=new Map();
 const st={vista:'lista', mun:null, uf:'', faixa:'', q:'', ordem:'pos', asc:true, mostrando:60};
 const PAGINA=60;
@@ -378,13 +412,31 @@ const COLUNAS=[
   {id:'pop',   rot:'População', ocultavel:true},
 ];
 
+/* O critério de ordenação pode ser um campo da própria lista, uma dimensão, um
+   pilar ou um dos 65 indicadores. Os dois últimos vêm de ordens.json, e por
+   isso `criterio()` só devolve algo depois que esse arquivo chegou. */
+function criterio(){
+  const o=st.ordem;
+  if(!o.includes(':')) return null;
+  if(!ORDENS) return null;
+  const [tipo,idx]=o.split(':');
+  const fonte = tipo==='p' ? ORDENS.pilares : ORDENS.indicadores;
+  const bloco = fonte && fonte[+idx];
+  if(!bloco) return null;
+  const porCod=new Map();
+  ORDENS.cods.forEach((c,k)=>porCod.set(c,bloco.pos[k]));
+  return {nome:bloco.nome, porCod,
+          rotulo: tipo==='p' ? 'Posição no pilar' : 'Posição no indicador'};
+}
 function filtrada(){
   const q=st.q.trim().toLowerCase();
   let l=RANK.municipios.filter(m=>
     (!st.uf||m.uf===st.uf) && (!st.faixa||m.faixa===st.faixa) &&
     (!q||m.nome.toLowerCase().includes(q)));
+  const cr=criterio();
   const dimIdx=META.dimensoes.findIndex(d=>d.nome===st.ordem);
   const val=m=>{
+    if(cr) return cr.porCod.get(m.cod);
     if(dimIdx>=0) return m.dim[dimIdx];
     if(st.ordem==='nota') return -m.nota;
     if(st.ordem==='pop') return -m.pop;
@@ -409,7 +461,19 @@ function montaLista(){
       const n=s=>parseInt(String(s).replace(/\D/g,'').slice(0,3),10)||999;
       return n(a)-n(b);
     });
-  const dimOpts=META.dimensoes.map(d=>`<option value="${esc(d.nome)}">Posição em ${esc(d.nome)}</option>`).join('');
+  const dimOpts=META.dimensoes.map(d=>`<option value="${esc(d.nome)}">${esc(d.nome)}</option>`).join('');
+  // pilares e indicadores agrupados pela dimensão a que pertencem, na mesma
+  // ordem em que aparecem na página de um município
+  const pilarOpts=META.dimensoes.map(d=>{
+    const ps=META.pilares.map((p,i)=>({p,i})).filter(x=>x.p.dimensao===d.nome);
+    return ps.length?`<optgroup label="Pilares · ${esc(d.nome)}">${
+      ps.map(x=>`<option value="p:${x.i}">${esc(x.p.nome)}</option>`).join('')}</optgroup>`:'';
+  }).join('');
+  const indOpts=META.pilares.map((p,pi)=>{
+    const ind=META.indicadores.map((m,i)=>({m,i})).filter(x=>x.m.pilar===p.nome);
+    return ind.length?`<optgroup label="Indicadores · ${esc(p.nome)}">${
+      ind.map(x=>`<option value="i:${x.i}">${esc(x.m.nome)}</option>`).join('')}</optgroup>`:'';
+  }).join('');
 
   $('#pagina').innerHTML=`<div class="wrap largo">
     <div class="intro">
@@ -432,11 +496,15 @@ function montaLista(){
         ${faixas.map(f=>`<option value="${esc(f)}"${f===st.faixa?' selected':''}>${esc(f)}</option>`).join('')}</select>
       <label for="fOrdem">Ordenar por</label>
       <select id="fOrdem">
-        <option value="pos">Ranking geral</option>
-        <option value="var">Maior variação</option>
-        <option value="pop">População</option>
-        <option value="nome">Nome</option>
-        ${dimOpts}
+        <optgroup label="Geral">
+          <option value="pos">Ranking geral</option>
+          <option value="var">Maior variação</option>
+          <option value="pop">População</option>
+          <option value="nome">Nome</option>
+        </optgroup>
+        <optgroup label="Dimensões">${dimOpts}</optgroup>
+        ${pilarOpts}
+        ${indOpts}
       </select>
       <button class="limpar" id="fLimpar" hidden>limpar filtros</button>
       <span class="cont" id="fCont"></span>
@@ -451,7 +519,16 @@ function montaLista(){
   $('#fBusca').oninput=e=>{ clearTimeout(t); t=setTimeout(()=>{ st.q=e.target.value; redesenha(); },160); };
   $('#fUf').onchange=e=>{ st.uf=e.target.value; redesenha(); };
   $('#fFaixa').onchange=e=>{ st.faixa=e.target.value; redesenha(); };
-  $('#fOrdem').onchange=e=>{ st.ordem=e.target.value; st.asc=true; redesenha(); };
+  $('#fOrdem').onchange=async e=>{
+    st.ordem=e.target.value; st.asc=true;
+    if(st.ordem.includes(':')&&!ORDENS){
+      $('#fCont').textContent='carregando…';
+      try{ await garanteOrdens(); }
+      catch(err){ $('#fCont').textContent='não foi possível carregar esse critério';
+                  st.ordem='pos'; e.target.value='pos'; }
+    }
+    redesenha();
+  };
   $('#fLimpar').onclick=()=>{ st.q=''; st.uf=''; st.faixa=''; st.ordem='pos'; st.asc=true;
     montaLista(); gravarHash(); };
   pintaTabela();
@@ -468,8 +545,14 @@ function pintaTabela(){
     $('#tabela').innerHTML='<div class="vazio-lista">Nenhum município encontrado com esses filtros.</div>';
     return;
   }
+  // Quando a ordenação é por um pilar ou indicador, essa posição vira a
+  // primeira coluna de números — senão a lista aparece embaralhada, sem que
+  // nada na tela explique por quê.
+  const cr=criterio();
   const cab=COLUNAS.map(c=>`<th class="${c.esq?'esq':''}${c.ocultavel?' ocultavel':''}"
       data-ord="${c.id}"${st.ordem===c.id?' aria-sort="ascending"':''}>${c.rot}</th>`).join('')
+    + (cr?`<th class="criterio" data-ord="${esc(st.ordem)}" aria-sort="ascending"
+        title="${esc(cr.rotulo)}: ${esc(cr.nome)}">${esc(cr.nome)}</th>`:'')
     + META.dimensoes.map(d=>`<th class="ocultavel" data-ord="${esc(d.nome)}"
         title="Posição do município na dimensão ${esc(d.nome)}">${esc(d.nome)}</th>`).join('');
 
@@ -481,6 +564,7 @@ function pintaTabela(){
       <td>${dec(m.nota)}<span class="barra-nota"><i style="width:${Math.max(2,(m.nota||0))}%"></i></span></td>
       <td>${variacao(m.var)}</td>
       <td class="ocultavel">${int(m.pop)}</td>
+      ${cr?`<td class="criterio">${pos(cr.porCod.get(m.cod))}</td>`:''}
       ${m.dim.map(p=>`<td class="ocultavel">${pos(p)}</td>`).join('')}
     </tr>`).join('')}
   </tbody></table>
@@ -768,6 +852,9 @@ async function iniciar(){
 
     progresso('Montando a tela',88);
     lerHash();
+    if(st.ordem.includes(':')){
+      try{ await garanteOrdens(); }catch(e){ st.ordem='pos'; }
+    }
     montaBusca(); montaAcoes();
     if(st.vista==='municipio'&&st.mun) await montaMunicipio(); else montaLista();
     gravarHash();

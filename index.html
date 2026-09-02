@@ -36,7 +36,6 @@ button,select,input{font-family:inherit;font-size:inherit;color:inherit}
    da esquerda não cabia na sua faixa e quebrava em três linhas. */
 .top-marca{display:flex;flex-direction:column;justify-content:center;flex:none}
 .top-marca h1,.top-marca .sub{white-space:nowrap}
-.top-esq .nav{min-width:0;overflow:hidden}
 .top .acoes{justify-self:end;min-width:0}
 .top h1{margin:0;font-size:16.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
 .top .sub{font-family:var(--f-num);font-size:11.5px;color:#9FC0D6;letter-spacing:.04em;
@@ -205,9 +204,16 @@ details.grp{border-bottom:1px solid var(--line-2)}
 .nav button{background:none;border:0;color:#B9D2E3;padding:9px 16px;border-radius:var(--r);
   cursor:pointer;font-size:14.5px;font-weight:600}
 .nav button:hover{background:#ffffff18;color:#fff}
-.nav-externo{color:#FBD9AE;padding:9px 16px;border-radius:var(--r);font-size:13.5px;
+.nav-externo{color:#FBD9AE;padding:7px 13px;border-radius:var(--r);font-size:13px;
   font-weight:600;text-decoration:none;border:1px solid #FBD9AE55;white-space:nowrap}
 .nav-externo:hover{background:#FBD9AE;color:#5B3B12}
+/* Quem cede espaço quando falta é o título, não o menu: o menu é navegação e
+   ficava cortado pela metade; o título é decorativo e some com reticências.
+   Antes o .nav tinha min-width:0 e era ele que encolhia. */
+.top-esq .nav{flex:none}
+.top-marca{flex:0 1 auto;min-width:0}
+.top-marca h1{overflow:hidden;text-overflow:ellipsis}
+.top .acoes{gap:9px}
 .nav button[aria-pressed="true"]{background:#ffffff26;color:#fff;font-weight:600}
 .acoes{margin-left:auto;display:flex;align-items:center;gap:12px}
 .btn-rel{background:#FBD9AE;border:0;color:#5B3B12;font-weight:600;font-size:13.5px;
@@ -324,19 +330,36 @@ summary .rot{flex:1}
    de 1150px não cabe mais lado a lado e o topo passa a quebrar em duas linhas,
    com a busca ocupando a segunda inteira. Em todos os casos ela continua
    centrada — o que muda é só quanto espaço ela ocupa. */
+/* O carimbo de atualização é a informação mais dispensável do topo — e a
+   mesma data está na aba Sobre. Sai antes de qualquer botão apertar. */
+/* Faixa entre 1600 e 1700: o carimbo sai, e título, subtítulo e menu cedem
+   alguns pixels cada. Sem isso o título ficava com reticências por 4 px. */
+@media (max-width:1700px){
+  .badge{display:none}
+  .top h1{letter-spacing:.07em}
+  .top .sub{font-size:11px;letter-spacing:.02em}
+  .nav button{padding:9px 12px}
+}
 @media (max-width:1600px){
   .top{grid-template-columns:minmax(0,1fr) minmax(220px,clamp(240px,22vw,360px)) minmax(0,1fr);
        gap:12px;padding:0 14px}
   .top-esq{gap:12px}
-  .nav button{padding:8px 11px}
-  .btn-link,.btn-rel{padding:7px 11px}
-  /* o carimbo de atualização é a informação mais dispensável do topo, e a
-     mesma data aparece na aba Sobre */
-  .badge{display:none}
+  .nav button{padding:8px 10px}
+  .btn-link,.btn-rel{padding:7px 10px}
+  .nav-externo{padding:7px 10px}
+  .top h1{letter-spacing:.1em}
+}
+/* Abaixo de 1450 a marca precisa mesmo encolher: com o título no tamanho
+   cheio, o menu não cabe na sua faixa e passava por cima da busca. */
+@media (max-width:1450px){
+  .top h1{font-size:14px;letter-spacing:.06em}
+  .top .sub{font-size:10.5px}
+  .nav button{padding:8px 9px;font-size:13px}
+  .top .acoes{flex-wrap:wrap;justify-content:flex-end}
 }
 /* No celular o topo quebra em duas linhas: a busca é justamente o atalho que
    mais poupa toque, então vale ocupar uma linha inteira em vez de sumir. */
-@media (max-width:1150px){
+@media (max-width:1250px){
   .top{display:flex;height:auto;min-height:56px;flex-wrap:wrap;padding:9px 14px;gap:10px}
   .top-esq{flex:1 1 100%;gap:10px}
   .top h1{font-size:14px;letter-spacing:.1em}
@@ -346,6 +369,13 @@ summary .rot{flex:1}
   .btn-rel{padding:7px 11px;font-size:13px}
   .ir{order:5;flex:1 1 100%;width:auto}
   .ir ul{max-height:60vh}
+}
+/* Em tela de celular o menu desce para a própria linha: espremido ao lado do
+   título, era o título que aparecia cortado. */
+@media (max-width:560px){
+  .top-esq{flex-wrap:wrap}
+  .top-marca{flex:1 1 100%}
+  .top-esq .nav{flex:1 1 100%}
 }
 
 
@@ -699,8 +729,6 @@ summary.tema-cab .qt{margin-left:auto}
     <button data-v="municipio" aria-pressed="false" hidden>Município</button>
     <button data-v="comparar" aria-pressed="false">Comparar</button>
     <button data-v="sobre" aria-pressed="false">Sobre</button>
-    <a class="nav-externo" href="competitividade.html"
-       title="Ranking de Competitividade dos Municípios, do CLP">Ranking de Competitividade &rarr;</a>
   </nav>
   </div>
   <div class="ir" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-owns="irLista">
@@ -712,6 +740,8 @@ summary.tema-cab .qt{margin-left:auto}
     <ul id="irLista" role="listbox" hidden></ul>
   </div>
   <div class="acoes">
+    <a class="nav-externo" href="competitividade.html"
+       title="Ranking de Competitividade dos Municípios, do CLP">Competitividade &rarr;</a>
     <button class="btn-link" id="copiarLink" title="Copiar um link que abre o painel neste mesmo recorte">Copiar link</button>
     <button class="btn-rel" id="abrirRel">Gerar relatório</button>
     <span class="badge" id="cobertura">—</span>
@@ -3054,7 +3084,9 @@ async function iniciar(){
     progresso('Desenhando',94);
     $('#subtitulo').textContent =
       `${N.toLocaleString('pt-BR')} municípios · ${IDS.length} indicadores`;
-    $('#cobertura').textContent = 'atualizado em ' + (META.atualizado||'—');
+    // só a data: a hora do processamento não diz nada a quem consulta, e os
+    // 70px que ela ocupava faziam o grupo da direita transbordar da sua faixa
+    $('#cobertura').textContent = 'atualizado em ' + String(META.atualizado||'—').split(' ')[0];
     $('#cobertura').title = 'versão ' + (META.versao||'');
     montarGrupos(); montaIndicadores(); ligaBusca(); montaIr();
     montaSelects(); montaComparar(); montaRelatorio(); montaCopiarLink();
