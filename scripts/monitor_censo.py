@@ -50,7 +50,16 @@ SAIDA = os.path.join(RAIZ, 'fonte', 'auto')
 PAGINA = ('https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/'
           'microdados/censo-escolar')
 
-UA = {'User-Agent': 'painel-socioambiental/1.0 (+github actions; dados publicos)'}
+# O servidor do INEP derruba a conexão para alguns clientes. Tentamos primeiro
+# um User-Agent honesto; se ele for recusado, repetimos com um de navegador,
+# que é o que o próprio site usa para servir o mesmo arquivo público.
+UAS = [
+    {'User-Agent': 'painel-socioambiental/1.0 (+github actions; dados publicos)'},
+    {'User-Agent': ('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                    '(KHTML, like Gecko) Chrome/128.0 Safari/537.36'),
+     'Accept': '*/*', 'Accept-Encoding': 'identity', 'Connection': 'keep-alive'},
+]
+UA = UAS[0]
 
 
 def chave(s):
@@ -58,11 +67,22 @@ def chave(s):
     return re.sub(r'\s+', ' ', ''.join(c for c in t if not unicodedata.combining(c))).strip()
 
 
-def busca(url, cabecalhos=None, metodo='GET'):
-    h = dict(UA)
-    h.update(cabecalhos or {})
-    req = urllib.request.Request(url, headers=h, method=metodo)
-    return urllib.request.urlopen(req, timeout=300)
+def busca(url, cabecalhos=None, metodo='GET', ua=None):
+    """
+    Requisição com repetição. O servidor do INEP às vezes reseta a conexão sem
+    dizer por quê; tentar de novo, e com outro User-Agent, resolve na prática.
+    Sem isso, uma queda de conexão viraria "a fonte mudou de formato".
+    """
+    ultimo = None
+    for tentativa in range(4):
+        h = dict(ua or UAS[min(tentativa, len(UAS) - 1)])
+        h.update(cabecalhos or {})
+        try:
+            return urllib.request.urlopen(
+                urllib.request.Request(url, headers=h, method=metodo), timeout=300)
+        except Exception as e:
+            ultimo = e
+    raise ultimo
 
 
 # ------------------------------------------------------ achar a divulgação
@@ -113,7 +133,7 @@ class ZipRemoto(io.RawIOBase):
         self.pos = 0
         self.baixado = 0
         self.pedidos = 0
-        with busca(url, {'Range': 'bytes=0-1'}) as r:
+        with busca(url, {'Range': 'bytes=0-1'}, ua=UAS[1]) as r:
             if r.status != 206:
                 raise ValueError('servidor não aceita Range (devolveu %s)' % r.status)
             faixa = r.headers.get('Content-Range', '')
@@ -143,7 +163,7 @@ class ZipRemoto(io.RawIOBase):
         if n <= 0:
             return b''
         fim = self.pos + n - 1
-        with busca(self.url, {'Range': 'bytes=%d-%d' % (self.pos, fim)}) as r:
+        with busca(self.url, {'Range': 'bytes=%d-%d' % (self.pos, fim)}, ua=UAS[1]) as r:
             dados = r.read()
         self.pos += len(dados)
         self.baixado += len(dados)
@@ -181,10 +201,49 @@ def sondar():
     print('Mais recente: %d' % ano)
     print('  %s' % url)
 
+    # descobrir se dá para ler só um pedaço, e com qual User-Agent
+    for i, ua in enumerate(UAS):
+        try:
+            with busca(url, {'Range': 'bytes=0-1'}, ua=ua) as r:
+                print('  UA #%d + Range -> HTTP %s, Content-Range=%r'
+                      % (i + 1, r.status, r.headers.get('Content-Range')))
+        except Exception as e:
+            print('  UA #%d + Range -> falhou: %s' % (i + 1, e))
+        try:
+            with busca(url, {}, metodo='HEAD', ua=ua) as r:
+                n = r.headers.get('Content-Length')
+                print('  UA #%d + HEAD  -> HTTP %s, tamanho=%s, Accept-Ranges=%r'
+                      % (i + 1, r.status, ('%.0f MB' % (int(n) / 1e6)) if n else '?',
+                         r.headers.get('Accept-Ranges')))
+        except Exception as e:
+            print('  UA #%d + HEAD  -> falhou: %s' % (i + 1, e))
+
     try:
         remoto = ZipRemoto(url)
     except Exception as e:
-        print('  Range NÃO disponível (%s) — o robô teria de baixar o pacote inteiro.' % e)
+        print('  Leitura por faixas indisponível (%s).' % e)
+        print('  Caminho alternativo: baixar o pacote inteiro. Medindo a vazão…')
+        try:
+            import time
+            t0 = time.time()
+            lidos = 0
+            with busca(url, ua=UAS[1]) as r:
+                total = r.headers.get('Content-Length')
+                while lidos < 40 * 1024 * 1024:
+                    pedaco = r.read(1024 * 1024)
+                    if not pedaco:
+                        break
+                    lidos += len(pedaco)
+            dt = max(time.time() - t0, 0.001)
+            print('    tamanho total: %s' % (('%.0f MB' % (int(total) / 1e6))
+                                             if total else 'não informado'))
+            print('    baixei %.0f MB em %.1f s (%.1f MB/s)'
+                  % (lidos / 1e6, dt, lidos / 1e6 / dt))
+            if total:
+                print('    o pacote inteiro levaria ~%.0f s nesse ritmo'
+                      % (int(total) / 1e6 / (lidos / 1e6 / dt)))
+        except Exception as e2:
+            print('    download completo também falhou: %s' % e2)
         return
     print('  tamanho do zip: %.0f MB · o servidor aceita leitura por faixas' %
           (remoto.tamanho / 1e6))
