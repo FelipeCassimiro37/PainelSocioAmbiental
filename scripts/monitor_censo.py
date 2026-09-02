@@ -113,13 +113,25 @@ def _cert_do_servidor(host, porta=443, espera=20):
     reprova, porque um intermediário forjado não fecha com nenhuma raiz
     confiável do sistema.
     """
-    import socket
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    import socket, time
+    # Parte-se do contexto PADRÃO e só então a verificação é afrouxada. Um
+    # SSLContext cru tem outra lista de cifras e não anuncia ALPN, e o servidor
+    # do INEP derrubava a conexão por causa disso ("connection reset") — enquanto
+    # aceitava normalmente as conexões feitas com o contexto padrão. Diferença
+    # sutil e cara: custou algumas rodadas até o diagnóstico apontar para cá.
+    ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    with socket.create_connection((host, porta), timeout=espera) as cru:
-        with ctx.wrap_socket(cru, server_hostname=host) as tls:
-            return tls.getpeercert(binary_form=True)
+    erro = None
+    for tentativa in range(3):
+        try:
+            with socket.create_connection((host, porta), timeout=espera) as cru:
+                with ctx.wrap_socket(cru, server_hostname=host) as tls:
+                    return tls.getpeercert(binary_form=True)
+        except Exception as e:
+            erro = e
+            time.sleep(1)
+    raise erro
 
 
 def _uri_do_emissor(der):
