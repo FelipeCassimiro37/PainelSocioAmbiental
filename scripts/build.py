@@ -283,6 +283,59 @@ def main():
         if aba:
             abas_declaradas.add(aba)
 
+    # ------------------------------------------- indicadores vindos dos robôs
+    # Um vigia (scripts/monitor_*.py) pode trazer indicador que ainda não existe
+    # no dicionário: ele declara a definição num .meta.json ao lado do CSV. Isso
+    # é lido AQUI, antes da malha, porque as séries são criadas logo abaixo a
+    # partir do dicionário — declarar depois criaria a coluna sem lugar para
+    # guardar o valor, e o dado entraria e sumiria sem reclamação nenhuma.
+    #
+    # A alternativa seria você abrir a planilha e cadastrar o indicador à mão
+    # toda vez que um robô trouxesse coisa nova. Como o robô já sabe o nome, a
+    # unidade, o tema e a fonte, faz mais sentido ele dizer.
+    pasta_auto = RAIZ / "fonte" / "auto"
+    for meta_auto in sorted(pasta_auto.glob("*.meta.json")) if pasta_auto.exists() else []:
+        for ind, campos in json.loads(meta_auto.read_text(encoding="utf-8")).items():
+            if ind in DIC:
+                for campo in ("ano", "fonte", "unidade", "nome"):
+                    if campos.get(campo):
+                        DIC[ind][campo] = str(campos[campo]).strip()
+                continue
+            tema = str(campos.get("tema") or "").strip()
+            if not tema and not campos.get("nome"):
+                # meta.json que só carrega ano/fonte, para um indicador que
+                # sumiu do dicionário. Não é tentativa de criar nada — o robô
+                # vai continuar gravando o CSV e o valor é que será ignorado.
+                # Aviso, não erro: derrubar o build inteiro por causa disso
+                # deixaria o painel sem atualização nenhuma.
+                avisos.append(f"{meta_auto.name}: '{ind}' não está no dicionário "
+                              f"e o arquivo não traz definição — o dado desse "
+                              f"indicador não vai entrar")
+                continue
+            if tema not in TEMAS:
+                erros.append(f"{meta_auto.name}: '{ind}' quer criar um indicador "
+                             f"novo mas o tema '{tema}' não existe. Temas "
+                             f"válidos: {', '.join(sorted(TEMAS))}")
+                continue
+            if not campos.get("nome"):
+                erros.append(f"{meta_auto.name}: '{ind}' é indicador novo e "
+                             f"precisa de 'nome'")
+                continue
+            DIC[ind] = dict(
+                nome=str(campos["nome"]).strip(), tema=tema,
+                unidade=str(campos.get("unidade") or "").strip(),
+                formato=str(campos.get("formato") or "dec2").strip(),
+                somavel=str(campos.get("somavel") or "0") in ("1", "sim", "true", "True"),
+                ano=str(campos.get("ano") or "").strip(),
+                fonte=str(campos.get("fonte") or "").strip(),
+            )
+            if campos.get("grupo"):
+                DIC[ind]["grupo"] = str(campos["grupo"]).strip()
+                DIC[ind]["recorte"] = str(campos.get("recorte") or "").strip()
+            IDS.append(ind)
+            apelidos[norm(ind)] = (ind, 1.0)
+            print(f"  indicador novo declarado por {meta_auto.name}: {ind}")
+
     # ---------------------------------------------------------------- malha
     malha = json.loads((RAIZ / "malha" / "mun.topo.json").read_text(encoding="utf-8"))
     geoms = malha["objects"][next(iter(malha["objects"]))]["geometries"]
@@ -399,10 +452,9 @@ def main():
     # Arquivos gerados pelos vigias (scripts/monitor_*.py) e versionados em
     # fonte/auto/. Entram DEPOIS da planilha de propósito: quando um robô já
     # trouxe o dado direto da fonte oficial, ele vale mais que a digitação
-    # manual. Cada CSV pode vir com um .meta.json ao lado para atualizar o ano
-    # e a citação da fonte dos indicadores que ele preenche — assim o rodapé do
-    # painel acompanha o dado sem ninguém precisar editar o dicionário.
-    pasta_auto = RAIZ / "fonte" / "auto"
+    # manual. As definições dos indicadores que esses arquivos trazem — inclusive
+    # os que só existem por causa do robô — já foram lidas lá em cima, junto com
+    # o dicionário.
     for csv_auto in sorted(pasta_auto.glob("*.csv")) if pasta_auto.exists() else []:
         import csv as _csv
         with csv_auto.open(encoding="utf-8-sig", newline="") as f:
@@ -413,17 +465,6 @@ def main():
                 dial = _csv.excel; dial.delimiter = ";"
             cruas = [linha for linha in _csv.reader(f, dial)]
         processa(f"auto/{csv_auto.name}", "fonte", cruas=cruas)
-
-        meta_auto = csv_auto.with_suffix(".meta.json")
-        if meta_auto.exists():
-            for ind, campos in json.loads(meta_auto.read_text(encoding="utf-8")).items():
-                if ind not in DIC:
-                    avisos.append(f"{meta_auto.name}: indicador '{ind}' não existe "
-                                  f"no dicionário — ano/fonte ignorados")
-                    continue
-                for campo in ("ano", "fonte", "unidade"):
-                    if campos.get(campo):
-                        DIC[ind][campo] = str(campos[campo]).strip()
 
     for (ind, aba), qtd in sorted(conflitos.items()):
         if aba.startswith("auto/"):
