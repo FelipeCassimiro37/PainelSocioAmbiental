@@ -1,0 +1,36 @@
+{
+  "edicao": 2025,
+  "referencia": 2024,
+  "origem": "https://www.gov.br/cidades/pt-br/acesso-a-informacao/acoes-e-programas/saneamento/sinisa/resultados-sinisa/SINISA_RESIDUOS_planilhas_2024.zip",
+  "verificadoEm": "2026-09-03 16:40 UTC",
+  "totais": {
+    "municipios": 4854,
+    "respondentes": 4854,
+    "sem_resposta": 716,
+    "res_cob_total": {
+      "com_dado": 4854,
+      "mediana": 89.08,
+      "zeros": 0
+    },
+    "res_cob_rural": {
+      "com_dado": 4818,
+      "mediana": 47.91,
+      "zeros": 1667
+    },
+    "res_seletiva": {
+      "com_dado": 4854,
+      "mediana": 0.0,
+      "zeros": 3439
+    },
+    "res_disp_inad": {
+      "com_dado": 4854,
+      "mediana": 0.0,
+      "zeros": 3057
+    },
+    "res_massa_pc": {
+      "com_dado": 4854,
+      "mediana": 0.7,
+      "zeros": 0
+    }
+  }
+}

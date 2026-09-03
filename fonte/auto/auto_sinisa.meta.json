@@ -1,0 +1,47 @@
+{
+  "res_cob_total": {
+    "nome": "Cobertura de coleta de resíduos",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "res_cob_rural": {
+    "nome": "Coleta de resíduos na zona rural",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "res_seletiva": {
+    "nome": "Cobertura de coleta seletiva",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "res_disp_inad": {
+    "nome": "Disposição final inadequada",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "res_massa_pc": {
+    "nome": "Resíduos coletados por habitante",
+    "tema": "saneamento",
+    "unidade": "kg/hab.dia",
+    "formato": "dec2",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  }
+}
