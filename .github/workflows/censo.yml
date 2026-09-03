@@ -1,8 +1,9 @@
 name: Vigiar o Censo Escolar
 
 # O Censo Escolar sai uma vez por ano (os microdados costumam aparecer no
-# primeiro trimestre, referentes ao ano anterior). Uma verificação por semana
-# é de sobra, e custa uma requisição à página de microdados.
+# primeiro trimestre). Uma verificação por semana é de sobra e custa uma
+# requisição à página de microdados — o pacote de 537 MB só é tocado quando
+# aparece um ano que ainda não foi processado.
 on:
   schedule:
     - cron: "0 12 * * 3"      # quarta-feira, 09:00 em Brasília
@@ -11,10 +12,19 @@ on:
       sondar:
         description: "Só investigar a fonte e relatar (não grava nada)"
         type: boolean
-        default: true
+        default: false
+      forcar:
+        description: "Reprocessar mesmo sem ano novo"
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vigiar-censo
+  cancel-in-progress: false
 
 jobs:
   vigiar:
@@ -26,14 +36,45 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Cinto de segurança: se algo travar, o passo morre em 5 minutos em vez de
-      # ficar pendurado consumindo minutos de execução até o limite de 6 horas.
+      # Cinto de segurança: se a fonte pendurar a conexão, o passo morre em vez
+      # de consumir minutos até o limite de 6 horas.
       - name: Sondar a fonte
         if: inputs.sondar
         timeout-minutes: 5
         run: python scripts/monitor_censo.py --sondar
 
       - name: Tem ano novo?
+        id: checar
         if: ${{ !inputs.sondar }}
         timeout-minutes: 5
         run: python scripts/monitor_censo.py --so-checar
+
+      - name: Baixar e preparar a base
+        if: ${{ !inputs.sondar && (steps.checar.outputs.novidade == 'true' || inputs.forcar) }}
+        timeout-minutes: 25
+        run: python scripts/monitor_censo.py ${{ inputs.forcar && '--forcar' || '' }}
+
+      # Nada entra no site sozinho: abre um Pull Request com a base nova para
+      # você conferir os totais antes de aceitar.
+      - name: Abrir Pull Request com a base nova
+        if: ${{ !inputs.sondar && (steps.checar.outputs.novidade == 'true' || inputs.forcar) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANO: ${{ steps.checar.outputs.ano }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonte
+          if git diff --staged --quiet; then
+            echo "O INEP publicou um ano novo, mas a base não mudou. Nada a fazer."
+            exit 0
+          fi
+          ramo="censo/$ANO"
+          git checkout -b "$ramo"
+          git commit -m "Censo Escolar: base de $ANO"
+          git push --force origin "$ramo"
+          python scripts/monitor_censo.py --resumo > /tmp/corpo.md
+          gh pr create --base main --head "$ramo" \
+            --title "Censo Escolar: base de $ANO" \
+            --body-file /tmp/corpo.md \
+            || gh pr edit "$ramo" --body-file /tmp/corpo.md

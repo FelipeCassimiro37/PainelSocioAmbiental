@@ -1,9 +1,16 @@
 name: Atualizar matrículas (Censo Escolar)
 
-# Não roda sozinha. A base do Censo muda uma vez por ano — não faz sentido
-# reprocessar 178 mil escolas de 6 em 6 horas junto com a planilha.
-# Para rodar: aba Actions -> Atualizar matrículas -> Run workflow.
+# A base do Censo muda uma vez por ano, então isto não fica em agenda nenhuma:
+# roda quando a base realmente troca. O gatilho de push é o que fecha o ciclo do
+# vigia — aceito o Pull Request com a base nova, o painel reprocessa sozinho as
+# 178 mil escolas em vez de esperar alguém lembrar de apertar o botão.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "fonte/matriculas-*.csv.gz"
+      - "scripts/build_edu.py"
+      - "fonte/legendas.csv"
   workflow_dispatch:
 
 permissions:
