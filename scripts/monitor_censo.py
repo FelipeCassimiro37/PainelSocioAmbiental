@@ -153,6 +153,14 @@ def _uris_do_emissor(der):
     vistas, candidatas = set(), []
     for u in re.findall(rb'https?://[A-Za-z0-9\-\._~:/\?#\[\]@!\$&\'\(\)\*\+,;=%]+', der):
         texto = u.decode('ascii', 'ignore').rstrip('.,;')
+        # O DER não delimita a URL: logo depois dela vêm os bytes da próxima
+        # estrutura ASN.1, e alguns deles são imprimíveis, então grudam no fim
+        # do endereço. Foi exatamente isso que aconteceu aqui — o certificado
+        # aponta para "…/rnpicpedugr46ovtlsca2025.crt" e a leitura crua trazia
+        # "…crt0?", dando 404. Quando há extensão de certificado, corto ali.
+        corte = re.search(r'\.(crt|cer|der|p7c|p7b)', texto, re.I)
+        if corte:
+            texto = texto[:corte.end()]
         baixo = texto.lower()
         if texto in vistas or 'ocsp' in baixo or baixo.endswith('.crl') or '/crl' in baixo:
             continue
