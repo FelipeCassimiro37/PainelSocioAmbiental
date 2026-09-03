@@ -630,8 +630,13 @@ def grava_censo(cab, linhas, ano, totais, membro, anterior):
 
     destino = os.path.join(RAIZ, 'fonte', 'matriculas-%s.csv.gz' % ano)
     os.makedirs(os.path.dirname(destino), exist_ok=True)
-    with gzip.open(destino, 'wb', compresslevel=9) as g:
-        g.write(buf.getvalue().encode('utf-8'))
+    # mtime=0 faz o .gz sair sempre igual para o mesmo conteúdo. Sem isso o gzip
+    # carimba a hora da geração dentro do arquivo, e o robô abriria um Pull
+    # Request "com mudanças" todo ano mesmo quando o INEP republicasse dado
+    # idêntico — um alarme falso que gasta a confiança de quem revisa.
+    with open(destino, 'wb') as bruto:
+        with gzip.GzipFile(fileobj=bruto, mode='wb', compresslevel=9, mtime=0) as g:
+            g.write(buf.getvalue().encode('utf-8'))
 
     os.makedirs(SAIDA, exist_ok=True)
     with open(os.path.join(SAIDA, 'auto_censo.estado.json'), 'w', encoding='utf-8') as f:
