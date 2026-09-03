@@ -637,11 +637,19 @@ def comparacao_com_o_painel(dados):
                     zerado += 1
                 else:
                     perde += 1
-            elif vazio_antes or a == 0:
+            elif vazio_antes:
                 entra += 1
             elif a == b or (d['formato'] != 'texto'
                             and abs(float(a) - float(b)) < 0.02):
+                # Inclui o zero que continua zero. Em Resíduos são milhares:
+                # 3.439 municípios declararam 0% de coleta seletiva, e isso é
+                # informação, não ausência. Contá-los como novidade encheria o
+                # relatório de movimento que não existe.
                 igual += 1
+            elif a == 0:
+                # Era zero e agora tem número: o zero da planilha estava no
+                # lugar de um dado que a fonte oficial tem.
+                entra += 1
             else:
                 muda += 1
         saida[ident] = dict(igual=igual, muda=muda, entra=entra,
