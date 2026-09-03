@@ -237,8 +237,16 @@ def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2):
 
     Quem vai baixar o arquivo de verdade passa um `espera` maior de propósito.
     """
+    import time
     ultimo = None
     for tentativa in range(tentativas):
+        if tentativa:
+            # pausa crescente entre tentativas. O servidor do INEP derruba
+            # conexões de vez em quando, e insistir na mesma hora costuma levar
+            # outro corte; esperar um pouco resolve na prática. Sem isso, um
+            # download de 19 requisições tinha chance real de falhar por causa
+            # de uma só — e a divulgação anual passaria batida.
+            time.sleep(min(2 ** tentativa, 15))
         h = dict(ua or UAS[min(tentativa, len(UAS) - 1)])
         h.update(cabecalhos or {})
         try:
@@ -263,7 +271,7 @@ def anos_publicados():
     e não uma data no calendário: se o INEP atrasar ou antecipar a divulgação,
     o vigia se ajusta sozinho.
     """
-    with busca(PAGINA) as r:
+    with busca(PAGINA, espera=45, tentativas=4) as r:
         html = r.read().decode('utf-8', 'replace')
     achados = {}
     for href in re.findall(r'href="([^"]+\.zip)"', html, re.I):
@@ -302,7 +310,7 @@ class ZipRemoto(io.RawIOBase):
         self.pos = 0
         self.baixado = 0
         self.pedidos = 0
-        with busca(url, {'Range': 'bytes=0-1'}, ua=UAS[1], espera=15, tentativas=1) as r:
+        with busca(url, {'Range': 'bytes=0-1'}, ua=UAS[1], espera=30, tentativas=4) as r:
             if r.status != 206:
                 raise ValueError('servidor não aceita Range (devolveu %s)' % r.status)
             faixa = r.headers.get('Content-Range', '')
@@ -332,7 +340,8 @@ class ZipRemoto(io.RawIOBase):
         if n <= 0:
             return b''
         fim = self.pos + n - 1
-        with busca(self.url, {'Range': 'bytes=%d-%d' % (self.pos, fim)}, ua=UAS[1]) as r:
+        with busca(self.url, {'Range': 'bytes=%d-%d' % (self.pos, fim)},
+                   ua=UAS[1], espera=120, tentativas=5) as r:
             dados = r.read()
         self.pos += len(dados)
         self.baixado += len(dados)
