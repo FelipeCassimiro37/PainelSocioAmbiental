@@ -22,7 +22,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: atualizar-painel
+  # Os três workflows que geram dados/ e empurram para o main compartilham este
+  # grupo — atualizar.yml, matriculas.yml e clp.yml. Antes cada um tinha o seu,
+  # então nada impedia que rodassem juntos: foi o que derrubou uma execução
+  # quando dois Pull Requests foram aceitos com um minuto de diferença.
+  group: grava-em-dados
   cancel-in-progress: false
 
 jobs:
@@ -52,5 +56,17 @@ jobs:
             echo "Nenhuma mudanca nos dados."
           else
             git commit -m "Atualiza dados a partir do Google Sheets"
-            git push
+            # O main pode ter andado enquanto isto rodava — outro merge, outra
+            # rotina. Em vez de deixar o push ser recusado e a execução falhar,
+            # a base é atualizada e o commit é refeito por cima. Como tudo em
+            # dados/ é gerado, a execução mais recente é a que deve valer; não
+            # há conflito possível, é sempre o arquivo inteiro.
+            for tentativa in 1 2 3; do
+              if git push; then break; fi
+              echo "O main avançou. Refazendo o commit sobre a versão nova (tentativa $tentativa)."
+              git fetch origin main
+              git reset --soft origin/main
+              git commit -m "Atualiza dados a partir do Google Sheets" || true
+              sleep 3
+            done
           fi
