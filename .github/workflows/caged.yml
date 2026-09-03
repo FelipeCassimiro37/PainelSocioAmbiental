@@ -65,7 +65,21 @@ jobs:
           ramo="caged/$DIVULGACAO"
           git checkout -b "$ramo"
           git commit -m "CAGED: dados de $DIVULGACAO"
-          git push --force origin "$ramo"
+          # O ramo desta edição pode ter sobrado de um Pull Request já
+          # aceito. Reaproveitá-lo com --force faz o push carregar tudo o que
+          # entrou no main desde então — inclusive mudanças em
+          # .github/workflows — e o GITHUB_TOKEN não tem permissão para mexer
+          # em workflow: o push é recusado com "refusing to allow a GitHub App
+          # to create or update workflow". Já aconteceu. Então: se há Pull
+          # Request aberto para este ramo, respeita-se o ramo (e as suas
+          # conversas) e força-se por cima; se não há, o ramo velho é apagado e
+          # recriado limpo a partir do main.
+          if [ -n "$(gh pr list --head "$ramo" --state open --json number --jq '.[0].number')" ]; then
+            git push --force origin "$ramo"
+          else
+            git push origin --delete "$ramo" 2>/dev/null || true
+            git push origin "$ramo"
+          fi
           python scripts/monitor_caged.py --resumo > /tmp/corpo.md
           gh pr create --base main --head "$ramo" \
             --title "CAGED: dados de $DIVULGACAO" \

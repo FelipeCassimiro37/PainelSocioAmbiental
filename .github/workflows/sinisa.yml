@@ -1,8 +1,9 @@
 name: Vigiar o SINISA (saneamento)
 
 # O SINISA publica uma edição por ano, sem data fixa. Uma verificação semanal
-# custa duas requisições à página do Ministério das Cidades; o pacote de 18 MB
-# só é baixado quando aparece edição que ainda não foi processada.
+# custa duas requisições à página do Ministério das Cidades; os pacotes — cerca
+# de 35 MB somando Resíduos, Água e Esgoto — só são baixados quando aparece
+# edição que ainda não foi processada.
 on:
   schedule:
     - cron: "0 13 * * 4"      # quinta-feira, 10:00 em Brasília
@@ -16,6 +17,11 @@ on:
         description: "Reprocessar mesmo sem edição nova"
         type: boolean
         default: false
+      modulo:
+        description: "Trabalhar só um módulo (para investigar)"
+        type: choice
+        default: "todos"
+        options: ["todos", "residuos", "agua", "esgoto"]
 
 permissions:
   contents: write
@@ -40,8 +46,8 @@ jobs:
 
       - name: Sondar a fonte
         if: inputs.sondar
-        timeout-minutes: 10
-        run: python scripts/monitor_sinisa.py --sondar
+        timeout-minutes: 25
+        run: python scripts/monitor_sinisa.py --sondar ${{ (inputs.modulo && inputs.modulo != 'todos') && format('--modulo {0}', inputs.modulo) || '' }}
 
       - name: Tem edição nova?
         id: checar
@@ -49,10 +55,15 @@ jobs:
         timeout-minutes: 6
         run: python scripts/monitor_sinisa.py --so-checar
 
+      # Três pacotes para baixar e três planilhas grandes para ler: a de Água
+      # sozinha tem 5.144 linhas por 67 colunas.
       - name: Baixar e preparar os indicadores
         if: ${{ !inputs.sondar && (steps.checar.outputs.novidade == 'true' || inputs.forcar) }}
-        timeout-minutes: 20
-        run: python scripts/monitor_sinisa.py ${{ inputs.forcar && '--forcar' || '' }}
+        timeout-minutes: 40
+        run: |
+          python scripts/monitor_sinisa.py \
+            ${{ inputs.forcar && '--forcar' || '' }} \
+            ${{ (inputs.modulo && inputs.modulo != 'todos') && format('--modulo {0}', inputs.modulo) || '' }}
 
       # Nada entra no painel sozinho: abre um Pull Request com os indicadores
       # para você conferir antes de aceitar.
@@ -71,10 +82,24 @@ jobs:
           fi
           ramo="sinisa/$EDICAO"
           git checkout -b "$ramo"
-          git commit -m "SINISA $EDICAO: indicadores de resíduos sólidos"
-          git push --force origin "$ramo"
+          git commit -m "SINISA $EDICAO: resíduos sólidos, água e esgotamento sanitário"
+          # O ramo desta edição pode ter sobrado de um Pull Request já
+          # aceito. Reaproveitá-lo com --force faz o push carregar tudo o que
+          # entrou no main desde então — inclusive mudanças em
+          # .github/workflows — e o GITHUB_TOKEN não tem permissão para mexer
+          # em workflow: o push é recusado com "refusing to allow a GitHub App
+          # to create or update workflow". Já aconteceu. Então: se há Pull
+          # Request aberto para este ramo, respeita-se o ramo (e as suas
+          # conversas) e força-se por cima; se não há, o ramo velho é apagado e
+          # recriado limpo a partir do main.
+          if [ -n "$(gh pr list --head "$ramo" --state open --json number --jq '.[0].number')" ]; then
+            git push --force origin "$ramo"
+          else
+            git push origin --delete "$ramo" 2>/dev/null || true
+            git push origin "$ramo"
+          fi
           python scripts/monitor_sinisa.py --resumo > /tmp/corpo.md
           gh pr create --base main --head "$ramo" \
-            --title "SINISA $EDICAO: resíduos sólidos" \
+            --title "SINISA $EDICAO: saneamento (resíduos, água e esgoto)" \
             --body-file /tmp/corpo.md \
             || gh pr edit "$ramo" --body-file /tmp/corpo.md
