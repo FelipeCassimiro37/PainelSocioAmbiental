@@ -1,0 +1,18 @@
+{
+  "ano": 2025,
+  "arquivoNoPacote": "microdados_censo_escolar_2025_v2/dados/Tabela_Matricula_2025_V2.csv",
+  "colunasMantidas": 49,
+  "colunasNaOrigem": 263,
+  "verificadoEm": "2026-09-03 13:12 UTC",
+  "totais": {
+    "escolas": 178766,
+    "municipios": 5571,
+    "matriculas": 46018380
+  },
+  "baseAnterior": {
+    "arquivo": "matriculas-2025.csv.gz",
+    "ano": "2025",
+    "escolas": 178766,
+    "matriculas": 46018380
+  }
+}
