@@ -33,11 +33,17 @@ do `.zip`; qualquer padrão que a gente inventasse daria link quebrado.
 
 Baixar só o que interessa
 -------------------------
-O .zip inteiro é grande e quase todo ele é matrícula individual, que não usamos.
-Se o servidor aceitar requisição por faixa de bytes (`Range`), dá para ler só o
-índice do zip e depois só o pedaço do arquivo que interessa — alguns MB em vez
-do pacote inteiro. Se não aceitar, cai no download completo. O `--sondar` existe
-para descobrir qual dos dois caminhos vale, sem gravar nada.
+O pacote tem 537 MB e o painel usa um arquivo de 123 MB de dentro dele. O
+servidor aceita requisição por faixa de bytes, então o zip é lido pelo índice e
+só o membro necessário é trazido: 134 MB em 19 requisições, em vez de 537 MB.
+
+O certificado do INEP
+---------------------
+O `download.inep.gov.br` publica o certificado com a cadeia incompleta: falta o
+intermediário. Navegador e curl não reclamam porque buscam sozinhos o pedaço que
+falta — o endereço vem dentro do próprio certificado. O Python não faz isso, e
+recusava a conexão. `contexto_tls()` faz essa busca à mão. A verificação
+continua inteira: só o elo que o servidor esqueceu é suprido.
 """
 import argparse, io, json, os, re, ssl, sys, tempfile, unicodedata, zipfile
 from datetime import datetime, timezone
@@ -339,19 +345,46 @@ class ZipRemoto(io.RawIOBase):
         return len(dados)
 
 
-def escolhe_membro(nomes, ano):
-    """O CSV de escolas dentro do zip, sem depender do nome exato."""
-    candidatos = [n for n in nomes if n.lower().endswith('.csv')
-                  and 'ed_basica' in chave(n).replace('-', '_')]
-    if not candidatos:
-        # fallback: qualquer csv com o ano no nome que não seja de matrícula
-        candidatos = [n for n in nomes if n.lower().endswith('.csv')
-                      and str(ano) in n and 'matricula' not in chave(n)
-                      and 'docente' not in chave(n) and 'turma' not in chave(n)]
-    if not candidatos:
-        raise SystemExit('Não achei o CSV de escolas (ed_basica) dentro do zip. '
-                         'Membros: %s' % nomes[:20])
-    return sorted(candidatos, key=len)[0]
+def zip_remoto(url, buffer=8 * 1024 * 1024):
+    """
+    O zip aberto sobre leitura por faixas, com buffer grande.
+
+    O buffer não é detalhe de desempenho, é o que torna a ideia viável: o
+    `zipfile` pede o arquivo em pedacinhos, e sem buffer cada pedacinho vira uma
+    requisição HTTP própria — dezenas de milhares delas para um CSV de 123 MB,
+    o que demora mais do que baixar o pacote inteiro. Com 8 MB por requisição
+    são umas 16 idas ao servidor.
+    """
+    cru = ZipRemoto(url)
+    return zipfile.ZipFile(io.BufferedReader(cru, buffer_size=buffer)), cru
+
+
+def escolhe_membro(z, colunas_exigidas=('CO_ENTIDADE', 'QT_MAT_BAS')):
+    """
+    Acha, PELO CONTEÚDO, o CSV que tem as matrículas por escola.
+
+    A escolha é pela primeira linha de cada candidato, não pelo nome — e essa
+    decisão se pagou na primeira vez que foi usada. Até 2024 o arquivo se
+    chamava `microdados_ed_basica_<ano>.csv`; em 2025 o INEP dividiu o pacote em
+    tabelas por assunto, e as matrículas foram parar num arquivo chamado
+    `Tabela_Matricula_2025_V2.csv` — enquanto `Tabela_Escola`, que pelo nome
+    parecia o certo, tem infraestrutura e nenhuma coluna de matrícula. Procurar
+    pelo nome teria pegado o arquivo errado com a maior naturalidade.
+    """
+    csvs = sorted((i for i in z.infolist() if i.filename.lower().endswith('.csv')),
+                  key=lambda i: -i.file_size)
+    for info in csvs:
+        try:
+            with z.open(info.filename) as f:
+                cab = f.readline(200000).decode('latin-1', 'replace')
+        except Exception:
+            continue
+        cols = {c.strip().strip('﻿').upper() for c in re.split(r'[;,]', cab)}
+        if all(c in cols for c in colunas_exigidas):
+            return info.filename
+    raise SystemExit('Nenhum CSV do pacote tem as colunas %s. O INEP mudou a '
+                     'estrutura de novo — arquivos vistos: %s'
+                     % (', '.join(colunas_exigidas), [i.filename for i in csvs][:12]))
 
 
 # ------------------------------------------------------------------ sondar
@@ -485,6 +518,158 @@ def sondar():
     print('  total baixado na sondagem: %.2f MB' % (remoto.baixado / 1e6))
 
 
+# ------------------------------------------------------ extrair e conferir
+def colunas_do_painel():
+    """
+    A lista de colunas vem do `preparar_fonte_edu.py`, não daqui.
+
+    Essa lista também define a ORDEM em que as etapas aparecem na tela: o
+    build_edu.py e o index.html a leem de lá. Mantê-la em dois lugares seria
+    garantir que um dia as duas discordassem e a tela mudasse sozinha.
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import preparar_fonte_edu as prep
+    return prep.IDENT, prep.MAT
+
+
+def extrai(z, membro):
+    """Devolve (cabeçalho, linhas) do CSV de matrículas, já em memória."""
+    import csv as _csv
+    _csv.field_size_limit(10 ** 9)
+    with z.open(membro) as bruto:
+        texto = io.TextIOWrapper(bruto, encoding='latin-1', newline='')
+        r = _csv.reader(texto, delimiter=';')
+        cab = [c.strip().strip('﻿') for c in next(r)]
+        linhas = [l for l in r if len(l) >= len(cab)]
+    return cab, linhas
+
+
+def confere_censo(cab, linhas, anterior=None):
+    """
+    Barreiras antes de gravar.
+
+    A régua principal é a edição anterior, quando existe: um pacote lido errado
+    quase nunca erra pouco, então uma variação grande no total de matrículas ou
+    no número de escolas denuncia o problema. As faixas absolutas ficam como
+    rede para o primeiro uso, quando não há com o que comparar.
+    """
+    i = {c: k for k, c in enumerate(cab)}
+    problemas = []
+    escolas = len(linhas)
+    municipios = {l[i['CO_MUNICIPIO']] for l in linhas}
+    total = 0
+    for l in linhas:
+        v = (l[i['QT_MAT_BAS']] or '').strip()
+        if v:
+            try:
+                total += int(float(v))
+            except ValueError:
+                pass
+
+    if escolas < 150000:
+        problemas.append('só %d escolas; esperava mais de 150 mil' % escolas)
+    if len(municipios) < 5400:
+        problemas.append('só %d municípios; esperava perto de 5.570' % len(municipios))
+    if not (35e6 <= total <= 60e6):
+        problemas.append('total de %s matrículas na educação básica fora da faixa '
+                         'plausível' % f'{total:,}')
+
+    if anterior:
+        for rotulo, agora, antes in (('escolas', escolas, anterior['escolas']),
+                                     ('matrículas', total, anterior['matriculas'])):
+            if antes and abs(agora - antes) / antes > 0.15:
+                problemas.append('%s variou %+.1f%% em relação à base anterior '
+                                 '(%s -> %s) — variação demais para um ano'
+                                 % (rotulo, 100 * (agora - antes) / antes,
+                                    f'{antes:,}', f'{agora:,}'))
+    if problemas:
+        raise SystemExit('Conferência falhou, nada foi gravado:\n  - ' +
+                         '\n  - '.join(problemas))
+    return dict(escolas=escolas, municipios=len(municipios), matriculas=total)
+
+
+def base_anterior():
+    """Totais da base que já está no repositório, para servir de comparação."""
+    import csv as _csv, gzip, glob
+    arquivos = sorted(glob.glob(os.path.join(RAIZ, 'fonte', 'matriculas-*.csv.gz')))
+    if not arquivos:
+        return None
+    caminho = arquivos[-1]
+    _csv.field_size_limit(10 ** 9)
+    with gzip.open(caminho, 'rt', encoding='utf-8', newline='') as f:
+        r = _csv.reader(f, delimiter=';')
+        cab = next(r)
+        i = {c: k for k, c in enumerate(cab)}
+        escolas = total = 0
+        for l in r:
+            escolas += 1
+            v = (l[i['QT_MAT_BAS']] or '').strip()
+            if v:
+                total += int(float(v))
+    m = re.search(r'matriculas-(\d{4})', os.path.basename(caminho))
+    return dict(arquivo=os.path.basename(caminho), ano=m.group(1) if m else '?',
+                escolas=escolas, matriculas=total)
+
+
+def grava_censo(cab, linhas, ano, totais, membro, anterior):
+    """Escreve fonte/matriculas-<ano>.csv.gz no mesmo formato de sempre."""
+    import csv as _csv, gzip
+    ident, mat = colunas_do_painel()
+    i = {c: k for k, c in enumerate(cab)}
+    faltam = [c for c in ident + mat if c not in i]
+    if faltam:
+        raise SystemExit('O arquivo do INEP não tem estas colunas que o painel '
+                         'usa: %s' % ', '.join(faltam))
+    manter = [i[c] for c in ident + mat]
+
+    buf = io.StringIO()
+    w = _csv.writer(buf, delimiter=';', lineterminator='\n')
+    w.writerow(ident + mat)
+    for l in linhas:
+        w.writerow([l[j] for j in manter])
+
+    destino = os.path.join(RAIZ, 'fonte', 'matriculas-%s.csv.gz' % ano)
+    os.makedirs(os.path.dirname(destino), exist_ok=True)
+    with gzip.open(destino, 'wb', compresslevel=9) as g:
+        g.write(buf.getvalue().encode('utf-8'))
+
+    os.makedirs(SAIDA, exist_ok=True)
+    with open(os.path.join(SAIDA, 'auto_censo.estado.json'), 'w', encoding='utf-8') as f:
+        json.dump({'ano': int(ano), 'arquivoNoPacote': membro,
+                   'colunasMantidas': len(ident + mat), 'colunasNaOrigem': len(cab),
+                   'verificadoEm': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC'),
+                   'totais': totais, 'baseAnterior': anterior},
+                  f, ensure_ascii=False, indent=2)
+    return destino
+
+
+def resumo_markdown():
+    """Corpo do Pull Request: o que mudou, para conferência humana."""
+    e = estado_atual()
+    if not e:
+        return 'Sem estado gravado.'
+    t = e.get('totais', {})
+    ant = e.get('baseAnterior') or {}
+    f = lambda n: '{:,}'.format(n).replace(',', '.')
+    linhas = [
+        '**Censo Escolar %s** · arquivo `%s` dentro do pacote do INEP'
+        % (e.get('ano'), e.get('arquivoNoPacote', '?').rsplit('/', 1)[-1]),
+        '', '| | base anterior | agora |', '|---|---:|---:|',
+        '| Escolas | %s | %s |' % (f(ant.get('escolas', 0)), f(t.get('escolas', 0))),
+        '| Municípios | | %s |' % f(t.get('municipios', 0)),
+        '| Matrículas na educação básica | %s | %s |'
+        % (f(ant.get('matriculas', 0)), f(t.get('matriculas', 0))),
+        '',
+        'Mantive %s das %s colunas do arquivo original — as mesmas que o painel '
+        'já usava, na mesma ordem.'
+        % (e.get('colunasMantidas'), e.get('colunasNaOrigem')),
+        '',
+        'Depois de aceitar este PR, rode **Atualizar matrículas (Censo Escolar)** '
+        'na aba Actions para o painel reprocessar as 178 mil escolas.',
+    ]
+    return '\n'.join(linhas)
+
+
 def estado_atual():
     caminho = os.path.join(SAIDA, 'auto_censo.estado.json')
     if os.path.exists(caminho):
@@ -498,10 +683,15 @@ def main():
     ap.add_argument('--sondar', action='store_true',
                     help='investiga a fonte e conta o que achou, sem gravar nada')
     ap.add_argument('--so-checar', action='store_true', help='diz se saiu ano novo')
+    ap.add_argument('--forcar', action='store_true', help='reprocessa mesmo sem ano novo')
+    ap.add_argument('--resumo', action='store_true', help='imprime o corpo do Pull Request')
     args = ap.parse_args()
 
     if args.sondar:
         sondar()
+        return
+    if args.resumo:
+        print(resumo_markdown())
         return
 
     anos = anos_publicados()
@@ -512,13 +702,42 @@ def main():
     novidade = ano != antes
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-            f.write('novidade=%s\n' % ('true' if novidade else 'false'))
+            f.write('novidade=%s\n' % ('true' if (novidade or args.forcar) else 'false'))
             f.write('ano=%d\n' % ano)
     if args.so_checar:
         print('MUDOU' if novidade else 'sem novidade')
         return
-    raise SystemExit('A parte que grava ainda não está escrita — rode --sondar '
-                     'primeiro e decida o caminho com base no que ele contar.')
+    if not novidade and not args.forcar:
+        print('Nada a fazer.')
+        return
+
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+
+    print('Abrindo o pacote de %d por leitura parcial…' % ano)
+    z, cru = zip_remoto(anos[ano])
+    print('  pacote de %.0f MB' % (cru.tamanho / 1e6))
+    membro = escolhe_membro(z)
+    info = z.getinfo(membro)
+    print('  arquivo com as matrículas: %s (%.0f MB)' % (membro, info.file_size / 1e6))
+
+    cab, linhas = extrai(z, membro)
+    print('  %d escolas · %d colunas · %.0f MB trazidos da rede em %d requisições'
+          % (len(linhas), len(cab), cru.baixado / 1e6, cru.pedidos))
+
+    anterior = base_anterior()
+    if anterior:
+        print('  comparando com %s' % anterior['arquivo'])
+    totais = confere_censo(cab, linhas, anterior)
+    print('  conferência ok: %s matrículas em %s escolas, %d municípios'
+          % (f"{totais['matriculas']:,}".replace(',', '.'),
+             f"{totais['escolas']:,}".replace(',', '.'), totais['municipios']))
+
+    destino = grava_censo(cab, linhas, str(ano), totais, membro, anterior)
+    print('Gravado em %s (%.1f MB)'
+          % (os.path.relpath(destino, RAIZ), os.path.getsize(destino) / 1e6))
 
 
 if __name__ == '__main__':
