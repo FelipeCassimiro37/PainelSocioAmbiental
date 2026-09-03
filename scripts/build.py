@@ -405,6 +405,16 @@ def main():
             for c, (ind, escala) in mapeadas.items():
                 bruto = r.get(c)
                 if bruto is None or str(bruto).strip().lower() in VAZIOS:
+                    # Célula vazia numa aba da planilha quer dizer "não mexi
+                    # nisto" e o valor de antes fica. Vinda de fonte/auto/ quer
+                    # dizer o contrário: o robô leu a fonte oficial inteira e
+                    # ali não há dado. A diferença não é sutil — o SINISA não
+                    # cobre 2.821 municípios no módulo de esgoto, e eles estão
+                    # hoje na planilha como 0%, que no mapa é "tem esgoto e é
+                    # zero" em vez de "não se sabe". Sem este apagamento o robô
+                    # traria o dado certo e o zero errado continuaria por cima.
+                    if aba.startswith("auto/") and nivel == "mun" and chave in pos:
+                        series[ind][pos[chave]] = None
                     continue
                 if DIC[ind]["formato"] == "texto":
                     valor = str(bruto).strip()

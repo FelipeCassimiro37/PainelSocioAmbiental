@@ -18,29 +18,61 @@ a de 2025 (referência 2024) apareceu como SUBPÁGINA dela,
 pegaria dados um ano mais velhos sem perceber — foi o que aconteceu comigo na
 primeira leitura. Então aqui se procura a maior edição publicada.
 
-O que é lido
+Três módulos
 ------------
-Por enquanto só o módulo de **Resíduos Sólidos**, que é o que o painel não tem.
-Dentro do pacote, a planilha de indicadores é achada pelo conteúdo, não pelo
-nome: procura-se a que tem uma coluna de código do IBGE e os indicadores de
-cobertura de coleta.
+Resíduos Sólidos, Abastecimento de Água e Esgotamento Sanitário. Cada um tem o
+seu pacote na mesma página, e o pacote é achado pelo BLOCO da página em que o
+link aparece — nunca pelo nome do arquivo. O motivo cai na cara de quem for pelo
+caminho óbvio: o pacote de Água se chama
+
+    SINISA_Resultados_Ref2024.zip
+
+Um nome que promete o resultado inteiro e entrega só a Água. Quem procurasse
+'agua' no nome do arquivo não acharia nada; quem tratasse esse arquivo como o
+pacote completo leria Água achando que era tudo. Cada bloco da página é ancorado
+pela imagem de capa do módulo (CAPA_AGUA_2025.png e companhia), e o link certo é
+o rotulado 'Planilhas de Informações e Indicadores' logo abaixo dela.
+
+Base Municipal, não Locais e Regionais
+--------------------------------------
+Dentro dos pacotes de Água e Esgoto vêm as duas visões. A de Locais e Regionais
+é por PRESTADOR e repete o município quando há mais de um; a de Base Municipal
+tem uma linha por município, que é o que o painel precisa. Escolher pelo maior
+arquivo — como se fazia aqui quando só existia Resíduos — pegaria a errada: no
+pacote de Água, a de Locais e Regionais é a maior das duas. A escolha é pelo
+caminho dentro do zip, e depois conferida: se algum código de município aparecer
+duas vezes, é porque veio a planilha errada, e o script para.
 
 Zero não é o mesmo que ausência
 -------------------------------
-Este é o cuidado central deste script. Dos 5.570 municípios, cerca de 13% não
-respondem ao módulo — e uma linha em branco NÃO significa "não tem coleta
-seletiva". Se as duas coisas virassem zero, o mapa acusaria centenas de
-municípios de algo que eles nunca declararam. Município que não respondeu sai
-como célula vazia, que o painel mostra como "sem dado"; só quem declarou zero
-recebe zero.
+Este é o cuidado central do script, e em Água e Esgoto ele pesa ainda mais que
+em Resíduos, por dois motivos:
+
+  · o SINISA escreve 'Não calculado (condições não atendidas)' — e variantes —
+    no lugar do número. É TEXTO no meio de uma coluna numérica: quem converter
+    com um float() desatento e cair no except devolvendo 0 acusa o município de
+    ter cobertura zero quando o que houve foi falta de condição para calcular.
+    Só na coluna de esgoto tratado de 2024 são 1.165 ocorrências;
+  · o módulo de Esgoto traz 2.749 municípios dos 5.570. Os outros não têm
+    prestador de esgoto declarando — o que NÃO é o mesmo que ter 0% de
+    cobertura, ainda que muitos de fato tenham pouco ou nada.
+
+Nos dois casos o município sai com célula vazia, que o painel mostra como 'sem
+dado'. Só quem declarou zero recebe zero.
+
+Por isso o CSV traz uma linha para CADA município da malha, e não só para os que
+o SINISA cobre: a camada automática do build.py trata célula vazia vinda de
+fonte/auto/ como apagamento, e é assim que os zeros indevidos hoje digitados na
+planilha do Google saem do ar.
 """
-import argparse, csv, io, json, os, re, ssl, sys, tempfile, unicodedata, zipfile
+import argparse, csv, io, json, os, re, sys, unicodedata, zipfile
 from datetime import datetime, timezone
 
 import urllib.parse, urllib.request
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SAIDA = os.path.join(RAIZ, 'fonte', 'auto')
+MALHA = os.path.join(RAIZ, 'malha', 'mun.topo.json')
 
 PAGINA = ('https://www.gov.br/cidades/pt-br/acesso-a-informacao/acoes-e-programas/'
           'saneamento/sinisa')
@@ -53,28 +85,109 @@ UAS = [
     {'User-Agent': 'painel-socioambiental/1.0 (+github actions; dados publicos)'},
 ]
 
-# id no painel -> (trecho do rótulo na planilha do SINISA, definição do indicador)
-# O casamento é pelo começo do rótulo porque os nomes são longos e o SINISA já
-# mudou pontuação entre edições; o começo é a parte estável.
-INDICADORES = [
-    ('res_cob_total', 'Cobertura da população total com coleta de resíduos sólidos domiciliares',
-     dict(nome='Cobertura de coleta de resíduos', tema='saneamento', unidade='%',
-          formato='pct', somavel='0')),
-    ('res_cob_rural', 'Cobertura da população rural com coleta de resíduos sólidos domiciliares',
-     dict(nome='Coleta de resíduos na zona rural', tema='saneamento', unidade='%',
-          formato='pct', somavel='0')),
-    ('res_seletiva', 'Cobertura da população total com coleta seletiva de resíduos sólidos',
-     dict(nome='Cobertura de coleta seletiva', tema='saneamento', unidade='%',
-          formato='pct', somavel='0')),
-    ('res_disp_inad', 'Disposição final inadequada de resíduos sólidos urbanos',
-     dict(nome='Disposição final inadequada', tema='saneamento', unidade='%',
-          formato='pct', somavel='0')),
-    ('res_massa_pc', 'Massa média per capita de resíduos sólidos urbanos coletados',
-     dict(nome='Resíduos coletados por habitante', tema='saneamento',
-          unidade='kg/hab.dia', formato='dec2', somavel='0')),
-]
-
 FONTE = 'SINISA — Ministério das Cidades'
+
+# ---------------------------------------------------------------- indicadores
+# (id no painel, código do SINISA, começo do rótulo na planilha, definição)
+#
+# O código do SINISA (IAG0001, IES0007…) é o casamento principal: é o
+# identificador oficial da variável e não muda quando o texto do rótulo é
+# revisado. O rótulo entra como CONFERÊNCIA, não como alternativa — se o código
+# estiver numa coluna cujo rótulo não bate, o script para em vez de gravar um
+# indicador no lugar de outro.
+#
+# Resíduos não tem código: naquela planilha a linha que em Água e Esgoto traz os
+# códigos traz as unidades ('Percentual', 'Kg/hab.dia'). Lá o casamento é só
+# pelo rótulo, como sempre foi — e se compara o COMEÇO do rótulo, que é a parte
+# que o SINISA não mexe entre edições.
+MODULOS = [
+    ('residuos', dict(
+        rotulo='Resíduos Sólidos',
+        capa='residuos',
+        pista='residuo',              # reserva, caso a capa mude de nome
+        base_municipal=False,         # o pacote de resíduos não tem essa divisão
+        minimo=3000,
+        indicadores=[
+            ('res_cob_total', None,
+             'Cobertura da população total com coleta de resíduos sólidos domiciliares',
+             dict(nome='Cobertura de coleta de resíduos', tema='saneamento',
+                  unidade='%', formato='pct', somavel='0', faixa=(0, 100))),
+            ('res_cob_rural', None,
+             'Cobertura da população rural com coleta de resíduos sólidos domiciliares',
+             dict(nome='Coleta de resíduos na zona rural', tema='saneamento',
+                  unidade='%', formato='pct', somavel='0', faixa=(0, 100))),
+            ('res_seletiva', None,
+             'Cobertura da população total com coleta seletiva de resíduos sólidos',
+             dict(nome='Cobertura de coleta seletiva', tema='saneamento',
+                  unidade='%', formato='pct', somavel='0', faixa=(0, 100))),
+            ('res_disp_inad', None,
+             'Disposição final inadequada de resíduos sólidos urbanos',
+             dict(nome='Disposição final inadequada', tema='saneamento',
+                  unidade='%', formato='pct', somavel='0', faixa=(0, 100))),
+            ('res_massa_pc', None,
+             'Massa média per capita de resíduos sólidos urbanos coletados',
+             dict(nome='Resíduos coletados por habitante', tema='saneamento',
+                  unidade='kg/hab.dia', formato='dec2', somavel='0',
+                  faixa=(0, 50), mediana=(0.2, 3.0))),
+        ])),
+    ('agua', dict(
+        rotulo='Abastecimento de Água',
+        capa='agua',
+        pista='agua',
+        base_municipal=True,
+        minimo=3000,
+        indicadores=[
+            ('agua_cob', 'IAG0001',
+             'Atendimento da população total com rede de abastecimento de água',
+             dict(nome='Cobertura de água', tema='saneamento', unidade='%',
+                  formato='pct', somavel='0', faixa=(0, 100))),
+            ('perdas', 'IAG2013',
+             'Perdas totais de água na distribuição',
+             dict(nome='Índice de perdas na distribuição', tema='saneamento',
+                  unidade='%', formato='pct', somavel='0', faixa=(0, 100))),
+            # Sem teto de propósito: o SINISA publica municípios acima de 1.000
+            # l/hab/dia — o maior de 2024 passa de 33.000, num município pequeno
+            # com consumo não residencial pesado. São valores oficiais e não cabe
+            # a este script censurá-los. O que se exige é que a MEDIANA fique no
+            # plausível: é ela que denuncia uma coluna trocada ou uma unidade
+            # mudada, que é o risco real.
+            ('consumo', 'IAG2006',
+             'Consumo total médio per capita de água',
+             dict(nome='Consumo médio per capita', tema='saneamento',
+                  unidade='l/hab/dia', formato='dec1', somavel='0',
+                  faixa=(0, None), mediana=(80, 400))),
+            ('emp_agua', 'CAD0005', 'Nome do Prestador',
+             dict(nome='Prestador — água', tema='saneamento', unidade='',
+                  formato='texto', somavel='0')),
+        ])),
+    ('esgoto', dict(
+        rotulo='Esgotamento Sanitário',
+        capa='esgoto',
+        pista='esgoto',
+        base_municipal=True,
+        # Piso mais baixo de propósito: só 2.749 municípios têm prestador de
+        # esgoto declarando, e isso é o normal do módulo, não um defeito.
+        minimo=2000,
+        indicadores=[
+            ('esgoto_cob', 'IES0001',
+             'Atendimento da população total com rede coletora de esgoto',
+             dict(nome='Cobertura de esgoto', tema='saneamento', unidade='%',
+                  formato='pct', somavel='0', faixa=(0, 100))),
+            # IES0007, e não IES2004 ('Esgoto tratado referido ao esgoto
+            # coletado'). A escolha não foi de gosto: comparei os dois com a
+            # série que já estava no painel, e IES0007 bateu em 1.459 de 1.459
+            # municípios, com diferença mediana de 0,0 ponto, enquanto IES2004
+            # errava por 42,7 pontos na mediana. É este o indicador que o painel
+            # sempre chamou de 'Esgoto tratado'.
+            ('esgoto_trat', 'IES0007',
+             'Atendimento dos domicílios totais com coleta e tratamento de esgoto',
+             dict(nome='Esgoto tratado', tema='saneamento', unidade='%',
+                  formato='pct', somavel='0', faixa=(0, 100))),
+            ('emp_esgoto', 'CAD0005', 'Nome do Prestador',
+             dict(nome='Prestador — esgoto', tema='saneamento', unidade='',
+                  formato='texto', somavel='0')),
+        ])),
+]
 
 
 def chave(s):
@@ -105,9 +218,9 @@ def baixa(url, tentativas=6):
 
     O servidor do Ministério das Cidades corta a transferência no meio com
     alguma frequência (`IncompleteRead`). Como ele aceita `Range`, dá para pedir
-    só o pedaço que falta em vez de recomeçar os 18 MB — e, mais importante, o
-    tamanho anunciado é conferido no fim: sem isso, um arquivo cortado viraria
-    um zip corrompido, ou pior, um zip que abre e vem incompleto.
+    só o pedaço que falta em vez de recomeçar os 19 MB — e, mais importante, o
+    tamanho anunciado é conferido no fim: sem isso, um arquivo cortado viraria um
+    zip corrompido, ou pior, um zip que abre e vem incompleto.
     """
     import time
     dados = b''
@@ -143,8 +256,8 @@ def edicoes():
     """
     {ano da edição: url da página de resultados}, descoberto navegando.
 
-    Começa na página do SINISA, junta os links de 'resultados-sinisa' e desce
-    um nível para achar as subpáginas por ano. A edição sem ano no endereço é a
+    Começa na página do SINISA, junta os links de 'resultados-sinisa' e desce um
+    nível para achar as subpáginas por ano. A edição sem ano no endereço é a
     primeira (2024); as seguintes vêm com o ano no fim.
     """
     with busca(PAGINA) as r:
@@ -180,157 +293,360 @@ def edicoes():
     return achadas
 
 
-def pacote_de_residuos(url_edicao):
-    """Endereço do .zip de resíduos daquela edição, lido dos links da página."""
+def pacotes(url_edicao):
+    """
+    {módulo: url do pacote}, lido pelo BLOCO da página, não pelo nome do arquivo.
+
+    Ver o cabeçalho do arquivo: o pacote de Água se chama
+    SINISA_Resultados_Ref2024.zip. Nome nenhum salva quem procurar por 'agua'. O
+    que identifica o módulo é a imagem de capa que abre o bloco
+    (CAPA_AGUA_2025.png), e o link que interessa é o rotulado 'Planilhas de
+    Informações e Indicadores' que vem depois dela.
+
+    A capa é comparada por igualdade exata, e não por 'contém', senão
+    CAPA_AGUAS_PLUVIAIS — drenagem, outro módulo — seria confundida com Água.
+    """
     with busca(url_edicao) as r:
         html = r.read().decode('utf-8', 'replace')
-    candidatos = []
-    for href in re.findall(r'href="([^"]+\.(?:zip|rar))"', html, re.I):
-        nome = chave(href.rsplit('/', 1)[-1])
-        if 'residuo' in nome:
-            candidatos.append(urllib.parse.urljoin(url_edicao + '/', href))
-    if not candidatos:
-        raise SystemExit('A página %s não traz pacote de resíduos. Links de '
-                         'arquivo vistos: %s'
-                         % (url_edicao,
-                            re.findall(r'href="([^"]+\.(?:zip|rar|xlsx))"', html)[:8]))
-    return candidatos[0]
+
+    marcas = [(m.start(), chave(m.group(1)).replace(' ', '_').strip('_'))
+              for m in re.finditer(
+                  r'CAPA[_-]([A-Za-z_ÁÉÍÓÚÃÕÇáéíóúãõç]+?)[_-]?20\d{2}\.(?:png|jpe?g)',
+                  html, re.I)]
+
+    rotulados, por_nome = {}, {}
+    for m in re.finditer(r'<a[^>]+href="([^"]+\.(?:zip|rar|xlsx))"[^>]*>(.*?)</a>',
+                         html, re.S | re.I):
+        url = urllib.parse.urljoin(url_edicao + '/', m.group(1)).split('?')[0]
+        rot = chave(re.sub(r'<[^>]+>', ' ', m.group(2)))
+        anteriores = [k for p, k in marcas if p < m.start()]
+        bloco = anteriores[-1] if anteriores else ''
+        if 'planilha' in rot and bloco:
+            rotulados.setdefault(bloco, url)
+        por_nome.setdefault(chave(url.rsplit('/', 1)[-1]), url)
+
+    saida = {}
+    for nome, cfg in MODULOS:
+        alvo = rotulados.get(cfg['capa'])
+        if not alvo:
+            # Reserva: o nome do arquivo. Serve para Resíduos e Esgoto — e é
+            # exatamente o que NÃO serve para Água. Se a reserva for usada para
+            # Água ela não vai achar nada, e falhar aqui é melhor que adivinhar.
+            alvo = next((u for k, u in por_nome.items() if cfg['pista'] in k), None)
+        if alvo:
+            saida[nome] = alvo
+    if not saida:
+        raise SystemExit(
+            'Não achei nenhum pacote em %s. Capas vistas: %s. Arquivos vistos: %s'
+            % (url_edicao, sorted({k for _, k in marcas}), sorted(por_nome)[:8]))
+    return saida
 
 
 # ------------------------------------------------------------ ler a planilha
-def acha_planilha(z):
-    """
-    A planilha de indicadores, achada pelo CONTEÚDO.
+# Palavras que marcam as visões que o painel NÃO quer: por prestador e agregadas.
+DESCARTE = ('locais e regionais', 'locais + regionais', 'uf_mr_br', 'consolidado',
+            'balanco', 'regionais')
 
-    Mesmo princípio usado no Censo Escolar e pelo mesmo motivo: nome de arquivo
-    é a coisa que os órgãos mais mudam entre edições. O que não muda é a
-    planilha ter o código do IBGE e os indicadores de cobertura.
+
+def acha_planilha(z, cfg):
+    """
+    A planilha de indicadores do módulo, escolhida pelo caminho dentro do zip.
+
+    Duas exigências: 'indicador' no caminho e nenhuma das palavras de DESCARTE.
+    Em Água e Esgoto exige-se ainda 'base municipal', que é a visão de uma linha
+    por município. Sem isso, o critério de 'maior arquivo' que servia quando só
+    havia Resíduos escolheria a planilha de Locais e Regionais no pacote de
+    Água — que é a maior das duas.
     """
     from openpyxl import load_workbook
-    for info in sorted(z.infolist(), key=lambda i: -i.file_size):
-        if not info.filename.lower().endswith(('.xlsx', '.xls')):
+    candidatos = []
+    for info in z.infolist():
+        if info.file_size == 0 or not info.filename.lower().endswith(('.xlsx', '.xls')):
             continue
-        if 'indicador' not in chave(info.filename):
+        caminho = chave(info.filename)
+        if 'indicador' not in caminho:
             continue
-        try:
-            wb = load_workbook(io.BytesIO(z.read(info.filename)),
-                               read_only=True, data_only=True)
-        except Exception:
+        if any(p in caminho for p in DESCARTE):
             continue
-        return info.filename, wb
-    raise SystemExit('Nenhuma planilha de indicadores no pacote. Arquivos: %s'
-                     % [i.filename for i in z.infolist()][:10])
+        if cfg['base_municipal'] and 'base municipal' not in caminho:
+            continue
+        candidatos.append(info)
+    if not candidatos:
+        raise SystemExit(
+            'Nenhuma planilha de indicadores por município no pacote de %s. '
+            'Arquivos: %s' % (cfg['rotulo'],
+                              [i.filename for i in z.infolist() if i.file_size][:10]))
+    escolhido = max(candidatos, key=lambda i: i.file_size)
+    wb = load_workbook(io.BytesIO(z.read(escolhido.filename)),
+                       read_only=True, data_only=True)
+    return escolhido.filename, wb
 
 
-def le_indicadores(wb):
+def valor(v):
     """
-    Devolve {codigo_ibge: {id_do_indicador: valor}} e um relatório da leitura.
+    Número, ou None. Nunca zero por desistência.
 
-    O cabeçalho do SINISA ocupa umas doze linhas, com título, legenda, grupos e
-    só então os rótulos. Em vez de fixar o número da linha — que já mudou entre
-    edições — procuro a linha que tem 'Cod' e o código do IBGE, e leio os
-    rótulos a partir dali.
+    No lugar do número, quando não dá para calcular, o SINISA escreve 'Não
+    calculado (condições não atendidas)', 'Não calculado (divisão por zero)' ou
+    'Não calculado (campos obrigatórios vazios: [gte0019])'. Tudo isso é
+    ausência, e ausência não é zero.
+    """
+    if v is None or isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip()
+    if not s or chave(s).startswith(('nao calculado', 'nao se aplica', 'null',
+                                     'nao informado')):
+        return None
+    if ',' in s and '.' in s:
+        s = s.replace('.', '').replace(',', '.')   # 1.234,56
+    elif ',' in s:
+        s = s.replace(',', '.')
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def texto(v):
+    s = re.sub(r'\s+', ' ', str(v or '')).strip()
+    if not s or chave(s).startswith(('nao calculado', 'null', 'nao informado')):
+        return None
+    return s
+
+
+def le_modulo(wb, cfg):
+    """
+    {codigo_ibge: {id_do_indicador: valor}} e um relatório da leitura.
+
+    O cabeçalho ocupa entre oito e treze linhas e a arrumação MUDA de módulo para
+    módulo: em Resíduos os rótulos dos indicadores estão numa linha e as unidades
+    na de baixo; em Água e Esgoto há ainda uma linha de códigos entre a de
+    unidades e os dados. Em vez de fixar números de linha — que já quebraram uma
+    vez — acha-se a coluna do código do IBGE, dali a primeira linha de dados de
+    verdade, e procura-se código e rótulo em QUALQUER uma das linhas de cabeçalho
+    acima dela.
     """
     ws = wb[wb.sheetnames[0]]
     linhas = list(ws.iter_rows(values_only=True))
+    if not linhas:
+        raise SystemExit('Planilha de %s vazia.' % cfg['rotulo'])
 
-    i_cab = None
-    for n, linha in enumerate(linhas[:25]):
-        textos = [chave(v) for v in linha]
-        if any('cod' in t and 'ibge' in t for t in textos):
-            i_cab = n
-    if i_cab is None:
-        raise SystemExit('Não achei a linha de cabeçalho com o código do IBGE.')
+    i_cod = None
+    for linha in linhas[:25]:
+        for j, v in enumerate(linha):
+            if chave(v) in ('cod_ibge', 'codigo do ibge', 'cod ibge'):
+                i_cod = j if i_cod is None else min(i_cod, j)
+        if i_cod is not None:
+            break
+    if i_cod is None:
+        raise SystemExit('Não achei a coluna do código do IBGE em %s.' % cfg['rotulo'])
 
-    rotulos = linhas[i_cab - 1] if i_cab else ()
-    cods_col = linhas[i_cab]
-    i_cod = next(j for j, v in enumerate(cods_col)
-                 if 'cod' in chave(v) and 'ibge' in chave(v))
-    i_resp = next((j for j, v in enumerate(linhas[i_cab])
-                   if chave(v) in ('sim/nao', 'sim/não')), None)
+    i_dados = None
+    for n, linha in enumerate(linhas):
+        c = str(linha[i_cod] or '').split('.')[0].strip()
+        if c.isdigit() and len(c) == 7:
+            i_dados = n
+            break
+    if i_dados is None:
+        raise SystemExit('Nenhuma linha de município em %s.' % cfg['rotulo'])
 
-    colunas, faltando = {}, []
-    for ident, rotulo, _ in INDICADORES:
+    cab = list(range(max(0, i_dados - 5), i_dados))
+    largura = max((len(linhas[n]) for n in cab), default=0)
+
+    def celulas(j):
+        return [linhas[n][j] for n in cab if j < len(linhas[n])]
+
+    # coluna 'respondeu ao módulo?', quando existe (Resíduos tem)
+    i_resp = None
+    for n in cab:
+        for j, v in enumerate(linhas[n]):
+            if chave(v) in ('sim/nao',):
+                i_resp = j
+
+    colunas, faltando, trocadas = {}, [], []
+    for ident, codigo, rotulo, _ in cfg['indicadores']:
         alvo = chave(rotulo)[:55]
         achou = None
-        for j, nm in enumerate(rotulos):
-            if nm and chave(nm).startswith(alvo):
-                achou = j
-                break
+        if codigo:
+            for j in range(largura):
+                if any(chave(c) == chave(codigo) for c in celulas(j)):
+                    achou = j
+                    break
+            if achou is not None and not any(chave(c).startswith(alvo)
+                                             for c in celulas(achou)):
+                # O código existe, mas numa coluna cujo rótulo não corresponde:
+                # ou o SINISA renumerou, ou trocou o texto. Parar é o certo —
+                # gravar seria pôr um indicador no lugar de outro em silêncio.
+                trocadas.append('%s (%s): o rótulo dessa coluna é %r'
+                                % (ident, codigo,
+                                   next((str(c)[:60] for c in celulas(achou) if c), '')))
+                achou = None
         if achou is None:
-            faltando.append(ident)
+            for j in range(largura):
+                if any(chave(c).startswith(alvo) for c in celulas(j)):
+                    achou = j
+                    break
+        if achou is None:
+            faltando.append('%s (%s)' % (ident, codigo or rotulo[:40]))
         else:
             colunas[ident] = achou
+    if trocadas:
+        raise SystemExit(
+            'No módulo de %s, o código do SINISA está numa coluna cujo rótulo não '
+            'corresponde:\n  - %s\nNada foi gravado. Confira a planilha antes de '
+            'mexer no script.' % (cfg['rotulo'], '\n  - '.join(trocadas)))
     if faltando:
-        raise SystemExit('A planilha do SINISA não traz estes indicadores: %s. '
-                         'Os rótulos podem ter mudado — confira antes de mexer '
-                         'no script.' % ', '.join(faltando))
+        raise SystemExit(
+            'A planilha de %s não traz estes indicadores: %s. Os códigos ou os '
+            'rótulos mudaram — confira antes de mexer no script.'
+            % (cfg['rotulo'], ', '.join(faltando)))
 
-    dados, respondentes, sem_resposta = {}, 0, 0
-    for linha in linhas[i_cab + 1:]:
+    formatos = {i: d['formato'] for i, _, _, d in cfg['indicadores']}
+    dados, sem_resposta, repetidos = {}, 0, []
+    for linha in linhas[i_dados:]:
         cod = str(linha[i_cod] or '').split('.')[0].strip()
         if not (cod.isdigit() and len(cod) == 7):
             continue
-        respondeu = True
-        if i_resp is not None:
-            respondeu = chave(linha[i_resp]).startswith('sim')
-        if not respondeu:
+        if i_resp is not None and not chave(linha[i_resp]).startswith('sim'):
             sem_resposta += 1
             continue                       # NÃO vira zero: fica sem dado
-        respondentes += 1
+        if cod in dados:
+            repetidos.append(cod)
+            continue
         reg = {}
         for ident, j in colunas.items():
-            v = linha[j]
-            if isinstance(v, (int, float)) and not isinstance(v, bool):
-                reg[ident] = round(float(v), 4)
-        if reg:
-            dados[cod] = reg
-    return dados, dict(respondentes=respondentes, sem_resposta=sem_resposta)
+            if j >= len(linha):
+                continue
+            if formatos[ident] == 'texto':
+                v = texto(linha[j])
+            else:
+                v = valor(linha[j])
+                v = None if v is None else round(v, 4)
+            if v is not None:
+                reg[ident] = v
+        dados[cod] = reg
+    if repetidos:
+        raise SystemExit(
+            'A planilha de %s repete %d códigos de município (ex.: %s). Isso é a '
+            'marca da visão por prestador — veio a planilha errada do pacote.'
+            % (cfg['rotulo'], len(repetidos), ', '.join(repetidos[:5])))
+    return dados, dict(municipios=len(dados), sem_resposta=sem_resposta)
 
 
 # ------------------------------------------------------------------ conferir
-def confere(dados, relatorio):
+def confere(cfg, dados, relatorio):
     """
     Barreiras antes de gravar.
 
     Sem uma régua externa como a do CAGED, o que dá para exigir é coerência:
-    percentual tem de ficar entre 0 e 100, a cobertura rural não pode passar da
-    total, e a quantidade de municípios tem de ser compatível com a coleta.
+    percentual entre 0 e 100, mediana no plausível onde a grandeza tem ordem
+    conhecida, e uma quantidade de municípios compatível com a coleta do módulo.
     """
     problemas = []
-    if len(dados) < 3000:
-        problemas.append('só %d municípios com dado; esperava mais de 3.000'
-                         % len(dados))
+    if len(dados) < cfg['minimo']:
+        problemas.append('%s: só %d municípios na planilha; esperava mais de %d'
+                         % (cfg['rotulo'], len(dados), cfg['minimo']))
 
-    fora = []
-    for cod, reg in dados.items():
-        for ident in ('res_cob_total', 'res_cob_rural', 'res_seletiva', 'res_disp_inad'):
-            v = reg.get(ident)
-            if v is not None and not (-0.01 <= v <= 100.01):
-                fora.append('%s %s=%s' % (cod, ident, v))
-    if fora:
-        problemas.append('%d percentuais fora de 0–100 (ex.: %s)'
-                         % (len(fora), ', '.join(fora[:3])))
-
-    massa = [r['res_massa_pc'] for r in dados.values() if 'res_massa_pc' in r]
-    if massa:
-        mediana = sorted(massa)[len(massa) // 2]
-        if not (0.2 <= mediana <= 3.0):
-            problemas.append('massa per capita com mediana de %.2f kg/hab.dia — '
-                             'fora do plausível' % mediana)
-
+    resumo = dict(relatorio)
+    for ident, _, _, d in cfg['indicadores']:
+        if d['formato'] == 'texto':
+            vals = [r[ident] for r in dados.values() if r.get(ident)]
+            if vals:
+                resumo[ident] = dict(com_dado=len(vals), distintos=len(set(vals)))
+            continue
+        vals = sorted(r[ident] for r in dados.values() if ident in r)
+        if not vals:
+            problemas.append('%s: nenhum valor em %s' % (cfg['rotulo'], ident))
+            continue
+        piso, teto = d.get('faixa', (None, None))
+        fora = [v for v in vals
+                if (piso is not None and v < piso - 0.01)
+                or (teto is not None and v > teto + 0.01)]
+        if fora:
+            problemas.append('%s/%s: %d valores fora de %s–%s (ex.: %s)'
+                             % (cfg['rotulo'], ident, len(fora), piso,
+                                teto if teto is not None else 'sem teto', fora[:3]))
+        mediana = vals[len(vals) // 2]
+        if d.get('mediana'):
+            lo, hi = d['mediana']
+            if not (lo <= mediana <= hi):
+                problemas.append('%s/%s: mediana de %.2f fora do plausível (%s a %s)'
+                                 % (cfg['rotulo'], ident, mediana, lo, hi))
+        resumo[ident] = dict(com_dado=len(vals), mediana=round(mediana, 2),
+                             zeros=sum(1 for v in vals if v == 0),
+                             maximo=round(vals[-1], 2))
     if problemas:
         raise SystemExit('Conferência falhou, nada foi gravado:\n  - ' +
                          '\n  - '.join(problemas))
-
-    resumo = dict(municipios=len(dados), **relatorio)
-    for ident, _, _ in INDICADORES:
-        vals = sorted(r[ident] for r in dados.values() if ident in r)
-        if vals:
-            resumo[ident] = dict(com_dado=len(vals),
-                                 mediana=round(vals[len(vals) // 2], 2),
-                                 zeros=sum(1 for v in vals if v == 0))
     return resumo
+
+
+def municipios_da_malha():
+    """Os códigos dos municípios do painel, na mesma fonte que o build.py usa."""
+    with open(MALHA, encoding='utf-8') as f:
+        malha = json.load(f)
+    geoms = malha['objects'][next(iter(malha['objects']))]['geometries']
+    return [g['properties']['id'] for g in geoms]
+
+
+def todos_os_indicadores():
+    for nome, cfg in MODULOS:
+        for ident, codigo, rotulo, d in cfg['indicadores']:
+            yield nome, cfg, ident, codigo, rotulo, d
+
+
+def comparacao_com_o_painel(dados):
+    """
+    Quanto muda no que já está no ar — para o Pull Request contar, não para
+    barrar. O painel guarda os valores em dados/ind/<indicador>.json, na ordem
+    dos municípios de dados/meta.json.
+    """
+    meta = os.path.join(RAIZ, 'dados', 'meta.json')
+    if not os.path.exists(meta):
+        return {}
+    with open(meta, encoding='utf-8') as f:
+        cods = [str(c) for c in json.load(f)['municipios']]
+    saida = {}
+    for _, _, ident, _, _, d in todos_os_indicadores():
+        caminho = os.path.join(RAIZ, 'dados', 'ind', ident + '.json')
+        if not os.path.exists(caminho):
+            continue
+        with open(caminho, encoding='utf-8') as f:
+            serie = json.load(f)
+        antes = dict(zip(cods, serie))
+        igual = muda = entra = zerado = perde = 0
+        for c in cods:
+            a = antes.get(c)
+            b = dados.get(c, {}).get(ident)
+            if d['formato'] != 'texto':
+                a = None if a is None else round(float(a), 2)
+                b = None if b is None else round(float(b), 2)
+            vazio_antes = a is None or a == ''
+            vazio_agora = b is None or b == ''
+            if vazio_agora:
+                # Duas coisas muito diferentes moram aqui, e juntá-las esconderia
+                # justamente o que este trabalho conserta. Um zero que vira "sem
+                # dado" é o conserto: era um município que o SINISA não cobre e
+                # que a digitação na planilha marcou como zero. Um valor de
+                # verdade que vira "sem dado" é perda, e merece ser olhada.
+                if vazio_antes:
+                    continue
+                elif a == 0:
+                    zerado += 1
+                else:
+                    perde += 1
+            elif vazio_antes or a == 0:
+                entra += 1
+            elif a == b or (d['formato'] != 'texto'
+                            and abs(float(a) - float(b)) < 0.02):
+                igual += 1
+            else:
+                muda += 1
+        saida[ident] = dict(igual=igual, muda=muda, entra=entra,
+                            zerado=zerado, perde=perde)
+    return saida
 
 
 # --------------------------------------------------------------------- saída
@@ -342,31 +658,32 @@ def estado_atual():
     return {}
 
 
-def grava(dados, edicao, referencia, totais, origem):
+def grava(dados, edicao, referencia, totais, origens):
     os.makedirs(SAIDA, exist_ok=True)
-    ids = [i for i, _, _ in INDICADORES]
+    ids = [ident for _, _, ident, _, _, _ in todos_os_indicadores()]
 
+    # Uma linha por município da malha, e não só pelos que o SINISA cobre: é o
+    # que permite ao build.py apagar os zeros indevidos que estão na planilha.
     with open(os.path.join(SAIDA, 'auto_sinisa.csv'), 'w',
               encoding='utf-8', newline='') as f:
         w = csv.writer(f, delimiter=';')
         w.writerow(['codigo'] + ids)
-        for cod in sorted(dados):
-            reg = dados[cod]
-            # célula vazia onde não há dado; zero só quando o município
-            # declarou zero de verdade
+        for cod in municipios_da_malha():
+            reg = dados.get(cod, {})
             w.writerow([cod] + ['' if reg.get(i) is None else reg[i] for i in ids])
 
     meta = {}
-    for ident, _, definicao in INDICADORES:
-        meta[ident] = dict(definicao)
+    for _, _, ident, _, _, d in todos_os_indicadores():
+        meta[ident] = {k: v for k, v in d.items() if k not in ('faixa', 'mediana')}
         meta[ident].update(ano=str(referencia), fonte=FONTE)
     with open(os.path.join(SAIDA, 'auto_sinisa.meta.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
     with open(os.path.join(SAIDA, 'auto_sinisa.estado.json'), 'w', encoding='utf-8') as f:
-        json.dump({'edicao': edicao, 'referencia': referencia, 'origem': origem,
+        json.dump({'edicao': edicao, 'referencia': referencia, 'origens': origens,
                    'verificadoEm': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC'),
-                   'totais': totais},
+                   'totais': totais,
+                   'comparacao': comparacao_com_o_painel(dados)},
                   f, ensure_ascii=False, indent=2)
 
 
@@ -375,59 +692,109 @@ def resumo_markdown():
     if not e:
         return 'Sem estado gravado.'
     t = e.get('totais', {})
+    comp = e.get('comparacao', {})
     f = lambda n: '{:,}'.format(n).replace(',', '.')
-    linhas = [
-        '**SINISA %s** · ano de referência %s · módulo de Resíduos Sólidos'
-        % (e.get('edicao'), e.get('referencia')),
+    linhas = ['**SINISA %s** · ano de referência %s'
+              % (e.get('edicao'), e.get('referencia')), '']
+    for nome, cfg in MODULOS:
+        bloco = t.get(nome) or {}
+        if not bloco:
+            continue
+        linhas += ['### %s' % cfg['rotulo'], '']
+        linhas.append(
+            '%s municípios na planilha%s.'
+            % (f(bloco.get('municipios', 0)),
+               ('; %s não responderam ao módulo e ficam **sem dado**, não como zero'
+                % f(bloco['sem_resposta'])) if bloco.get('sem_resposta') else ''))
+        linhas += ['', '| indicador | com dado | mediana | em zero | entram | '
+                   'mudam | zeros corrigidos | perdem |',
+                   '|---|---:|---:|---:|---:|---:|---:|---:|']
+        for ident, _, _, d in cfg['indicadores']:
+            b = bloco.get(ident)
+            if not b:
+                continue
+            c = comp.get(ident, {})
+            linhas.append('| %s | %s | %s | %s | %s | %s | %s | %s |'
+                          % (d['nome'], f(b['com_dado']), b.get('mediana', '—'),
+                             f(b.get('zeros', 0)), f(c.get('entra', 0)),
+                             f(c.get('muda', 0)), f(c.get('zerado', 0)),
+                             f(c.get('perde', 0))))
+        linhas.append('')
+    linhas += [
+        '**As quatro últimas colunas**, comparando com o que está no ar agora. '
+        '*Entram*: estavam sem valor e passam a ter número. *Mudam*: tinham valor '
+        'e ele muda. *Zeros corrigidos*: estavam como **0** e passam a **sem '
+        'dado** — municípios que o SINISA não cobre e que a digitação na planilha '
+        'marcou com zero; no mapa, "tem cobertura e ela é zero" vira "não se '
+        'sabe", que é o que os dados de fato dizem. *Perdem*: tinham um valor de '
+        'verdade e ficam sem dado — esta é a coluna a olhar com desconfiança, e '
+        'ela deve ficar em zero.',
         '',
-        '%s municípios responderam ao módulo; %s não responderam e ficam **sem '
-        'dado** — não como zero.'
-        % (f(t.get('respondentes', 0)), f(t.get('sem_resposta', 0))),
-        '', '| indicador | municípios com dado | mediana | em zero |',
-        '|---|---:|---:|---:|',
+        'Assim que este Pull Request for aceito, o *Atualizar dados do painel* '
+        'dispara sozinho e os valores entram no mapa.',
     ]
-    for ident, _, definicao in INDICADORES:
-        d = t.get(ident)
-        if d:
-            linhas.append('| %s | %s | %s | %s |'
-                          % (definicao['nome'], f(d['com_dado']), d['mediana'],
-                             f(d['zeros'])))
-    linhas += ['',
-               'Estes cinco indicadores são **novos** no painel — nenhum valor '
-               'que já estava no ar muda por causa deste PR.',
-               '',
-               'Assim que for aceito, o *Atualizar dados do painel* dispara '
-               'sozinho e eles aparecem no mapa, no tema Saneamento.']
     return '\n'.join(linhas)
 
 
-# --------------------------------------------------------------------- sondar
-def sondar():
-    try:
-        sys.stdout.reconfigure(line_buffering=True)
-    except Exception:
-        pass
+# ------------------------------------------------------------------ processo
+def processa(url_edicao, so=None):
+    """Baixa e lê os módulos. Devolve (dados unidos, totais, origens)."""
+    urls = pacotes(url_edicao)
+    unidos, totais, origens = {}, {}, {}
+    for nome, cfg in MODULOS:
+        if so and nome != so:
+            continue
+        if nome not in urls:
+            raise SystemExit('A página %s não traz o pacote de %s. Pacotes achados: %s'
+                             % (url_edicao, cfg['rotulo'], sorted(urls)))
+        url = urls[nome]
+        print('  %s: %s' % (cfg['rotulo'], url.rsplit('/', 1)[-1]))
+        conteudo = baixa(url)
+        print('    %.1f MB' % (len(conteudo) / 1e6))
+        z = zipfile.ZipFile(io.BytesIO(conteudo))
+        arquivo, wb = acha_planilha(z, cfg)
+        print('    planilha: %s' % arquivo.rsplit('/', 1)[-1])
+        dados, rel = le_modulo(wb, cfg)
+        totais[nome] = confere(cfg, dados, rel)
+        origens[nome] = url
+        for cod, reg in dados.items():
+            unidos.setdefault(cod, {}).update(reg)
+        print('    %d municípios · %d indicadores'
+              % (len(dados), len(cfg['indicadores'])))
+    return unidos, totais, origens
+
+
+def sondar(so=None):
     eds = edicoes()
     print('Edições publicadas: %s' % ', '.join(str(a) for a in sorted(eds)))
     ed = max(eds)
-    print('Mais recente: SINISA %d' % ed)
+    print('Mais recente: SINISA %d (referência %d)' % (ed, ed - 1))
     print('  %s' % eds[ed])
-    url = pacote_de_residuos(eds[ed])
-    print('  pacote de resíduos: %s' % url.rsplit('/', 1)[-1])
-    conteudo = baixa(url)
-    print('  %.1f MB baixados' % (len(conteudo) / 1e6))
-    z = zipfile.ZipFile(io.BytesIO(conteudo))
-    nome, wb = acha_planilha(z)
-    print('  planilha escolhida: %s' % nome.rsplit('/', 1)[-1])
-    dados, rel = le_indicadores(wb)
-    print('  %d municípios com dado · %d responderam · %d não responderam'
-          % (len(dados), rel['respondentes'], rel['sem_resposta']))
-    totais = confere(dados, rel)
-    for ident, _, definicao in INDICADORES:
-        d = totais.get(ident)
-        if d:
-            print('    %-34s %5d com dado · mediana %7.2f · %4d em zero'
-                  % (definicao['nome'][:34], d['com_dado'], d['mediana'], d['zeros']))
+    unidos, totais, _ = processa(eds[ed], so)
+    print()
+    for nome, cfg in MODULOS:
+        if nome not in totais:
+            continue
+        print('%s:' % cfg['rotulo'])
+        for ident, _, _, d in cfg['indicadores']:
+            b = totais[nome].get(ident)
+            if not b:
+                continue
+            if d['formato'] == 'texto':
+                print('  %-34s %5d com dado · %d nomes distintos'
+                      % (d['nome'][:34], b['com_dado'], b['distintos']))
+            else:
+                print('  %-34s %5d com dado · mediana %8.2f · %4d em zero · máx %.2f'
+                      % (d['nome'][:34], b['com_dado'], b['mediana'], b['zeros'],
+                         b['maximo']))
+    print()
+    print('Municípios com algum dado de saneamento: %d' % len(unidos))
+    comp = comparacao_com_o_painel(unidos)
+    if comp:
+        print('Contra o que já está no painel:')
+        for ident, c in comp.items():
+            print('  %-12s iguais=%5d  mudam=%4d  entram=%4d  saem=%4d'
+                  % (ident, c['igual'], c['muda'], c['entra'], c['sai']))
 
 
 def main():
@@ -436,13 +803,12 @@ def main():
     ap.add_argument('--so-checar', action='store_true')
     ap.add_argument('--forcar', action='store_true')
     ap.add_argument('--resumo', action='store_true')
+    ap.add_argument('--modulo', choices=[n for n, _ in MODULOS],
+                    help='trabalhar só um módulo (para investigar)')
     args = ap.parse_args()
 
     if args.resumo:
         print(resumo_markdown())
-        return
-    if args.sondar:
-        sondar()
         return
 
     try:
@@ -450,12 +816,23 @@ def main():
     except Exception:
         pass
 
+    if args.sondar:
+        sondar(args.modulo)
+        return
+
     eds = edicoes()
     ed = max(eds)
-    antes = estado_atual().get('edicao')
+    antes = estado_atual()
+    # Muda a edição OU muda a lista de módulos lidos. A segunda metade não é
+    # luxo: quando este script passou a ler Água e Esgoto, a edição continuou
+    # sendo a mesma de antes, e sem isto a rotina diria 'nada a fazer' para
+    # sempre — só rodaria com --forcar, e ninguém lembraria.
+    modulos_agora = sorted(n for n, _ in MODULOS)
+    lidos_antes = sorted(antes.get('origens') or {})
+    novidade = ed != antes.get('edicao') or modulos_agora != lidos_antes
     print('Edição mais recente do SINISA: %d' % ed)
-    print('Último processado aqui: %s' % (antes or '(nenhum)'))
-    novidade = ed != antes
+    print('Último processado aqui: %s (módulos: %s)'
+          % (antes.get('edicao') or '(nenhum)', ', '.join(lidos_antes) or '(nenhum)'))
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
             f.write('novidade=%s\n' % ('true' if (novidade or args.forcar) else 'false'))
@@ -467,19 +844,9 @@ def main():
         print('Nada a fazer.')
         return
 
-    url = pacote_de_residuos(eds[ed])
-    print('Baixando %s' % url.rsplit('/', 1)[-1])
-    conteudo = baixa(url)
-    print('  %.1f MB' % (len(conteudo) / 1e6))
-    z = zipfile.ZipFile(io.BytesIO(conteudo))
-    nome, wb = acha_planilha(z)
-    print('  planilha: %s' % nome.rsplit('/', 1)[-1])
-    dados, rel = le_indicadores(wb)
-    print('  %d municípios com dado · %d sem resposta ao módulo'
-          % (len(dados), rel['sem_resposta']))
-    totais = confere(dados, rel)
-    grava(dados, ed, ed - 1, totais, url)
-    print('Gravado em fonte/auto/auto_sinisa.csv')
+    unidos, totais, origens = processa(eds[ed], args.modulo)
+    grava(unidos, ed, ed - 1, totais, origens)
+    print('Gravado em fonte/auto/auto_sinisa.csv (%d municípios com dado)' % len(unidos))
 
 
 if __name__ == '__main__':
