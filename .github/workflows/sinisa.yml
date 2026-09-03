@@ -1,0 +1,80 @@
+name: Vigiar o SINISA (saneamento)
+
+# O SINISA publica uma edição por ano, sem data fixa. Uma verificação semanal
+# custa duas requisições à página do Ministério das Cidades; o pacote de 18 MB
+# só é baixado quando aparece edição que ainda não foi processada.
+on:
+  schedule:
+    - cron: "0 13 * * 4"      # quinta-feira, 10:00 em Brasília
+  workflow_dispatch:
+    inputs:
+      sondar:
+        description: "Só investigar a fonte e relatar (não grava nada)"
+        type: boolean
+        default: false
+      forcar:
+        description: "Reprocessar mesmo sem edição nova"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vigiar-sinisa
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install --quiet openpyxl
+
+      - name: Sondar a fonte
+        if: inputs.sondar
+        timeout-minutes: 10
+        run: python scripts/monitor_sinisa.py --sondar
+
+      - name: Tem edição nova?
+        id: checar
+        if: ${{ !inputs.sondar }}
+        timeout-minutes: 6
+        run: python scripts/monitor_sinisa.py --so-checar
+
+      - name: Baixar e preparar os indicadores
+        if: ${{ !inputs.sondar && (steps.checar.outputs.novidade == 'true' || inputs.forcar) }}
+        timeout-minutes: 20
+        run: python scripts/monitor_sinisa.py ${{ inputs.forcar && '--forcar' || '' }}
+
+      # Nada entra no painel sozinho: abre um Pull Request com os indicadores
+      # para você conferir antes de aceitar.
+      - name: Abrir Pull Request
+        if: ${{ !inputs.sondar && (steps.checar.outputs.novidade == 'true' || inputs.forcar) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EDICAO: ${{ steps.checar.outputs.edicao }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonte/auto
+          if git diff --staged --quiet; then
+            echo "Edição nova anunciada, mas os números não mudaram. Nada a fazer."
+            exit 0
+          fi
+          ramo="sinisa/$EDICAO"
+          git checkout -b "$ramo"
+          git commit -m "SINISA $EDICAO: indicadores de resíduos sólidos"
+          git push --force origin "$ramo"
+          python scripts/monitor_sinisa.py --resumo > /tmp/corpo.md
+          gh pr create --base main --head "$ramo" \
+            --title "SINISA $EDICAO: resíduos sólidos" \
+            --body-file /tmp/corpo.md \
+            || gh pr edit "$ramo" --body-file /tmp/corpo.md
