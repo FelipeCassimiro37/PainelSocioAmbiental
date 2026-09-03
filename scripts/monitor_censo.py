@@ -376,7 +376,18 @@ def escolhe_membro(z, colunas_exigidas=('CO_ENTIDADE', 'QT_MAT_BAS')):
     for info in csvs:
         try:
             with z.open(info.filename) as f:
-                cab = f.readline(200000).decode('latin-1', 'replace')
+                # lê um bloco e corta na primeira quebra, em vez de usar
+                # readline(): num stream que descomprime por cima de requisições
+                # HTTP, o readline às vezes devolve a linha pela metade, e o
+                # cabeçalho truncado faz o arquivo certo ser descartado como se
+                # não tivesse as colunas. Aconteceu num ensaio com a base de 2024.
+                bloco = b''
+                while b'\n' not in bloco and len(bloco) < 1 << 20:
+                    pedaco = f.read(65536)
+                    if not pedaco:
+                        break
+                    bloco += pedaco
+            cab = bloco.split(b'\n', 1)[0].decode('latin-1', 'replace')
         except Exception:
             continue
         cols = {c.strip().strip('﻿').upper() for c in re.split(r'[;,]', cab)}
@@ -557,14 +568,18 @@ def confere_censo(cab, linhas, anterior=None):
     problemas = []
     escolas = len(linhas)
     municipios = {l[i['CO_MUNICIPIO']] for l in linhas}
-    total = 0
+    total = ativas = 0
     for l in linhas:
         v = (l[i['QT_MAT_BAS']] or '').strip()
+        n = 0
         if v:
             try:
-                total += int(float(v))
+                n = int(float(v))
             except ValueError:
-                pass
+                n = 0
+        total += n
+        if n > 0:
+            ativas += 1
 
     if escolas < 150000:
         problemas.append('só %d escolas; esperava mais de 150 mil' % escolas)
@@ -575,7 +590,14 @@ def confere_censo(cab, linhas, anterior=None):
                          'plausível' % f'{total:,}')
 
     if anterior:
-        for rotulo, agora, antes in (('escolas', escolas, anterior['escolas']),
+        # A comparação usa escolas COM MATRÍCULA, não o total de linhas. O
+        # formato antigo (até 2024) listava também as escolas cadastradas sem
+        # nenhum aluno — 36 mil delas em 2024 — e o formato novo não lista. Em
+        # cima do total de linhas isso parecia uma queda de 20% de um ano para o
+        # outro; em cima das escolas com aluno, a variação real é de 0,3%.
+        # Comparar grandezas de escopos diferentes daria alarme falso todo ano em
+        # que o INEP mexesse no recorte.
+        for rotulo, agora, antes in (('escolas com matrícula', ativas, anterior['ativas']),
                                      ('matrículas', total, anterior['matriculas'])):
             if antes and abs(agora - antes) / antes > 0.15:
                 problemas.append('%s variou %+.1f%% em relação à base anterior '
@@ -585,7 +607,8 @@ def confere_censo(cab, linhas, anterior=None):
     if problemas:
         raise SystemExit('Conferência falhou, nada foi gravado:\n  - ' +
                          '\n  - '.join(problemas))
-    return dict(escolas=escolas, municipios=len(municipios), matriculas=total)
+    return dict(escolas=escolas, ativas=ativas, municipios=len(municipios),
+                matriculas=total)
 
 
 def base_anterior():
@@ -600,15 +623,17 @@ def base_anterior():
         r = _csv.reader(f, delimiter=';')
         cab = next(r)
         i = {c: k for k, c in enumerate(cab)}
-        escolas = total = 0
+        escolas = ativas = total = 0
         for l in r:
             escolas += 1
             v = (l[i['QT_MAT_BAS']] or '').strip()
-            if v:
-                total += int(float(v))
+            n = int(float(v)) if v else 0
+            total += n
+            if n > 0:
+                ativas += 1
     m = re.search(r'matriculas-(\d{4})', os.path.basename(caminho))
     return dict(arquivo=os.path.basename(caminho), ano=m.group(1) if m else '?',
-                escolas=escolas, matriculas=total)
+                escolas=escolas, ativas=ativas, matriculas=total)
 
 
 def grava_censo(cab, linhas, ano, totais, membro, anterior):
@@ -660,7 +685,8 @@ def resumo_markdown():
         '**Censo Escolar %s** · arquivo `%s` dentro do pacote do INEP'
         % (e.get('ano'), e.get('arquivoNoPacote', '?').rsplit('/', 1)[-1]),
         '', '| | base anterior | agora |', '|---|---:|---:|',
-        '| Escolas | %s | %s |' % (f(ant.get('escolas', 0)), f(t.get('escolas', 0))),
+        '| Escolas no arquivo | %s | %s |' % (f(ant.get('escolas', 0)), f(t.get('escolas', 0))),
+        '| Escolas com matrícula | %s | %s |' % (f(ant.get('ativas', 0)), f(t.get('ativas', 0))),
         '| Municípios | | %s |' % f(t.get('municipios', 0)),
         '| Matrículas na educação básica | %s | %s |'
         % (f(ant.get('matriculas', 0)), f(t.get('matriculas', 0))),
@@ -669,8 +695,9 @@ def resumo_markdown():
         'já usava, na mesma ordem.'
         % (e.get('colunasMantidas'), e.get('colunasNaOrigem')),
         '',
-        'Depois de aceitar este PR, rode **Atualizar matrículas (Censo Escolar)** '
-        'na aba Actions para o painel reprocessar as 178 mil escolas.',
+        'Assim que este PR for aceito, o **Atualizar matrículas (Censo Escolar)** '
+        'dispara sozinho e o painel reprocessa as escolas — não precisa apertar '
+        'nada na aba Actions.',
     ]
     return '\n'.join(linhas)
 
