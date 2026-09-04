@@ -293,9 +293,19 @@ def main():
     # A alternativa seria você abrir a planilha e cadastrar o indicador à mão
     # toda vez que um robô trouxesse coisa nova. Como o robô já sabe o nome, a
     # unidade, o tema e a fonte, faz mais sentido ele dizer.
+    # Ressalvas por município: {indicador: {codigo: texto}}. Um vigia pode
+    # avisar que um valor específico, embora oficial, não pode ser lido pelo que
+    # o rótulo promete — o consumo per capita de um município cuja rede atende
+    # meia dúzia de pessoas, por exemplo. O painel mostra a nota ao lado do
+    # número, e o número continua sendo o que a fonte publicou.
+    notas_ind = {}
+
     pasta_auto = RAIZ / "fonte" / "auto"
     for meta_auto in sorted(pasta_auto.glob("*.meta.json")) if pasta_auto.exists() else []:
         for ind, campos in json.loads(meta_auto.read_text(encoding="utf-8")).items():
+            if campos.get("notas"):
+                notas_ind.setdefault(ind, {}).update(
+                    {str(c): str(t) for c, t in campos["notas"].items()})
             if ind in DIC:
                 for campo in ("ano", "fonte", "unidade", "nome"):
                     if campos.get(campo):
@@ -597,7 +607,8 @@ def main():
     meta = dict(versao=assinatura, atualizado=atualizado, fonte=fonte_nome,
                 dicionario=DIC, temas=TEMAS, ufSiglas=UF, ufNomes=UF_NOME,
                 ufComDado=sorted(com_dado), municipios=codigos, nomes=nomes_mun,
-                uf=ufs, agregados=agregados, oficiais=origem)
+                uf=ufs, agregados=agregados, oficiais=origem,
+                notas={i: n for i, n in notas_ind.items() if i in DIC})
     (SAIDA / "meta.json").write_text(json.dumps(meta, **esc), encoding="utf-8")
     for k in IDS:
         (SAIDA / "ind" / f"{k}.json").write_text(json.dumps(series[k], **esc), encoding="utf-8")

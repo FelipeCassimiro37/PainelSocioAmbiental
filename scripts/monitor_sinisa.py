@@ -583,6 +583,48 @@ def confere(cfg, dados, relatorio):
     return resumo
 
 
+# ------------------------------------------------------------------ ressalvas
+# Um punhado de municípios recebe do SINISA um consumo per capita que existe na
+# aritmética mas não descreve o que o rótulo promete. Não se apaga valor oficial;
+# escreve-se ao lado do número, só nesses municípios, o motivo de ele não poder
+# ser lido como consumo por habitante.
+#
+# São dois problemas diferentes e a nota diz qual é qual:
+#
+#  · denominador perto de zero — o indicador divide o volume consumido pela
+#    população ATENDIDA. Barra de Santana (PB) tem rede para 0,06% de 8.253
+#    habitantes, ou seja umas cinco pessoas, e sai com 33.994 l/hab/dia enquanto
+#    o consumo residencial per capita dela é 21,9. Não é consumo alto: é divisão
+#    por quase nada;
+#  · volume declarado fora de escala — cobertura normal, mas o consumo por
+#    economia vai a 65–95 m³/mês quando o usual fica entre 10 e 15. Aqui o que
+#    destoa é o volume informado na origem, e não dá para consertar de fora.
+COBERTURA_MINIMA = 1.0        # % de atendimento abaixo do qual a divisão perde sentido
+CONSUMO_SUSPEITO = 1000.0     # l/hab/dia — o percentil 99 de 2024 fica em 498
+
+
+def ressalvas(dados):
+    """{indicador: {codigo: texto}} — a nota que o painel mostra ao lado do valor."""
+    notas = {}
+    for cod, reg in dados.items():
+        consumo = reg.get('consumo')
+        if consumo is None or consumo <= CONSUMO_SUSPEITO:
+            continue
+        cobertura = reg.get('agua_cob')
+        if cobertura is not None and cobertura < COBERTURA_MINIMA:
+            texto = ('Leia com ressalva: a rede atende %s%% da população, e o '
+                     'indicador divide o volume consumido por essa população '
+                     'atendida. Com um denominador quase nulo o resultado dispara '
+                     'e deixa de descrever consumo por habitante.'
+                     % ('%.2f' % cobertura).replace('.', ','))
+        else:
+            texto = ('Leia com ressalva: valor muito acima do usual (a mediana '
+                     'nacional fica perto de 155 l/hab.dia). A cobertura aqui é '
+                     'normal, então o que destoa é o volume declarado à fonte.')
+        notas.setdefault('consumo', {})[cod] = texto
+    return notas
+
+
 def municipios_da_malha():
     """Os códigos dos municípios do painel, na mesma fonte que o build.py usa."""
     with open(MALHA, encoding='utf-8') as f:
@@ -680,10 +722,13 @@ def grava(dados, edicao, referencia, totais, origens):
             reg = dados.get(cod, {})
             w.writerow([cod] + ['' if reg.get(i) is None else reg[i] for i in ids])
 
+    notas = ressalvas(dados)
     meta = {}
     for _, _, ident, _, _, d in todos_os_indicadores():
         meta[ident] = {k: v for k, v in d.items() if k not in ('faixa', 'mediana')}
         meta[ident].update(ano=str(referencia), fonte=FONTE)
+        if notas.get(ident):
+            meta[ident]['notas'] = notas[ident]
     with open(os.path.join(SAIDA, 'auto_sinisa.meta.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
