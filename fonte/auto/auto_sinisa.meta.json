@@ -69,7 +69,17 @@
     "formato": "dec1",
     "somavel": "0",
     "ano": "2024",
-    "fonte": "SINISA — Ministério das Cidades"
+    "fonte": "SINISA — Ministério das Cidades",
+    "notas": {
+      "1302702": "Leia com ressalva: valor muito acima do usual (a mediana nacional fica perto de 155 l/hab.dia). A cobertura aqui é normal, então o que destoa é o volume declarado à fonte.",
+      "2304707": "Leia com ressalva: valor muito acima do usual (a mediana nacional fica perto de 155 l/hab.dia). A cobertura aqui é normal, então o que destoa é o volume declarado à fonte.",
+      "2501575": "Leia com ressalva: a rede atende 0,06% da população, e o indicador divide o volume consumido por essa população atendida. Com um denominador quase nulo o resultado dispara e deixa de descrever consumo por habitante.",
+      "2512762": "Leia com ressalva: valor muito acima do usual (a mediana nacional fica perto de 155 l/hab.dia). A cobertura aqui é normal, então o que destoa é o volume declarado à fonte.",
+      "3524501": "Leia com ressalva: valor muito acima do usual (a mediana nacional fica perto de 155 l/hab.dia). A cobertura aqui é normal, então o que destoa é o volume declarado à fonte.",
+      "4306452": "Leia com ressalva: valor muito acima do usual (a mediana nacional fica perto de 155 l/hab.dia). A cobertura aqui é normal, então o que destoa é o volume declarado à fonte.",
+      "4315321": "Leia com ressalva: valor muito acima do usual (a mediana nacional fica perto de 155 l/hab.dia). A cobertura aqui é normal, então o que destoa é o volume declarado à fonte.",
+      "5105234": "Leia com ressalva: valor muito acima do usual (a mediana nacional fica perto de 155 l/hab.dia). A cobertura aqui é normal, então o que destoa é o volume declarado à fonte."
+    }
   },
   "emp_agua": {
     "nome": "Prestador — água",

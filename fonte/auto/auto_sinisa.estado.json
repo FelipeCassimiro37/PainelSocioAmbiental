@@ -6,7 +6,7 @@
     "agua": "https://www.gov.br/cidades/pt-br/acesso-a-informacao/acoes-e-programas/saneamento/sinisa/resultados-sinisa/SINISA_Resultados_Ref2024.zip",
     "esgoto": "https://www.gov.br/cidades/pt-br/acesso-a-informacao/acoes-e-programas/saneamento/sinisa/resultados-sinisa/SINISA_ESGOTO_Planilhas_2024.zip"
   },
-  "verificadoEm": "2026-09-03 18:12 UTC",
+  "verificadoEm": "2026-09-04 12:30 UTC",
   "totais": {
     "residuos": {
       "municipios": 4854,
@@ -126,30 +126,30 @@
       "perde": 0
     },
     "agua_cob": {
-      "igual": 5117,
+      "igual": 5118,
       "muda": 0,
-      "entra": 1,
-      "zerado": 452,
+      "entra": 0,
+      "zerado": 0,
       "perde": 0
     },
     "perdas": {
-      "igual": 5109,
+      "igual": 5110,
       "muda": 0,
-      "entra": 1,
-      "zerado": 460,
+      "entra": 0,
+      "zerado": 0,
       "perde": 0
     },
     "consumo": {
-      "igual": 4773,
-      "muda": 342,
-      "entra": 1,
-      "zerado": 454,
+      "igual": 5116,
+      "muda": 0,
+      "entra": 0,
+      "zerado": 0,
       "perde": 0
     },
     "emp_agua": {
-      "igual": 5080,
-      "muda": 2,
-      "entra": 62,
+      "igual": 5144,
+      "muda": 0,
+      "entra": 0,
       "zerado": 0,
       "perde": 0
     },
@@ -157,20 +157,20 @@
       "igual": 2728,
       "muda": 0,
       "entra": 0,
-      "zerado": 2842,
+      "zerado": 0,
       "perde": 0
     },
     "esgoto_trat": {
       "igual": 1584,
       "muda": 0,
       "entra": 0,
-      "zerado": 3986,
+      "zerado": 0,
       "perde": 0
     },
     "emp_esgoto": {
-      "igual": 2709,
-      "muda": 11,
-      "entra": 29,
+      "igual": 2749,
+      "muda": 0,
+      "entra": 0,
       "zerado": 0,
       "perde": 0
     }
