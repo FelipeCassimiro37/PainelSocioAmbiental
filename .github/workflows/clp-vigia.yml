@@ -1,0 +1,93 @@
+name: Vigiar o Ranking de Competitividade (CLP)
+
+# O CLP publica uma edição por ano, sem data fixa — a 7ª saiu em 2026. Uma
+# verificação semanal custa uma requisição à página do ranking; os resultados
+# (cerca de 650 KB) só são baixados quando aparece edição ainda não processada.
+on:
+  schedule:
+    - cron: "0 14 * * 2"      # terça-feira, 11:00 em Brasília
+  workflow_dispatch:
+    inputs:
+      sondar:
+        description: "Só investigar a fonte e relatar (não grava nada)"
+        type: boolean
+        default: false
+      forcar:
+        description: "Reprocessar mesmo sem edição nova"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vigiar-clp
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sondar a fonte
+        if: inputs.sondar
+        timeout-minutes: 10
+        run: python scripts/monitor_clp.py --sondar
+
+      - name: Tem edição nova?
+        id: checar
+        if: ${{ !inputs.sondar }}
+        timeout-minutes: 6
+        run: python scripts/monitor_clp.py --so-checar
+
+      - name: Baixar os resultados e o glossário
+        if: ${{ !inputs.sondar && (steps.checar.outputs.novidade == 'true' || inputs.forcar) }}
+        timeout-minutes: 15
+        run: python scripts/monitor_clp.py ${{ inputs.forcar && '--forcar' || '' }}
+
+      # Nada entra no painel sozinho: abre um Pull Request com a fonte nova para
+      # você conferir antes de aceitar. Quando você aceita, o clp.yml reage à
+      # mudança em fonte/clp/ e reconstrói dados/clp/.
+      - name: Abrir Pull Request
+        if: ${{ !inputs.sondar && (steps.checar.outputs.novidade == 'true' || inputs.forcar) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EDICAO: ${{ steps.checar.outputs.edicao }}
+          ANO: ${{ steps.checar.outputs.ano }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonte/clp
+          if git diff --staged --quiet; then
+            echo "Edição nova anunciada, mas os arquivos não mudaram. Nada a fazer."
+            exit 0
+          fi
+          ramo="clp/$ANO"
+          git checkout -b "$ramo"
+          git commit -m "CLP ${EDICAO}ª edição ($ANO): resultados e glossário"
+          # O ramo desta edição pode ter sobrado de um Pull Request já aceito.
+          # Reaproveitá-lo com --force faz o push carregar tudo o que entrou no
+          # main desde então — inclusive mudanças em .github/workflows — e o
+          # GITHUB_TOKEN não tem permissão para mexer em workflow: o push é
+          # recusado com "refusing to allow a GitHub App to create or update
+          # workflow". Já aconteceu no vigia do SINISA. Então: se há Pull Request
+          # aberto para este ramo, respeita-se o ramo (e as suas conversas) e
+          # força-se por cima; se não há, o ramo velho é apagado e recriado
+          # limpo a partir do main.
+          if [ -n "$(gh pr list --head "$ramo" --state open --json number --jq '.[0].number')" ]; then
+            git push --force origin "$ramo"
+          else
+            git push origin --delete "$ramo" 2>/dev/null || true
+            git push origin "$ramo"
+          fi
+          python scripts/monitor_clp.py --resumo > /tmp/corpo.md
+          gh pr create --base main --head "$ramo" \
+            --title "CLP ${EDICAO}ª edição ($ANO): Ranking de Competitividade" \
+            --body-file /tmp/corpo.md \
+            || gh pr edit "$ramo" --body-file /tmp/corpo.md
