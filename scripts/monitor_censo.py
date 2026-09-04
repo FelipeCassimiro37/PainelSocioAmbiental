@@ -45,7 +45,7 @@ falta — o endereço vem dentro do próprio certificado. O Python não faz isso
 recusava a conexão. `contexto_tls()` faz essa busca à mão. A verificação
 continua inteira: só o elo que o servidor esqueceu é suprido.
 """
-import argparse, io, json, os, re, ssl, sys, tempfile, unicodedata, zipfile
+import argparse, io, json, os, re, socket, ssl, sys, tempfile, unicodedata, zipfile
 from datetime import datetime, timezone
 
 import urllib.parse, urllib.request
@@ -223,6 +223,39 @@ def _intermediarios(host, limite=4, diagnostico=None):
             break
         der = novo_der
     return achados
+
+
+def so_ipv4():
+    """
+    Faz o Python resolver só endereços IPv4, com volta ao normal se não houver.
+
+    O runner do GitHub Actions não tem rota IPv6, mas o resolvedor devolve
+    também os endereços AAAA de www.gov.br. Quando o Python escolhe um deles, a
+    conexão morre na hora com "Network is unreachable" (errno 101) — o que NÃO é
+    o INEP fora do ar, é um caminho que não existe a partir dali. Como o
+    resultado depende de qual endereço o DNS devolve primeiro, e a ordem varia,
+    o vigia rodava num dia e falhava no outro sem nada ter mudado nem aqui nem
+    lá. Foi o que aconteceu entre 3 e 4 de setembro de 2026.
+
+    A volta ao comportamento normal importa: um host que só tenha AAAA
+    levantaria `gaierror` em vez de simplesmente falhar ao conectar, e o erro
+    apontaria para o lugar errado.
+    """
+    original = socket.getaddrinfo
+
+    def apenas_v4(host, port, family=0, tipo=0, proto=0, flags=0):
+        try:
+            achados = original(host, port, socket.AF_INET, tipo, proto, flags)
+            if achados:
+                return achados
+        except socket.gaierror:
+            pass
+        return original(host, port, family, tipo, proto, flags)
+
+    socket.getaddrinfo = apenas_v4
+
+
+so_ipv4()
 
 
 def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2):
