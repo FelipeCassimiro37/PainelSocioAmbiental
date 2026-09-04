@@ -43,5 +43,68 @@
     "somavel": "0",
     "ano": "2024",
     "fonte": "SINISA — Ministério das Cidades"
+  },
+  "agua_cob": {
+    "nome": "Cobertura de água",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "perdas": {
+    "nome": "Índice de perdas na distribuição",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "consumo": {
+    "nome": "Consumo médio per capita",
+    "tema": "saneamento",
+    "unidade": "l/hab/dia",
+    "formato": "dec1",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "emp_agua": {
+    "nome": "Prestador — água",
+    "tema": "saneamento",
+    "unidade": "",
+    "formato": "texto",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "esgoto_cob": {
+    "nome": "Cobertura de esgoto",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "esgoto_trat": {
+    "nome": "Esgoto tratado",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
+  },
+  "emp_esgoto": {
+    "nome": "Prestador — esgoto",
+    "tema": "saneamento",
+    "unidade": "",
+    "formato": "texto",
+    "somavel": "0",
+    "ano": "2024",
+    "fonte": "SINISA — Ministério das Cidades"
   }
 }

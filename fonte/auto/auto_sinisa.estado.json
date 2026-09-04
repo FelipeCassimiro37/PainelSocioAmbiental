@@ -1,36 +1,178 @@
 {
   "edicao": 2025,
   "referencia": 2024,
-  "origem": "https://www.gov.br/cidades/pt-br/acesso-a-informacao/acoes-e-programas/saneamento/sinisa/resultados-sinisa/SINISA_RESIDUOS_planilhas_2024.zip",
-  "verificadoEm": "2026-09-03 16:40 UTC",
+  "origens": {
+    "residuos": "https://www.gov.br/cidades/pt-br/acesso-a-informacao/acoes-e-programas/saneamento/sinisa/resultados-sinisa/SINISA_RESIDUOS_planilhas_2024.zip",
+    "agua": "https://www.gov.br/cidades/pt-br/acesso-a-informacao/acoes-e-programas/saneamento/sinisa/resultados-sinisa/SINISA_Resultados_Ref2024.zip",
+    "esgoto": "https://www.gov.br/cidades/pt-br/acesso-a-informacao/acoes-e-programas/saneamento/sinisa/resultados-sinisa/SINISA_ESGOTO_Planilhas_2024.zip"
+  },
+  "verificadoEm": "2026-09-03 18:12 UTC",
   "totais": {
-    "municipios": 4854,
-    "respondentes": 4854,
-    "sem_resposta": 716,
+    "residuos": {
+      "municipios": 4854,
+      "sem_resposta": 716,
+      "res_cob_total": {
+        "com_dado": 4854,
+        "mediana": 89.08,
+        "zeros": 0,
+        "maximo": 100.0
+      },
+      "res_cob_rural": {
+        "com_dado": 4818,
+        "mediana": 47.91,
+        "zeros": 1667,
+        "maximo": 100.0
+      },
+      "res_seletiva": {
+        "com_dado": 4854,
+        "mediana": 0.0,
+        "zeros": 3439,
+        "maximo": 100.0
+      },
+      "res_disp_inad": {
+        "com_dado": 4854,
+        "mediana": 0.0,
+        "zeros": 3057,
+        "maximo": 100.0
+      },
+      "res_massa_pc": {
+        "com_dado": 4854,
+        "mediana": 0.7,
+        "zeros": 0,
+        "maximo": 12.43
+      }
+    },
+    "agua": {
+      "municipios": 5144,
+      "sem_resposta": 0,
+      "agua_cob": {
+        "com_dado": 5118,
+        "mediana": 73.2,
+        "zeros": 33,
+        "maximo": 100.0
+      },
+      "perdas": {
+        "com_dado": 5110,
+        "mediana": 29.15,
+        "zeros": 4,
+        "maximo": 100.0
+      },
+      "consumo": {
+        "com_dado": 5116,
+        "mediana": 155.07,
+        "zeros": 0,
+        "maximo": 33994.52
+      },
+      "emp_agua": {
+        "com_dado": 5144,
+        "distintos": 1082
+      }
+    },
+    "esgoto": {
+      "municipios": 2749,
+      "sem_resposta": 0,
+      "esgoto_cob": {
+        "com_dado": 2728,
+        "mediana": 59.88,
+        "zeros": 5,
+        "maximo": 100.0
+      },
+      "esgoto_trat": {
+        "com_dado": 1584,
+        "mediana": 47.17,
+        "zeros": 125,
+        "maximo": 100.0
+      },
+      "emp_esgoto": {
+        "com_dado": 2749,
+        "distintos": 1077
+      }
+    }
+  },
+  "comparacao": {
     "res_cob_total": {
-      "com_dado": 4854,
-      "mediana": 89.08,
-      "zeros": 0
+      "igual": 4854,
+      "muda": 0,
+      "entra": 0,
+      "zerado": 0,
+      "perde": 0
     },
     "res_cob_rural": {
-      "com_dado": 4818,
-      "mediana": 47.91,
-      "zeros": 1667
+      "igual": 4818,
+      "muda": 0,
+      "entra": 0,
+      "zerado": 0,
+      "perde": 0
     },
     "res_seletiva": {
-      "com_dado": 4854,
-      "mediana": 0.0,
-      "zeros": 3439
+      "igual": 4854,
+      "muda": 0,
+      "entra": 0,
+      "zerado": 0,
+      "perde": 0
     },
     "res_disp_inad": {
-      "com_dado": 4854,
-      "mediana": 0.0,
-      "zeros": 3057
+      "igual": 4854,
+      "muda": 0,
+      "entra": 0,
+      "zerado": 0,
+      "perde": 0
     },
     "res_massa_pc": {
-      "com_dado": 4854,
-      "mediana": 0.7,
-      "zeros": 0
+      "igual": 4854,
+      "muda": 0,
+      "entra": 0,
+      "zerado": 0,
+      "perde": 0
+    },
+    "agua_cob": {
+      "igual": 5117,
+      "muda": 0,
+      "entra": 1,
+      "zerado": 452,
+      "perde": 0
+    },
+    "perdas": {
+      "igual": 5109,
+      "muda": 0,
+      "entra": 1,
+      "zerado": 460,
+      "perde": 0
+    },
+    "consumo": {
+      "igual": 4773,
+      "muda": 342,
+      "entra": 1,
+      "zerado": 454,
+      "perde": 0
+    },
+    "emp_agua": {
+      "igual": 5080,
+      "muda": 2,
+      "entra": 62,
+      "zerado": 0,
+      "perde": 0
+    },
+    "esgoto_cob": {
+      "igual": 2728,
+      "muda": 0,
+      "entra": 0,
+      "zerado": 2842,
+      "perde": 0
+    },
+    "esgoto_trat": {
+      "igual": 1584,
+      "muda": 0,
+      "entra": 0,
+      "zerado": 3986,
+      "perde": 0
+    },
+    "emp_esgoto": {
+      "igual": 2709,
+      "muda": 11,
+      "entra": 29,
+      "zerado": 0,
+      "perde": 0
     }
   }
 }
