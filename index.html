@@ -601,11 +601,18 @@ summary.tema-cab .qt{margin-left:auto}
 /* Gráfico de um bloco. Só aparece onde ajuda: ver "Educação Infantil" com dois
    itens em barras não acrescenta nada a dois números lado a lado, e o critério
    está em valeGrafico(). */
-.edu-viz{display:flex;gap:0;margin:0 0 2px;border-bottom:1px solid var(--line)}
-.edu-viz button{background:none;border:0;padding:7px 13px;font-size:12.5px;cursor:pointer;
-  color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
-.edu-viz button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--navy);font-weight:600}
-.edu-viz .baixar{margin-left:auto;color:var(--muted);font-size:12px;
+/* A alternância dentro do bloco. A primeira versão era texto cinza de 12px em
+   cima de uma tabela cheia de números, e sumia: quem procurava o gráfico
+   passava direto por ela. Agora é um par de botões com contorno, na cor do
+   painel — parece o controle que é. */
+.edu-viz{display:flex;gap:0;margin:2px 0 12px;align-items:center}
+.edu-viz button{background:var(--card);border:1px solid var(--line);padding:6px 15px;
+  font-size:12.5px;cursor:pointer;color:var(--ink-2)}
+.edu-viz button:first-of-type{border-radius:var(--r) 0 0 var(--r)}
+.edu-viz button:nth-of-type(2){border-radius:0 var(--r) var(--r) 0;border-left:0}
+.edu-viz button[aria-pressed=true]{background:var(--navy);color:#fff;font-weight:600;
+  border-color:var(--navy)}
+.edu-viz .baixar{margin-left:auto;color:var(--navy);font-size:12.5px;font-weight:600;
   display:inline-flex;align-items:center;gap:5px}
 .edu-viz .baixar:hover{color:var(--navy)}
 .edu-viz .baixar svg{width:13px;height:13px;fill:none;stroke:currentColor;
@@ -617,6 +624,19 @@ summary.tema-cab .qt{margin-left:auto}
 .edu-graf .pct{font-size:11px;fill:var(--muted);font-family:var(--f-num)}
 .edu-graf .eixo{stroke:var(--line);stroke-width:1}
 .edu-graf .leg{font-size:11.5px;fill:var(--muted)}
+/* cartas do modo "Gráficos" */
+.graf-carta{padding:0 0 6px}
+.graf-cab{display:flex;align-items:baseline;gap:12px;padding:12px 16px 0;flex-wrap:wrap}
+.graf-cab h3{margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+.graf-cab .tt{font-family:var(--f-num);font-size:15.5px;font-weight:600}
+.graf-cab .tt small{font-family:var(--f-ui);font-size:11.5px;font-weight:400;color:var(--muted)}
+.graf-cab .baixar{margin-left:auto;color:var(--navy);font-size:12.5px;font-weight:600;
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.graf-cab .baixar:hover{text-decoration:underline}
+.graf-cab .baixar svg{width:13px;height:13px;fill:none;stroke:currentColor;
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.edu-fora{margin:14px 2px 0;font-size:12.5px;line-height:1.5;color:var(--muted)}
+.edu-fora b{color:var(--ink-2)}
 .edu-tab{width:100%;border-collapse:collapse;font-size:14px}
 .edu-tab th,.edu-tab td{padding:7px 15px;text-align:right;white-space:nowrap;
   border-bottom:1px solid var(--line-2);background:none;position:static;min-width:0;max-width:none}
@@ -2949,7 +2969,41 @@ async function montaEduDetalhe(){
 
   // Agrupar não é enfeite: é o que diz, sem precisar de aviso, que somar um
   // bloco de "etapa" com um de "transversal" conta o mesmo aluno duas vezes.
-  const corpo = eduModo==='comparar'
+  // Modo "Gráficos": só o que vale ser visto em barras, cada um numa carta, com
+  // o botão de baixar à mostra. Nasceu de um problema real de descoberta — a
+  // alternância Tabela/Gráfico existia dentro de cada bloco, mas em cinza e
+  // miúda em cima de uma tabela densa, e quem procurava gráfico passava direto.
+  const corpoGraficos = ()=>{
+    const bons=blocos.filter(b=>valeGrafico(b,redes));
+    const fora=blocos.filter(b=>!valeGrafico(b,redes));
+    if(!bons.length)
+      return `<div class="edu-nada">Nenhum bloco deste recorte tem repartições
+        suficientes para um gráfico ajudar.</div>`;
+    let n=0;
+    const cartas=bons.map(b=>{
+      const id='gv'+(++n);
+      return `<div class="edu-bloco graf-carta">
+        <div class="graf-cab">
+          <h3>${b.nome}</h3>
+          <span class="tt">${b.total!==null?intBR(somaRedes(redes,b.total)):''}
+            ${b.total!==null?'<small>matrículas</small>':''}</span>
+          <a class="baixar" href="#" data-baixa="${id}"
+             title="Baixar este gráfico como imagem PNG">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7"/><path d="M2.5 12.5h11"/></svg>
+            Baixar imagem</a>
+        </div>
+        ${graficoBloco(b,redes,id)}
+      </div>`;
+    }).join('');
+    const nomes=fora.map(b=>b.nome).join(', ');
+    return cartas + (fora.length ? `<p class="edu-fora">Sem gráfico:
+      <b>${nomes}</b>. Nesses blocos as repartições são duas ou menos — dois
+      números lado a lado a tabela mostra melhor, e a barra não acrescentaria
+      nada. Eles continuam completos nas outras duas visões.</p>` : '');
+  };
+
+  const corpo = eduModo==='graficos' ? corpoGraficos()
+    : eduModo==='comparar'
     ? (EDU.grupos||[{id:null,nome:'',nota:''}]).map(g=>{
         const doGrupo=blocos.filter(b=>b.grupo===g.id);
         if(!doGrupo.length) return '';
@@ -2983,9 +3037,10 @@ async function montaEduDetalhe(){
 
     <div class="edu-redes">${kpis}</div>
 
-    <div class="edu-modo" role="group" aria-label="Como organizar a tabela">
+    <div class="edu-modo" role="group" aria-label="Como ver os dados">
       <button data-modo="comparar" aria-pressed="${eduModo==='comparar'}">Comparar redes</button>
       <button data-modo="rede" aria-pressed="${eduModo==='rede'}">Agrupar por rede</button>
+      <button data-modo="graficos" aria-pressed="${eduModo==='graficos'}">Gráficos</button>
     </div>
 
     ${corpo}
@@ -3000,6 +3055,14 @@ async function montaEduDetalhe(){
     b.onclick=()=>{ eduModo=b.dataset.modo; montaEduDetalhe(); };
   });
   ligaVizBlocos(alvo, ctx.nome);
+  // as cartas do modo "Gráficos" não têm alternância, só o botão de baixar
+  alvo.querySelectorAll('.graf-carta [data-baixa]').forEach(a=>{
+    a.onclick=ev=>{
+      ev.preventDefault();
+      const h=a.closest('.graf-carta').querySelector('h3');
+      baixaGrafico(a.dataset.baixa, (h?h.textContent:'grafico')+' '+ctx.nome);
+    };
+  });
 }
 
 /* Alternância entre a tabela e o gráfico, dentro de cada bloco. A tabela
