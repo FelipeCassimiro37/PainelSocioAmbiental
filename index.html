@@ -154,6 +154,13 @@ details.grp{display:block;border-top:1px solid var(--line-2)}
 .row .src{font-size:11.5px;color:#98A0A4;margin-top:5px;font-style:italic;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row .pos{font-family:var(--f-num);font-size:11px;color:var(--muted);margin-top:4px}
+/* Ressalva de um valor específico: o número é o que a fonte publicou, mas há
+   algo sobre ele que quem lê precisa saber. Só aparece onde existe nota. */
+.ressalva{font-size:11.5px;line-height:1.45;color:#7A5B12;background:#FDF9F0;
+  border:1px solid #EBDCC0;border-radius:6px;padding:6px 8px;margin-top:7px;
+  white-space:normal;text-align:left}
+.ressalva b{color:#4A3A16}
+.card .ressalva{margin-top:8px;font-size:11px}
 
 .rank{padding:14px 16px 20px}
 .rank ol{margin:0;padding:0;list-style:none;counter-reset:r}
@@ -1289,6 +1296,27 @@ async function garanteUF(cod){
 /* ================= ficha e ranking ================= */
 function agregado(chave){ return META.agregados[chave]||{}; }
 function ehOficial(chave,id){ return (META.oficiais[chave]||[]).indexOf(id)>=0; }
+/* Ressalva escrita pelo vigia da fonte para UM município e UM indicador.
+   Recebe o índice GLOBAL do município (o mesmo de META.municipios), e não a
+   posição dentro do bloco da UF — são coisas diferentes e trocá-las poria a
+   nota no município errado. Vale só no nível municipal: no estado e no país o
+   valor exibido é outra conta, e a ressalva não se aplica a ela. */
+function ressalva(id,iGlobal){
+  if(st.nivel!=='mun'||iGlobal===undefined||iGlobal===null||iGlobal<0) return '';
+  const n=(META.notas||{})[id];
+  return n ? (n[META.municipios[iGlobal]]||'') : '';
+}
+/* O texto vem de fonte/auto/, escrito pelo vigia — não é digitado por ninguém
+   nem vem da rede. Ainda assim escapa-se antes de inserir como HTML: é uma
+   linha e fecha a porta para sempre. */
+function escapaTexto(s){
+  return String(s??'').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function blocoRessalva(id,iGlobal){
+  const r=ressalva(id,iGlobal);
+  return r?`<div class="ressalva">${escapaTexto(r)}</div>`:'';
+}
 
 function linhaFicha(id,bloco,pl,chave,tm,curto){
   const m=DIC[id], txt=m.formato==='texto';
@@ -1322,7 +1350,8 @@ function linhaFicha(id,bloco,pl,chave,tm,curto){
     '</span></div>'+
     (pct!==null?'<div class="bar"><i style="width:'+Math.max(2,pct*100)+'%;background:'+tm.ramp[4]+'"></i></div>':'')+
     (pos!==null?'<div class="pos">'+pos+'º de '+tot+' '+(st.nivel==='mun'?'no estado':'entre as UFs')+'</div>':'')+
-    '<div class="src">'+fonteAno(m)+origem+'</div>';
+    '<div class="src">'+fonteAno(m)+origem+'</div>'+
+    blocoRessalva(id,st.mun);
   return row;
 }
 function ficha(){
@@ -2197,6 +2226,7 @@ function cartaoIndicador(id,i,tm){
         <div class="pos">${P.pos}º de ${P.tot} no estado</div>`:''}
     ${ref}
     <div class="fonte" title="${fonteAno(m)}">${fonteAno(m)}</div>
+    ${blocoRessalva(id,i)}
   </div>`;
 }
 function kpi(id,i,rot){
