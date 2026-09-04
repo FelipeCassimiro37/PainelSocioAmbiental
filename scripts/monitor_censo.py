@@ -531,10 +531,26 @@ def sondar():
 
     with z.open(alvo) as f:
         cabecalho = f.readline().decode('utf-8', 'replace').strip()
-    cols = re.split(r'[;,]', cabecalho)
-    qt = [c for c in cols if c.upper().startswith('QT_MAT')]
-    print('  primeira linha lida: %d colunas, %d delas QT_MAT_*' % (len(cols), len(qt)))
+    cols = [c.strip() for c in re.split(r'[;,]', cabecalho)]
+    qt = [c for c in cols if c.upper().startswith('QT_')]
+    print('  primeira linha lida: %d colunas, %d delas QT_*' % (len(cols), len(qt)))
     print('  exemplos: %s' % ', '.join(cols[:6]))
+
+    # O que a fonte oferece e o painel ainda não usa. Sem isto, decidir que
+    # recorte dá para acrescentar vira adivinhação sobre nome de coluna — e o
+    # arquivo do INEP tem 263 colunas, das quais o painel guarda 49.
+    ident, mat = colunas_do_painel()
+    usadas = {c.upper() for c in ident + mat}
+    sobrando = [c for c in qt if c.upper() not in usadas]
+    print('  o painel usa %d dessas; sobram %d contagens não aproveitadas:'
+          % (len(qt) - len(sobrando), len(sobrando)))
+    grupos = {}
+    for c in sobrando:
+        partes = c.upper().split('_')
+        grupos.setdefault('_'.join(partes[:3]) if len(partes) > 3 else c.upper(),
+                          []).append(c)
+    for chave in sorted(grupos):
+        print('    %-22s %s' % (chave, ', '.join(sorted(grupos[chave]))))
     print('  total baixado na sondagem: %.2f MB' % (remoto.baixado / 1e6))
 
 
