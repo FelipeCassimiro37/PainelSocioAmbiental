@@ -14,6 +14,8 @@
   --ink:#10161C; --ink-2:#3A454C; --muted:#6E787E;
   --paper:#F2F4F2; --card:#FFFFFF; --line:#DCE1DF; --line-2:#EDF0EE;
   --navy:#17405F; --navy-d:#0E2C43; --sel:#C4452B;
+  /* traço do Brasil desenhado atrás da busca, na capa */
+  --linha-capa:#AEBEC7;
   --r:3px;
   --f-ui:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
   --f-num:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
@@ -154,6 +156,77 @@ details.grp{display:block;border-top:1px solid var(--line-2)}
 .row .src{font-size:11.5px;color:#98A0A4;margin-top:5px;font-style:italic;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row .pos{font-family:var(--f-num);font-size:11px;color:var(--muted);margin-top:4px}
+/* Ressalva de um valor específico: o número é o que a fonte publicou, mas há
+   algo sobre ele que quem lê precisa saber. Só aparece onde existe nota. */
+.ressalva{font-size:11.5px;line-height:1.45;color:#7A5B12;background:#FDF9F0;
+  border:1px solid #EBDCC0;border-radius:6px;padding:6px 8px;margin-top:7px;
+  white-space:normal;text-align:left}
+.ressalva b{color:#4A3A16}
+.card .ressalva{margin-top:8px;font-size:11px}
+
+/* ===================== capa ===================== */
+/* A primeira coisa que se vê. Antes era o mapa, e o mapa é uma resposta a uma
+   pergunta que quem chega ainda não fez — ele mostra um indicador qualquer,
+   escolhido pelo programa, no país inteiro. A capa faz a pergunta: qual
+   município você quer? O mapa continua a um clique, no menu. */
+.capa{display:none;position:relative;flex:1;min-height:0;
+  overflow:hidden;background:var(--paper)}
+.capa.on{display:flex;align-items:center;justify-content:center}
+/* O desenho do Brasil ao fundo é o contorno dos 5.571 municípios, o mesmo
+   arquivo que o mapa usa — nenhuma imagem externa, nenhuma licença, nenhum byte
+   a mais para baixar. Fica atrás de tudo e não recebe clique. */
+.capa-arte{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.capa-veu{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 88% 70% at 50% 46%,
+    color-mix(in srgb, var(--paper) 62%, transparent) 0%,
+    color-mix(in srgb, var(--paper) 34%, transparent) 48%,
+    transparent 82%)}
+.capa-meio{position:relative;z-index:2;width:min(680px,calc(100% - 48px));
+  text-align:center;padding:40px 0 64px}
+.capa-meio h2{margin:0 0 8px;font-size:40px;font-weight:700;letter-spacing:-.03em;
+  color:var(--ink);font-family:var(--f-ui)}
+.capa-meio .lead{margin:0 0 30px;font-size:16px;line-height:1.5;color:var(--muted)}
+.capa-ir{position:relative;text-align:left}
+.capa-ir>svg{position:absolute;left:19px;top:50%;transform:translateY(-50%);
+  width:19px;height:19px;fill:none;stroke:var(--muted);stroke-width:1.7;
+  stroke-linecap:round;pointer-events:none}
+.capa-ir input{width:100%;box-sizing:border-box;padding:17px 46px 17px 50px;
+  font-family:var(--f-ui);font-size:16.5px;color:var(--ink);
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 1px 2px rgba(16,24,32,.04),0 8px 26px rgba(16,24,32,.07);
+  outline:none;transition:border-color .15s,box-shadow .15s}
+.capa-ir input:focus{border-color:var(--navy);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--navy) 14%, transparent),
+             0 8px 26px rgba(16,24,32,.09)}
+.capa-ir input::placeholder{color:var(--muted)}
+.capa-ir button.limpar{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:0;font-size:20px;line-height:1;color:var(--muted);cursor:pointer;
+  padding:4px 8px;border-radius:5px}
+.capa-ir button.limpar:hover{background:var(--line-2);color:var(--ink)}
+.capa-ir ul{position:absolute;left:0;right:0;top:calc(100% + 7px);z-index:30;
+  margin:0;padding:5px;list-style:none;background:var(--card);
+  border:1px solid var(--line);border-radius:9px;
+  box-shadow:0 12px 34px rgba(16,24,32,.14);max-height:340px;overflow:auto}
+.capa-ir li{display:flex;align-items:baseline;gap:10px;padding:9px 12px;
+  border-radius:6px;cursor:pointer;font-size:14.5px}
+.capa-ir li[aria-selected=true]{background:var(--line-2)}
+.capa-ir li .nm{flex:1;color:var(--ink)}
+.capa-ir li .nm b{font-weight:700}
+.capa-ir li .tp{font-size:11.5px;color:var(--muted);font-family:var(--f-num)}
+.capa-ir li.vazio{color:var(--muted);cursor:default;justify-content:center}
+.capa-dica{margin:14px 0 0;font-size:12.5px;color:var(--muted)}
+.capa-dica kbd{font-family:var(--f-num);font-size:11px;background:var(--line-2);
+  border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.capa-nums{margin:36px auto 0;display:flex;gap:34px;justify-content:center;flex-wrap:wrap}
+.capa-nums div{text-align:center}
+.capa-nums .n{font-family:var(--f-num);font-size:24px;font-weight:600;
+  color:var(--ink);letter-spacing:-.02em;display:block}
+.capa-nums .r{font-size:12px;color:var(--muted);margin-top:2px}
+@media (max-width:560px){
+  .capa-meio h2{font-size:30px}
+  .capa-meio .lead{font-size:14.5px}
+  .capa-nums{gap:22px}
+}
 
 .rank{padding:14px 16px 20px}
 .rank ol{margin:0;padding:0;list-style:none;counter-reset:r}
@@ -525,6 +598,25 @@ summary.tema-cab .qt{margin-left:auto}
 .edu-bloco>summary h3{margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
 .edu-bloco>summary .tt{margin-left:auto;font-family:var(--f-num);font-size:15.5px;font-weight:600}
 .edu-bloco>summary .tt small{font-family:var(--f-ui);font-size:11.5px;font-weight:400;color:var(--muted)}
+/* Gráfico de um bloco. Só aparece onde ajuda: ver "Educação Infantil" com dois
+   itens em barras não acrescenta nada a dois números lado a lado, e o critério
+   está em valeGrafico(). */
+.edu-viz{display:flex;gap:0;margin:0 0 2px;border-bottom:1px solid var(--line)}
+.edu-viz button{background:none;border:0;padding:7px 13px;font-size:12.5px;cursor:pointer;
+  color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.edu-viz button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--navy);font-weight:600}
+.edu-viz .baixar{margin-left:auto;color:var(--muted);font-size:12px;
+  display:inline-flex;align-items:center;gap:5px}
+.edu-viz .baixar:hover{color:var(--navy)}
+.edu-viz .baixar svg{width:13px;height:13px;fill:none;stroke:currentColor;
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.edu-graf{padding:14px 4px 8px}
+.edu-graf svg{display:block;width:100%;height:auto;font-family:var(--f-ui)}
+.edu-graf .rot{font-size:12px;fill:var(--ink-2)}
+.edu-graf .val{font-size:12px;fill:var(--ink);font-family:var(--f-num)}
+.edu-graf .pct{font-size:11px;fill:var(--muted);font-family:var(--f-num)}
+.edu-graf .eixo{stroke:var(--line);stroke-width:1}
+.edu-graf .leg{font-size:11.5px;fill:var(--muted)}
 .edu-tab{width:100%;border-collapse:collapse;font-size:14px}
 .edu-tab th,.edu-tab td{padding:7px 15px;text-align:right;white-space:nowrap;
   border-bottom:1px solid var(--line-2);background:none;position:static;min-width:0;max-width:none}
@@ -725,7 +817,8 @@ summary.tema-cab .qt{margin-left:auto}
     <div class="sub" id="subtitulo">—</div>
   </div>
   <nav class="nav">
-    <button data-v="mapa" aria-pressed="true">Mapa</button>
+    <button data-v="inicio" aria-pressed="true">Início</button>
+    <button data-v="mapa" aria-pressed="false">Mapa</button>
     <button data-v="municipio" aria-pressed="false" hidden>Município</button>
     <button data-v="comparar" aria-pressed="false">Comparar</button>
     <button data-v="sobre" aria-pressed="false">Sobre</button>
@@ -747,6 +840,32 @@ summary.tema-cab .qt{margin-left:auto}
     <span class="badge" id="cobertura">—</span>
   </div>
 </header>
+
+<section class="capa" id="vistaInicio">
+  <canvas class="capa-arte" id="capaArte" aria-hidden="true"></canvas>
+  <div class="capa-veu" aria-hidden="true"></div>
+  <div class="capa-meio">
+    <h2>Painel Socioambiental</h2>
+    <p class="lead">Indicadores oficiais dos municípios brasileiros, reunidos e
+      comparáveis. Comece pelo lugar que você quer conhecer.</p>
+    <div class="capa-ir" role="combobox" aria-expanded="false" aria-haspopup="listbox"
+         aria-owns="capaLista">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="M10.4 10.4 14 14"/></svg>
+      <input id="capaBusca" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Buscar um município ou estado…"
+             aria-label="Buscar um município ou estado"
+             aria-autocomplete="list" aria-controls="capaLista">
+      <button class="limpar" id="capaLimpar" type="button" aria-label="Limpar" hidden>&times;</button>
+      <ul id="capaLista" role="listbox" hidden></ul>
+    </div>
+    <p class="capa-dica">Ou aperte <kbd>/</kbd> em qualquer tela para buscar.</p>
+    <div class="capa-nums">
+      <div><span class="n" id="capaMun">—</span><div class="r">municípios</div></div>
+      <div><span class="n" id="capaInd">—</span><div class="r">indicadores</div></div>
+      <div><span class="n" id="capaFontes">—</span><div class="r">fontes oficiais</div></div>
+    </div>
+  </div>
+</section>
 
 <div class="shell" id="vistaMapa">
   <aside class="rail">
@@ -965,7 +1084,7 @@ const recorteAtual = {};          // 'tema|grupo' -> recorte escolhido
 let malhaMun, feats, meshUF, geoUF;
 const cacheInd = new Map();     // id -> vetor nacional
 const cacheUF  = new Map();     // sigla -> {ind:[...]}
-const st = { nivel:'pais', uf:null, mun:null, ind:null, vista:'mapa',
+const st = { nivel:'pais', uf:null, mun:null, ind:null, vista:'inicio',
              setor:null, edu:null, eduEsc:null };
 let munsByUF = new Map(), idxByCode = new Map();
 
@@ -1289,6 +1408,27 @@ async function garanteUF(cod){
 /* ================= ficha e ranking ================= */
 function agregado(chave){ return META.agregados[chave]||{}; }
 function ehOficial(chave,id){ return (META.oficiais[chave]||[]).indexOf(id)>=0; }
+/* Ressalva escrita pelo vigia da fonte para UM município e UM indicador.
+   Recebe o índice GLOBAL do município (o mesmo de META.municipios), e não a
+   posição dentro do bloco da UF — são coisas diferentes e trocá-las poria a
+   nota no município errado. Vale só no nível municipal: no estado e no país o
+   valor exibido é outra conta, e a ressalva não se aplica a ela. */
+function ressalva(id,iGlobal){
+  if(st.nivel!=='mun'||iGlobal===undefined||iGlobal===null||iGlobal<0) return '';
+  const n=(META.notas||{})[id];
+  return n ? (n[META.municipios[iGlobal]]||'') : '';
+}
+/* O texto vem de fonte/auto/, escrito pelo vigia — não é digitado por ninguém
+   nem vem da rede. Ainda assim escapa-se antes de inserir como HTML: é uma
+   linha e fecha a porta para sempre. */
+function escapaTexto(s){
+  return String(s??'').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function blocoRessalva(id,iGlobal){
+  const r=ressalva(id,iGlobal);
+  return r?`<div class="ressalva">${escapaTexto(r)}</div>`:'';
+}
 
 function linhaFicha(id,bloco,pl,chave,tm,curto){
   const m=DIC[id], txt=m.formato==='texto';
@@ -1322,7 +1462,8 @@ function linhaFicha(id,bloco,pl,chave,tm,curto){
     '</span></div>'+
     (pct!==null?'<div class="bar"><i style="width:'+Math.max(2,pct*100)+'%;background:'+tm.ramp[4]+'"></i></div>':'')+
     (pos!==null?'<div class="pos">'+pos+'º de '+tot+' '+(st.nivel==='mun'?'no estado':'entre as UFs')+'</div>':'')+
-    '<div class="src">'+fonteAno(m)+origem+'</div>';
+    '<div class="src">'+fonteAno(m)+origem+'</div>'+
+    blocoRessalva(id,st.mun);
   return row;
 }
 function ficha(){
@@ -1889,7 +2030,7 @@ function lerHash(){
   if(st.nivel==='pais') st.uf=null;
   // sem "else" aqui, um link de volta ao mapa não tirava a vista anterior da
   // tela: o estado mudava por baixo e a página continuava a mesma
-  st.vista = (v==='comparar'||v==='sobre'||v==='municipio') ? v : 'mapa';
+  st.vista = (v==='comparar'||v==='sobre'||v==='municipio'||v==='mapa') ? v : 'inicio';
   const se=p.get('set');
   st.setor = (se&&TEMAS[se]) ? se : null;
   const ed=p.get('edu');
@@ -1983,7 +2124,7 @@ async function gerarPDF(){
 /* Busca por nome sobre os 5.571 municípios, as 27 UFs e o Brasil. O índice é
    montado uma vez na abertura, com os nomes já sem acento, para o filtro rodar
    a cada tecla sem travar. */
-let IDX=[], irSel=-1, irRes=[];
+let IDX=[], CAIXAS=[];
 
 const semAcento = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 
@@ -2002,28 +2143,47 @@ function montaIr(){
               tipo:sig, peso:pop[i]||0});
   }
 
-  const cx=$('.ir'), inp=$('#irBusca'), lista=$('#irLista'), limpar=$('#irLimpar');
-  inp.addEventListener('input',()=>{ filtraIr(inp.value); });
-  inp.addEventListener('focus',()=>{ if(inp.value.trim()) filtraIr(inp.value); });
-  inp.addEventListener('keydown',e=>{
-    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
-      e.preventDefault();
-      if(!irRes.length) return;
-      irSel=(irSel+(e.key==='ArrowDown'?1:-1)+irRes.length)%irRes.length;
-      marcaIr();
-    }else if(e.key==='Enter'){
-      if(irRes.length){ e.preventDefault(); vaiPara(irRes[Math.max(irSel,0)]); }
-    }else if(e.key==='Escape'){ fechaIr(); inp.blur(); }
-  });
-  limpar.onclick=()=>{ inp.value=''; limpar.hidden=true; fechaIr(); inp.focus(); };
-  document.addEventListener('click',e=>{ if(!cx.contains(e.target)) fechaIr(); });
-  // atalho: barra abre a busca, como em ferramentas de consulta
+  // Duas caixas usam este mesmo índice: a do topo, que acompanha quem já está
+  // navegando, e a da capa, que é por onde a maioria começa. O estado de cada
+  // uma (o que achou, o que está marcado) vive no objeto dela. Com um estado
+  // só e compartilhado, digitar numa fecharia a lista da outra pela metade.
+  CAIXAS = [
+    ligaIr('.ir', '#irBusca', '#irLista', '#irLimpar'),
+    ligaIr('.capa-ir', '#capaBusca', '#capaLista', '#capaLimpar'),
+  ].filter(Boolean);
+
+  // atalho: barra abre a busca, como em ferramentas de consulta. Abre a da
+  // capa quando ela está na tela, senão a do topo.
   addEventListener('keydown',e=>{
     if(e.key==='/' && document.activeElement.tagName!=='INPUT'
        && document.activeElement.tagName!=='SELECT' && document.activeElement.tagName!=='TEXTAREA'){
-      e.preventDefault(); inp.focus(); inp.select();
+      e.preventDefault();
+      const c = (st.vista==='inicio' && CAIXAS[1]) ? CAIXAS[1] : CAIXAS[0];
+      c.inp.focus(); c.inp.select();
     }
   });
+}
+
+function ligaIr(seletorCaixa, seletorInput, seletorLista, seletorLimpar){
+  const cx=$(seletorCaixa), inp=$(seletorInput),
+        lista=$(seletorLista), limpar=$(seletorLimpar);
+  if(!cx||!inp||!lista) return null;
+  const c={cx,inp,lista,limpar,res:[],sel:-1};
+  inp.addEventListener('input',()=>{ filtraIr(c,inp.value); });
+  inp.addEventListener('focus',()=>{ if(inp.value.trim()) filtraIr(c,inp.value); });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      e.preventDefault();
+      if(!c.res.length) return;
+      c.sel=(c.sel+(e.key==='ArrowDown'?1:-1)+c.res.length)%c.res.length;
+      marcaIr(c);
+    }else if(e.key==='Enter'){
+      if(c.res.length){ e.preventDefault(); vaiPara(c.res[Math.max(c.sel,0)]); }
+    }else if(e.key==='Escape'){ fechaIr(c); inp.blur(); }
+  });
+  if(limpar) limpar.onclick=()=>{ inp.value=''; limpar.hidden=true; fechaIr(c); inp.focus(); };
+  document.addEventListener('click',e=>{ if(!cx.contains(e.target)) fechaIr(c); });
+  return c;
 }
 
 function pontua(item,q){
@@ -2039,11 +2199,11 @@ function pontua(item,q){
   return /(^|\s)/.test(b[p-1]||' ') ? 3 : 2;            // começo de palavra, ou meio
 }
 
-function filtraIr(texto){
+function filtraIr(c,texto){
   const q=semAcento(texto).trim();
-  const lista=$('#irLista');
-  $('#irLimpar').hidden = !texto;
-  if(q.length<2){ fechaIr(); return; }
+  const lista=c.lista;
+  if(c.limpar) c.limpar.hidden = !texto;
+  if(q.length<2){ fechaIr(c); return; }
   const achados=[];
   for(const it of IDX){
     const sc=pontua(it,q);
@@ -2051,46 +2211,47 @@ function filtraIr(texto){
   }
   achados.sort((a,b)=> b.sc-a.sc || b.it.peso-a.it.peso ||
                        a.it.nome.localeCompare(b.it.nome,'pt'));
-  irRes=achados.slice(0,8).map(a=>a.it);
-  irSel=irRes.length?0:-1;
-  if(!irRes.length){
+  c.res=achados.slice(0,8).map(a=>a.it);
+  c.sel=c.res.length?0:-1;
+  if(!c.res.length){
     lista.innerHTML='<li class="vazio">Nenhum lugar com esse nome.</li>';
   }else{
-    lista.innerHTML=irRes.map((it,k)=>{
+    lista.innerHTML=c.res.map((it,k)=>{
       const p=semAcento(it.nome).indexOf(q);
       const nome = p<0 ? it.nome
         : it.nome.slice(0,p)+'<b>'+it.nome.slice(p,p+q.length)+'</b>'+it.nome.slice(p+q.length);
-      return `<li role="option" data-k="${k}" aria-selected="${k===irSel}">`+
+      return `<li role="option" data-k="${k}" aria-selected="${k===c.sel}">`+
              `<span class="nm">${nome}</span><span class="tp">${it.tipo}</span></li>`;
     }).join('');
     lista.querySelectorAll('li').forEach(li=>{
-      li.onmouseenter=()=>{ irSel=+li.dataset.k; marcaIr(); };
-      li.onclick=()=>vaiPara(irRes[+li.dataset.k]);
+      li.onmouseenter=()=>{ c.sel=+li.dataset.k; marcaIr(c); };
+      li.onclick=()=>vaiPara(c.res[+li.dataset.k]);
     });
   }
   lista.hidden=false;
-  $('.ir').setAttribute('aria-expanded','true');
+  c.cx.setAttribute('aria-expanded','true');
 }
-function marcaIr(){
-  const lista=$('#irLista');
-  lista.querySelectorAll('li').forEach(li=>{
-    const on=+li.dataset.k===irSel;
+function marcaIr(c){
+  c.lista.querySelectorAll('li').forEach(li=>{
+    const on=+li.dataset.k===c.sel;
     li.setAttribute('aria-selected',String(on));
     if(on) li.scrollIntoView({block:'nearest'});
   });
 }
-function fechaIr(){
-  $('#irLista').hidden=true; $('#irLista').innerHTML='';
-  $('.ir').setAttribute('aria-expanded','false');
-  irRes=[]; irSel=-1;
+function fechaIr(c){
+  if(!c) return;
+  c.lista.hidden=true; c.lista.innerHTML='';
+  c.cx.setAttribute('aria-expanded','false');
+  c.res=[]; c.sel=-1;
 }
+function fechaTodasIr(){ CAIXAS.forEach(fechaIr); }
 function vaiPara(it){
   if(!it) return;
   if(it.t==='br'){ st.nivel='pais'; st.uf=null; st.mun=null; }
   else if(it.t==='uf'){ st.nivel='uf'; st.uf=it.cod; st.mun=null; }
   else { st.nivel='mun'; st.uf=META.uf[it.i]; st.mun=it.i; }
-  $('#irBusca').value=''; $('#irLimpar').hidden=true; $('#irBusca').blur();
-  fechaIr();
+  CAIXAS.forEach(c=>{ c.inp.value=''; if(c.limpar) c.limpar.hidden=true; c.inp.blur(); });
+  fechaTodasIr();
   const paraFicha = it.t==='mun';
   if(st.vista!=='mapa' && !paraFicha) trocaVista('mapa');
   aplicar(true).then(()=>{ if(paraFicha) trocaVista('municipio'); });
@@ -2197,6 +2358,7 @@ function cartaoIndicador(id,i,tm){
         <div class="pos">${P.pos}º de ${P.tot} no estado</div>`:''}
     ${ref}
     <div class="fonte" title="${fonteAno(m)}">${fonteAno(m)}</div>
+    ${blocoRessalva(id,i)}
   </div>`;
 }
 function kpi(id,i,rot){
@@ -2577,6 +2739,98 @@ function ligaExplicacoes(alvo){
   });
 }
 
+/* ============ gráfico de um bloco ============
+   Quando um gráfico ajuda e quando ele só ocupa espaço. A régua é a mesma que
+   qualquer um usaria de cabeça: com dois números lado a lado — feminino e
+   masculino, creche e pré-escola — a barra não conta nada que a linha da tabela
+   já não conte, e o olho compara dois números sem ajuda. A partir de três
+   fatias, e principalmente nas cinco séries do Fundamental ou nas cinco do
+   Médio, a proporção entre elas deixa de ser óbvia e é aí que a barra paga o
+   espaço que ocupa. */
+function valeGrafico(b,redes){
+  const comValor=b.itens.filter(x=>somaRedes(redes,x.i)>0);
+  return comValor.length>=3;
+}
+
+/* Barras horizontais em SVG escrito à mão. Sem biblioteca: são barras, eixo e
+   rótulos, e trazer um pacote de gráficos para isso somaria peso ao painel
+   inteiro por causa de uma tela. */
+function graficoBloco(b,redes,id){
+  const itens=b.itens.map(x=>({rot:x.n, v:somaRedes(redes,x.i)})).filter(x=>x.v>0);
+  if(!itens.length) return '';
+  const total=itens.reduce((s,x)=>s+x.v,0);
+  const max=Math.max(...itens.map(x=>x.v));
+  // A coluna da direita tem de caber o número E a porcentagem. Com folga curta
+  // demais, a barra mais longa empurra o valor por cima do percentual — foi o
+  // que aconteceu com a 1ª série do Ensino Médio de Fortaleza, '122.570' colado
+  // em '34,4%'. Daí R ser generoso: é espaço reservado, não margem.
+  const L=210, R=168, alt=30, top=10, base=26;
+  const larg=880, faixa=larg-L-R;
+  const h=top+itens.length*alt+base;
+  const cor=(getComputedStyle(document.documentElement)
+              .getPropertyValue('--navy')||'').trim()||'#17405F';
+  let g='';
+  itens.forEach((x,k)=>{
+    const y=top+k*alt, w=Math.max(2,(x.v/max)*faixa);
+    const pct=total?(x.v/total*100):0;
+    g+=`<rect x="${L}" y="${y+5}" width="${w}" height="15" rx="2" fill="${cor}" opacity="${0.42+0.5*(x.v/max)}"></rect>`
+      +`<text class="rot" x="${L-10}" y="${y+16.5}" text-anchor="end">${x.rot}</text>`
+      +`<text class="val" x="${L+w+9}" y="${y+16.5}">${intBR(x.v)}</text>`
+      +`<text class="pct" x="${larg}" y="${y+16.5}" text-anchor="end">${br(f1(pct))}%</text>`;
+  });
+  const yEixo=top+itens.length*alt+2;
+  g+=`<line class="eixo" x1="${L}" y1="${top+2}" x2="${L}" y2="${yEixo}"></line>`
+    +`<text class="leg" x="${L}" y="${yEixo+16}">matrículas · a porcentagem é sobre as ${
+        intBR(total)} deste bloco</text>`;
+  return `<div class="edu-graf" id="${id}">
+    <svg viewBox="0 0 ${larg} ${h}" role="img"
+         aria-label="${b.nome}: ${itens.map(x=>x.rot+' '+intBR(x.v)).join('; ')}">${g}</svg>
+  </div>`;
+}
+
+/* Baixar o gráfico como imagem. O SVG é desenhado num canvas e sai em PNG —
+   tudo no próprio navegador, sem mandar nada para lugar nenhum. Os estilos
+   estão em classes CSS, que não viajam com o SVG serializado, então eles são
+   embutidos antes de converter; sem isso a imagem sairia com texto preto
+   pequeno e sem alinhamento. */
+function baixaGrafico(id,nome){
+  const caixa=document.getElementById(id);
+  const svg=caixa&&caixa.querySelector('svg');
+  if(!svg) return;
+  const clone=svg.cloneNode(true);
+  const est={rot:'font-size:12px;fill:#3A454C',
+             val:'font-size:12px;fill:#10161C;font-family:monospace',
+             pct:'font-size:11px;fill:#6E787E;font-family:monospace',
+             eixo:'stroke:#DCE1DF;stroke-width:1',
+             leg:'font-size:11.5px;fill:#6E787E'};
+  clone.querySelectorAll('[class]').forEach(el=>{
+    const e=est[el.getAttribute('class')];
+    if(e) el.setAttribute('style',e+';font-family:system-ui,sans-serif');
+  });
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const vb=(svg.getAttribute('viewBox')||'0 0 760 300').split(/\s+/).map(Number);
+  const esc=2, w=vb[2]*esc, h=vb[3]*esc;
+  clone.setAttribute('width',w); clone.setAttribute('height',h);
+  const texto=new XMLSerializer().serializeToString(clone);
+  const img=new Image();
+  img.onload=()=>{
+    const cv=document.createElement('canvas');
+    cv.width=w; cv.height=h;
+    const cx=cv.getContext('2d');
+    cx.fillStyle='#FFFFFF'; cx.fillRect(0,0,w,h);
+    cx.drawImage(img,0,0,w,h);
+    cv.toBlob(bl=>{
+      if(!bl) return;
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(bl);
+      a.download=nome.replace(/[^\w\u00C0-\u017F]+/g,'-').replace(/^-|-$/g,'').toLowerCase()+'.png';
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+    },'image/png');
+  };
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(texto);
+}
+
 function tabelaEtapa(b,redes){
   const cab=redes.map(r=>`<th>${r.nome}</th>`).join('');
   const nCols=redes.length+2;
@@ -2671,12 +2925,27 @@ async function montaEduDetalhe(){
       <div class="p">${total?br(f1(r.v[EDU.total]/total*100)):'0,0'}% do município</div>
     </div>`).join('');
 
-  const umBloco=b=>`<details class="edu-bloco" open>
-      <summary><span class="seta">&#9654;</span><h3>${b.nome}</h3>
+  let nViz=0;
+  const umBloco=b=>{
+    const cab=`<summary><span class="seta">&#9654;</span><h3>${b.nome}</h3>
         <span class="tt">${b.total!==null?intBR(somaRedes(redes,b.total)):'&nbsp;'}
           ${b.total!==null?'<small>matrículas</small>':''}</span></summary>
-      ${b.nota?`<div class="edu-nota-bloco">${b.nota}</div>`:''}
-      ${tabelaEtapa(b,redes)}</details>`;
+      ${b.nota?`<div class="edu-nota-bloco">${b.nota}</div>`:''}`;
+    if(!valeGrafico(b,redes))
+      return `<details class="edu-bloco" open>${cab}${tabelaEtapa(b,redes)}</details>`;
+    const id='viz'+(++nViz);
+    return `<details class="edu-bloco" open data-viz="${id}">${cab}
+      <div class="edu-viz">
+        <button type="button" data-mostra="tab" aria-pressed="true">Tabela</button>
+        <button type="button" data-mostra="graf" aria-pressed="false">Gráfico</button>
+        <a class="baixar" href="#" data-baixa="${id}" title="Baixar o gráfico como imagem PNG" hidden>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7"/><path d="M2.5 12.5h11"/></svg>
+          imagem</a>
+      </div>
+      <div data-alvo="tab">${tabelaEtapa(b,redes)}</div>
+      <div data-alvo="graf" hidden>${graficoBloco(b,redes,id)}</div>
+    </details>`;
+  };
 
   // Agrupar não é enfeite: é o que diz, sem precisar de aviso, que somar um
   // bloco de "etapa" com um de "transversal" conta o mesmo aluno duas vezes.
@@ -2729,6 +2998,31 @@ async function montaEduDetalhe(){
                                 $('#vistaMunicipio').scrollTop=0; };
   alvo.querySelectorAll('.edu-modo button').forEach(b=>{
     b.onclick=()=>{ eduModo=b.dataset.modo; montaEduDetalhe(); };
+  });
+  ligaVizBlocos(alvo, ctx.nome);
+}
+
+/* Alternância entre a tabela e o gráfico, dentro de cada bloco. A tabela
+   continua sendo o padrão: ela tem os números exatos, e o gráfico existe para
+   dar a proporção de relance. O botão de baixar só aparece com o gráfico à
+   vista, porque é só ele que vira imagem. */
+function ligaVizBlocos(alvo,nomeDoLugar){
+  alvo.querySelectorAll('.edu-bloco[data-viz]').forEach(bloco=>{
+    const bts=bloco.querySelectorAll('.edu-viz button[data-mostra]');
+    const baixar=bloco.querySelector('[data-baixa]');
+    const titulo=(bloco.querySelector('h3')||{}).textContent||'grafico';
+    bts.forEach(bt=>{
+      bt.onclick=()=>{
+        const q=bt.dataset.mostra;
+        bts.forEach(o=>o.setAttribute('aria-pressed',String(o===bt)));
+        bloco.querySelectorAll('[data-alvo]').forEach(d=>{ d.hidden=(d.dataset.alvo!==q); });
+        if(baixar) baixar.hidden=(q!=='graf');
+      };
+    });
+    if(baixar) baixar.onclick=ev=>{
+      ev.preventDefault();
+      baixaGrafico(baixar.dataset.baixa, titulo+' '+nomeDoLugar);
+    };
   });
 }
 
@@ -3013,10 +3307,70 @@ function montaSobre(){
   </div>`;
 }
 
+/* ================= capa ================= */
+/* O Brasil desenhado com o contorno dos municípios, em traço fino e cor clara,
+   atrás da busca. Usa a MESMA malha que o mapa já carregou — não há arquivo
+   novo, imagem de banco nem licença envolvida, e o assunto da plataforma vira
+   o ornamento dela.
+
+   É canvas e não SVG por um motivo prático: 5.571 polígonos viram 5.571 nós no
+   DOM, e o navegador leva isso a sério em cada redimensionamento. No canvas é
+   um traço só. */
+let capaDesenhada=0;
+function desenhaCapa(){
+  const cv=$('#capaArte');
+  if(!cv||!feats||!feats.length) return;
+  const cx=cv.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2);
+  const cai=cv.getBoundingClientRect();
+  if(cai.width<2||cai.height<2) return;
+  cv.width=Math.round(cai.width*dpr); cv.height=Math.round(cai.height*dpr);
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,cai.width,cai.height);
+
+  // Enquadra o país ocupando bem a largura; em tela estreita ele sai maior que
+  // a caixa de propósito, para não virar uma miniatura perdida no meio.
+  const col=getComputedStyle(document.documentElement);
+  const proj=d3.geoMercator();
+  const geo={type:'FeatureCollection',features:feats};
+  // O país inteiro cabendo na caixa: cortado pela borda ele deixa de ser uma
+  // silhueta reconhecível e vira textura sem sentido. A margem de 12% também
+  // afasta o litoral das laterais, onde ficam os botões do topo.
+  proj.fitSize([cai.width*0.88, cai.height*0.88], geo);
+  const t0=proj.translate();
+  proj.translate([t0[0]+cai.width*0.06, t0[1]+cai.height*0.06]);
+  const path=d3.geoPath(proj,cx);
+
+  const traco=(col.getPropertyValue('--linha-capa')||'').trim()||'#AEBEC7';
+  cx.strokeStyle=traco;
+  cx.lineJoin='round';
+
+  // Duas passadas: os municípios dão a textura fina, o contorno dos estados dá
+  // a forma. Sem a segunda o Brasil some numa renda sem silhueta.
+  cx.lineWidth=0.4; cx.globalAlpha=0.62;
+  cx.beginPath(); feats.forEach(f=>path(f)); cx.stroke();
+
+  if(meshUF){
+    cx.lineWidth=1.15; cx.globalAlpha=1;
+    cx.beginPath(); path(meshUF); cx.stroke();
+  }
+  cx.globalAlpha=1;
+  capaDesenhada=cai.width;
+}
+function montaCapa(){
+  $('#capaMun').textContent=N.toLocaleString('pt-BR');
+  $('#capaInd').textContent=IDS.length.toLocaleString('pt-BR');
+  const fontes=new Set();
+  IDS.forEach(k=>{ const f=String(DIC[k].fonte||'').split(/[/|—]/)[0].trim(); if(f) fontes.add(f); });
+  $('#capaFontes').textContent=fontes.size.toLocaleString('pt-BR');
+  requestAnimationFrame(desenhaCapa);
+}
+
 /* ================= vistas ================= */
 function trocaVista(v){
   st.vista=v;
   $$('.nav button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));
+  $('#vistaInicio').classList.toggle('on', v==='inicio');
   $('#vistaMapa').style.display = v==='mapa' ? 'grid' : 'none';
   $('#vistaComparar').style.display = v==='comparar' ? 'block' : 'none';
   $('#vistaSobre').style.display = v==='sobre' ? 'block' : 'none';
@@ -3024,6 +3378,7 @@ function trocaVista(v){
   // ao voltar para o mapa, remedir e redesenhar: enquanto ele estava escondido
   // a caixa media zero, e a medida pode ter mudado nesse meio-tempo
   if(v==='mapa'){ setTimeout(()=>{ dimensiona(); desenhar(); },30); gravarHash(); }
+  else if(v==='inicio'){ setTimeout(desenhaCapa,30); gravarHash(); }
   else if(v==='comparar') comparar();
   else if(v==='municipio'){
     montaMunicipio().catch(e=>{
@@ -3088,7 +3443,7 @@ async function iniciar(){
     // 70px que ela ocupava faziam o grupo da direita transbordar da sua faixa
     $('#cobertura').textContent = 'atualizado em ' + String(META.atualizado||'—').split(' ')[0];
     $('#cobertura').title = 'versão ' + (META.versao||'');
-    montarGrupos(); montaIndicadores(); ligaBusca(); montaIr();
+    montarGrupos(); montaIndicadores(); ligaBusca(); montaIr(); montaCapa();
     montaSelects(); montaComparar(); montaRelatorio(); montaCopiarLink();
     $$('.nav button').forEach(b=>{ b.onclick=()=>trocaVista(b.dataset.v); });
     lerHash();
@@ -3099,14 +3454,17 @@ async function iniciar(){
     dimensiona();
     sincronizaControles(); recalcCor(); cabecalho(); ficha(); ranking();
     enquadra(false); desenhar();
-    if(st.vista!=='mapa') trocaVista(st.vista); else gravarHash();
+    trocaVista(st.vista);
     boot.style.display='none';
     // A janela não é a única coisa que muda o tamanho do mapa: a ficha lateral
     // pode ganhar barra de rolagem, o topo pode quebrar em duas linhas e o zoom
     // do navegador altera tudo. Observar a própria caixa cobre todos os casos.
     let rt;
     const remedir=()=>{ clearTimeout(rt);
-      rt=setTimeout(()=>{ if(st.vista==='mapa') dimensiona(); },120); };
+      rt=setTimeout(()=>{
+        if(st.vista==='mapa') dimensiona();
+        else if(st.vista==='inicio') desenhaCapa();
+      },120); };
     addEventListener('resize',remedir);
     if(window.ResizeObserver) new ResizeObserver(remedir).observe($('.mapwrap'));
 
