@@ -554,7 +554,12 @@ def sondar():
     for i in infos[:8]:
         print('    %9.1f MB  %s' % (i.file_size / 1e6, i.filename))
 
-    alvo = escolhe_membro([i.filename for i in infos], ano)
+    # Passa o ZIP, não a lista de nomes: escolhe_membro decide pela primeira
+    # linha de cada candidato, e precisa poder abri-los. A chamada aqui tinha
+    # ficado com a assinatura antiga, de quando a escolha era por nome de
+    # arquivo, e ninguém percebeu porque a rede falhava antes de chegar nesta
+    # linha — o defeito só apareceu quando a conexão com o INEP voltou.
+    alvo = escolhe_membro(z)
     info = z.getinfo(alvo)
     print('  arquivo que o painel usa: %s' % alvo)
     print('    %.1f MB descompactado, %.1f MB compactado'
