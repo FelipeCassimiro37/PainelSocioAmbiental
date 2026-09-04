@@ -24,7 +24,7 @@ Armadilhas da planilha, todas tratadas aqui:
   · nomes com espaço no fim ('Nota ', 'Acessos de telefonia móvel ')
   · a caixa das dimensões diverge entre abas (INSTITUIÇÕES × Instituições)
 """
-import glob, json, os, re, sys, unicodedata
+import csv, glob, json, os, re, sys, unicodedata
 from datetime import date, datetime
 
 try:
@@ -221,6 +221,226 @@ def ler_municipios(wb):
     return out
 
 
+# ============================================================ leitura do site
+# O CLP publica os mesmos resultados de duas maneiras: a planilha, que exige
+# preencher um cadastro para baixar, e os arquivos que alimentam o próprio site
+# do ranking, que são públicos e abertos. O vigia (scripts/monitor_clp.py) baixa
+# os segundos para fonte/clp/, e é daí que estas funções leem.
+#
+# Conferi as duas fontes uma contra a outra na 6ª edição: os 65 indicadores dos
+# 418 municípios batem, com diferença máxima de 0,005 — que é o arredondamento
+# do site, que publica com duas casas decimais onde a planilha tem sete. Como o
+# painel exibe duas casas, isso não muda um dígito na tela.
+#
+# O que muda é a forma: no site o valor bruto vem FORMATADO ('58.29%',
+# 'R$ 25,923.08'), já multiplicado por 100 e com o símbolo junto. Aqui ele é
+# desmontado de volta para número puro, na mesma escala em que a planilha o
+# entrega — fração para percentual —, porque é essa escala que o resto do
+# programa espera e é ela que a lógica de exibição decide como mostrar.
+
+# Nenhuma unidade é sobreposta aqui, e isso é uma decisão, não um esquecimento.
+#
+# A tentação foi concreta: entre a 6ª e a 7ª edição o CLP mudou a unidade de
+# 'Transparência municipal' de 'Nota normalizada de 0 a 10' para 'Porcentagem',
+# enquanto a descrição continuava dizendo 'Nota na Escala Brasil Transparente
+# 360'. Parecia engano da fonte, e cheguei a corrigir. Os dados desmentiram: na
+# 6ª edição o indicador ia de 2,64 a 10,00, com mediana 6,97; na 7ª vai de 0,00
+# a 99,12, com mediana 74,74. O CLP não errou a legenda — reescalou o indicador,
+# e a legenda nova é a certa. A correção é que estava errada.
+#
+# A lição virou regra: mudança de unidade é RELATADA no Pull Request pelo vigia,
+# com o número ao lado, e quem decide é quem lê. Um dicionário de exceções aqui
+# passaria por cima da fonte com base num palpite meu, em silêncio, para sempre.
+
+
+def _numero_formatado(texto, unidade=None):
+    """
+    Devolve o valor na escala da planilha, a partir do texto do site.
+
+    '58.29%'      -> 0.5829   (percentual volta a ser fração)
+    'R$ 25,923.08'-> 25923.08 (a vírgula é separador de milhar, à moda inglesa)
+    '0.90'        -> 0.90     (sem símbolo, o número já está na escala da planilha)
+    ''            -> None     (o site deixa a célula vazia onde a planilha põe
+                               '.n'; nos dois casos é ausência de dado)
+
+    Quem manda é o SÍMBOLO no texto, nunca a unidade declarada — e a diferença
+    não é teórica. 'Qualidade da informação contábil e fiscal' tem unidade
+    'Porcentagem' e o site publica '0.90', a fração crua, sem o símbolo. Dividir
+    por 100 porque a unidade diz 'Porcentagem' transformaria 89,84% em 0,90%, nos
+    418 municípios de uma vez. Foi o que aconteceu na primeira versão disto, e só
+    apareceu porque a saída foi comparada com a da planilha.
+
+    Fora o símbolo, o número fica como a fonte publicou, e isso também é decisão.
+    O CLP mudou a formatação entre edições: em 2025 os percentuais saíam como
+    '68.81%' e em 2026 saem como '64.64', já multiplicados e sem o símbolo. Não
+    há como adivinhar a escala de um valor isolado. Quem resolve isso é a
+    detecção que já existe mais abaixo, pela MEDIANA dos 400 e poucos municípios
+    daquele indicador: com mediana 0,68 ela multiplica por 100, com mediana 64
+    ela não mexe, e a tela mostra 68,81% e 64,64% nos dois casos. Normalizar aqui
+    seria um segundo palpite sobre a mesma coisa, e dois palpites discordam.
+    """
+    s = limpa(texto)
+    if not s or s in ('.n', '-', 'null'):
+        return None
+    porcento = s.endswith('%')
+    s = s.replace('R$', '').replace('%', '').replace(',', '').strip()
+    try:
+        v = float(s)
+    except ValueError:
+        return None
+    return round(v / 100.0 if porcento else v, 6)
+
+
+def _abre_fonte_site(pasta):
+    """(edição, glossário bruto, linhas do CSV) — ou None se não houver."""
+    csvs = sorted(glob.glob(os.path.join(pasta, 'ranking-*.csv')))
+    if not csvs:
+        return None
+    caminho = csvs[-1]
+    ano = re.search(r'ranking-(\d{4})', os.path.basename(caminho)).group(1)
+    gl = os.path.join(pasta, 'glossario-%s.json' % ano)
+    if not os.path.exists(gl):
+        raise SystemExit('Achei %s mas não o glossário %s ao lado. O vigia grava '
+                         'os dois juntos — rode scripts/monitor_clp.py.'
+                         % (os.path.basename(caminho), os.path.basename(gl)))
+    with open(gl, encoding='utf-8') as f:
+        parametros = json.load(f)
+    with open(caminho, encoding='utf-8-sig', newline='') as f:
+        linhas_csv = list(csv.reader(f))
+    return ano, parametros, linhas_csv
+
+
+def le_do_site(pasta):
+    """
+    Mesma coisa que os cinco leitores da planilha devolvem, vinda do site.
+
+    Devolve (edição, glossário, pesos, blocos, pilares, nomes, indicadores,
+    municípios) — as peças que main() usa, na ordem em que ele as usa.
+    """
+    ano, par, linhas_csv = _abre_fonte_site(pasta)
+    itens = par['pilares_indicadores']
+    cab = linhas_csv[0]
+    col = {}
+    for j, c in enumerate(cab):
+        p = c.split('/')
+        if len(p) >= 2:
+            col[(p[0], p[1])] = j
+
+    # ---- glossário
+    gloss = []
+    for x in itens:
+        if x.get('tipo') != 'Indicador':
+            continue
+        unidade = limpa(x.get('unidade'))
+        obs = limpa(x.get('obs'))
+        gloss.append(dict(
+            dimensao=limpa(x.get('dimensao')), pilar=limpa(x.get('pilar')),
+            nome=limpa(x.get('nome')), descricao=limpa(x.get('desc')),
+            polaridade=('negativa' if chave(x.get('polaridade')).startswith('nega')
+                        else 'positiva'),
+            unidade=unidade, observacoes='' if obs in ('-', '') else obs,
+            fonte=limpa(x.get('fonte')), periodo=limpa(x.get('periodo')),
+            coleta=limpa(x.get('coleta')),
+            atualizado=chave(x.get('atualizados')) == 'sim',
+            link=limpa(x.get('link')), novo=limpa(x.get('novo')),
+            codigo=limpa(x.get('codigo'))))
+    if len(gloss) != 65:
+        aviso('o site trouxe %d indicadores; a 6ª edição tinha 65' % len(gloss))
+
+    # ---- pesos. O site publica o peso de cada pilar no ranking; o da dimensão
+    # é a soma dos seus pilares e o do pilar dentro da dimensão é a divisão de
+    # um pelo outro. Confirmei as duas contas contra a aba 'Pesos' da planilha
+    # da 6ª edição: fecham nos treze pilares.
+    peso_dim, peso_pil = {}, {}
+    for x in itens:
+        if x.get('tipo') == 'Pilar' and isinstance(x.get('peso'), (int, float)):
+            d = limpa(x.get('dimensao'))
+            peso_pil[chave(x.get('nome'))] = {'dimensao': d,
+                                              'noRanking': round(float(x['peso']), 6),
+                                              'naDimensao': None}
+            peso_dim[chave(d)] = round(peso_dim.get(chave(d), 0) + float(x['peso']), 6)
+    for k, v in peso_pil.items():
+        total = peso_dim.get(chave(v['dimensao']))
+        if total:
+            v['naDimensao'] = round(v['noRanking'] / total, 6)
+
+    # ---- blocos: os rótulos seguem a convenção que a planilha usa, porque é
+    # ela que main() interpreta ('Ranking Geral', 'Dimensão: <nome>', <pilar>).
+    blocos = []
+    for x in itens:
+        tipo, cod, nome = x.get('tipo'), limpa(x.get('codigo')), limpa(x.get('nome'))
+        if tipo == 'Geral':
+            rot, dim = 'Ranking Geral', None
+        elif tipo == 'Dimensão':
+            rot, dim = 'Dimensão: %s' % nome, nome
+        elif tipo == 'Pilar':
+            rot, dim = nome, limpa(x.get('dimensao'))
+        else:
+            continue
+        if (cod, 'dado') in col:
+            blocos.append((rot, dim, cod))
+
+    ordem_ind = [g['codigo'] for g in gloss]
+    unidade_de = {g['codigo']: g['unidade'] for g in gloss}
+
+    pilares, indicadores = {}, {}
+    for linha in linhas_csv[1:]:
+        if not linha or not linha[0].strip():
+            continue
+        cod = linha[0].split('.')[0].strip()
+        if not (cod.isdigit() and len(cod) == 7):
+            continue
+
+        def campo(codigo, metrica):
+            j = col.get((codigo, metrica))
+            return linha[j] if j is not None and j < len(linha) else ''
+
+        pilares[cod] = {rot: [numero(campo(c, 'dado')), inteiro(campo(c, 'pos')),
+                              delta_texto(campo(c, 'delta'))]
+                        for rot, _dim, c in blocos}
+        indicadores[cod] = [[_numero_formatado(campo(c, 'bruto'), unidade_de[c]),
+                             numero(campo(c, 'dado')), inteiro(campo(c, 'pos')),
+                             delta_texto(campo(c, 'delta'))]
+                            for c in ordem_ind]
+
+    # ---- municípios
+    muns = {}
+    for cod, m in par.get('municipios', {}).items():
+        cod = str(cod)
+        if cod not in pilares:
+            continue
+        muns[cod] = dict(
+            cod=cod, uf=limpa(m.get('UF')), nome=limpa(m.get('nome')),
+            capital=chave(m.get('capital')) == 'sim',
+            g100=chave(m.get('g100')) == 'sim',
+            regiao=limpa(m.get('regiao')), pop=m.get('pop'),
+            faixa=limpa(m.get('pop_faixa')), lat=m.get('lat'), lon=m.get('lng'),
+            setor=limpa(m.get('setor')))
+    faltando = sorted(set(pilares) - set(muns))
+    if faltando:
+        aviso('%d municípios com resultado mas sem cadastro no glossário: %s'
+              % (len(faltando), ', '.join(faltando[:5])))
+
+    nomes_ind = [g['nome'] for g in gloss]
+    blocos_pl = [(rot, dim, c) for rot, dim, c in blocos]
+    return (ano, gloss, peso_dim, peso_pil, blocos_pl, pilares,
+            nomes_ind, indicadores, muns)
+
+
+def delta_texto(v):
+    """
+    Variação de colocação a partir do texto do site.
+
+    Na planilha os municípios que entraram nesta edição trazem 'Novo município';
+    no site a célula vem vazia. Os dois casos viram None, que o painel mostra
+    como 'novo'.
+    """
+    s = limpa(v)
+    if not s or not re.fullmatch(r'[+-]?\d+', s):
+        return None
+    return int(s)
+
+
 def grava(caminho, obj):
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
     with open(caminho, 'w', encoding='utf-8') as f:
@@ -228,19 +448,52 @@ def grava(caminho, obj):
 
 
 def main():
-    arqs = sorted(glob.glob(os.path.join(FONTE, 'clp-ranking-*.xlsx')))
-    if not arqs:
-        raise SystemExit('Nenhum arquivo em fonte/clp-ranking-<edicao>.xlsx')
-    caminho = arqs[-1]
-    edicao = re.search(r'clp-ranking-(\d+)', os.path.basename(caminho)).group(1)
-    print('Lendo %s' % os.path.basename(caminho))
+    # Duas fontes possíveis, e a planilha ganha quando existe: ela tem sete
+    # casas decimais onde o site tem duas. Na prática o painel exibe duas, mas
+    # se algum dia você baixar a planilha oficial e puser em fonte/, ela passa
+    # a valer sem precisar mexer em nada — e o site fica como o caminho que o
+    # robô consegue percorrer sozinho, sem cadastro nenhum.
+    planilhas = sorted(glob.glob(os.path.join(FONTE, 'clp-ranking-*.xlsx')))
+    do_site = sorted(glob.glob(os.path.join(FONTE, 'clp', 'ranking-*.csv')))
 
-    wb = openpyxl.load_workbook(caminho, read_only=True, data_only=True)
-    gloss = ler_glossario(wb)
-    peso_dim, peso_pil = ler_pesos(wb)
-    blocos, pilares = ler_pilares(wb)
-    nomes_ind, indicadores = ler_indicadores(wb)
-    muns = ler_municipios(wb)
+    edicao_site = None
+    if do_site:
+        ano_site = re.search(r'ranking-(\d{4})', os.path.basename(do_site[-1])).group(1)
+        with open(os.path.join(FONTE, 'clp', 'edicao-%s.json' % ano_site),
+                  encoding='utf-8') as f:
+            edicao_site = str(json.load(f)['edicao'])
+
+    edicao_planilha = (re.search(r'clp-ranking-(\d+)', os.path.basename(planilhas[-1])).group(1)
+                       if planilhas else None)
+
+    # A planilha só ganha se for da MESMA edição ou mais nova. Uma planilha
+    # velha esquecida em fonte/ não pode segurar o painel numa edição anterior
+    # à que o robô já trouxe — foi exatamente para não depender de ninguém
+    # lembrar de apagar arquivo que existe esta comparação.
+    usa_site = bool(do_site) and (not planilhas or int(edicao_planilha) < int(edicao_site))
+
+    if usa_site:
+        (edicao, gloss, peso_dim, peso_pil, blocos, pilares,
+         nomes_ind, indicadores, muns) = le_do_site(os.path.join(FONTE, 'clp'))
+        edicao = edicao_site
+        print('Lendo os arquivos abertos do site do CLP (%sª edição)' % edicao)
+        if planilhas:
+            print('  (a planilha %s é da %sª edição, mais antiga — ignorada)'
+                  % (os.path.basename(planilhas[-1]), edicao_planilha))
+    elif planilhas:
+        caminho = planilhas[-1]
+        edicao = edicao_planilha
+        print('Lendo %s' % os.path.basename(caminho))
+        wb = openpyxl.load_workbook(caminho, read_only=True, data_only=True)
+        gloss = ler_glossario(wb)
+        peso_dim, peso_pil = ler_pesos(wb)
+        blocos, pilares = ler_pilares(wb)
+        nomes_ind, indicadores = ler_indicadores(wb)
+        muns = ler_municipios(wb)
+    else:
+        raise SystemExit('Nada para ler: nem fonte/clp-ranking-<edicao>.xlsx, '
+                         'nem fonte/clp/ranking-<ano>.csv. Rode '
+                         'scripts/monitor_clp.py para buscar do site.')
     print('  %d municípios · %d indicadores · %d blocos de pilar'
           % (len(muns), len(nomes_ind), len(blocos)))
 
