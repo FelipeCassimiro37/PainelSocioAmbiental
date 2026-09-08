@@ -577,8 +577,8 @@ def sondar():
     # O que a fonte oferece e o painel ainda não usa. Sem isto, decidir que
     # recorte dá para acrescentar vira adivinhação sobre nome de coluna — e o
     # arquivo do INEP tem 263 colunas, das quais o painel guarda 49.
-    ident, mat = colunas_do_painel()
-    usadas = {c.upper() for c in ident + mat}
+    ident, mat, opcionais = colunas_do_painel()
+    usadas = {c.upper() for c in ident + mat + opcionais}
     sobrando = [c for c in qt if c.upper() not in usadas]
     print('  o painel usa %d dessas; sobram %d contagens não aproveitadas:'
           % (len(qt) - len(sobrando), len(sobrando)))
@@ -603,7 +603,7 @@ def colunas_do_painel():
     """
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import preparar_fonte_edu as prep
-    return prep.IDENT, prep.MAT
+    return prep.IDENT, prep.MAT, list(getattr(prep, 'MAT_OPCIONAIS', []))
 
 
 def extrai(z, membro):
@@ -702,17 +702,26 @@ def base_anterior():
 def grava_censo(cab, linhas, ano, totais, membro, anterior):
     """Escreve fonte/matriculas-<ano>.csv.gz no mesmo formato de sempre."""
     import csv as _csv, gzip
-    ident, mat = colunas_do_painel()
+    ident, mat, opcionais = colunas_do_painel()
     i = {c: k for k, c in enumerate(cab)}
     faltam = [c for c in ident + mat if c not in i]
     if faltam:
         raise SystemExit('O arquivo do INEP não tem estas colunas que o painel '
                          'usa: %s' % ', '.join(faltam))
-    manter = [i[c] for c in ident + mat]
+    # As opcionais entram se existirem. Ver preparar_fonte_edu.MAT_OPCIONAIS:
+    # faltar uma delas é um recorte a menos, não motivo para o painel ficar sem
+    # atualização nenhuma.
+    achadas = [c for c in opcionais if c in i]
+    ausentes = [c for c in opcionais if c not in i]
+    if ausentes:
+        print('  aviso: o INEP não traz %s nesta edição; segue sem esse recorte.'
+              % ', '.join(ausentes))
+    colunas = mat + achadas
+    manter = [i[c] for c in ident + colunas]
 
     buf = io.StringIO()
     w = _csv.writer(buf, delimiter=';', lineterminator='\n')
-    w.writerow(ident + mat)
+    w.writerow(ident + colunas)
     for l in linhas:
         w.writerow([l[j] for j in manter])
 

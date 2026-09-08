@@ -78,6 +78,33 @@ BLOCOS = [
 
     ('Onde o aluno mora', 'perfil', None,
      ['QT_MAT_ZR_URB', 'QT_MAT_ZR_RUR', 'QT_MAT_ZR_NA'], [], None),
+
+    ('Cor ou raça', 'perfil', None,
+     ['QT_MAT_BAS_BRANCA', 'QT_MAT_BAS_PRETA', 'QT_MAT_BAS_PARDA',
+      'QT_MAT_BAS_AMARELA', 'QT_MAT_BAS_INDIGENA', 'QT_MAT_BAS_ND'], [],
+     'É a cor ou raça DECLARADA na matrícula, e a não declarada aparece aqui '
+     'como as outras — em muitos municípios ela é a maior linha do bloco, e '
+     'esconder isso faria a distribuição das demais parecer mais firme do que é.'),
+
+    ('Faixa etária', 'perfil', None,
+     ['QT_MAT_BAS_0_3', 'QT_MAT_BAS_4_5', 'QT_MAT_BAS_6_10',
+      'QT_MAT_BAS_11_14', 'QT_MAT_BAS_15_17', 'QT_MAT_BAS_18_MAIS'], [],
+     'Idade na data de referência do Censo. O INEP também publica as mesmas '
+     'faixas contadas em 31 de março; o painel usa uma só, para o mesmo aluno '
+     'não ser contado duas vezes.'),
+
+    ('Turno', 'perfil', None,
+     ['QT_MAT_BAS_D', 'QT_MAT_BAS_N', 'QT_MAT_BAS_EAD'], [], None),
+
+    ('Tempo integral', 'transversal', None,
+     ['QT_MAT_BAS_INT'], [],
+     'Estes alunos já estão contados nas etapas acima; a linha diz quantos '
+     'deles cumprem jornada integral.'),
+
+    ('Transporte escolar público', 'transversal', None,
+     ['QT_TRANSP_PUBLICO'], [],
+     'Também é um recorte dos mesmos alunos. Depende de o INEP publicar a '
+     'coluna na edição — quando ela não vem, o bloco simplesmente não aparece.'),
 ]
 
 GRUPOS = [
@@ -115,6 +142,29 @@ ROTULO = {
     'QT_MAT_ESP_MED': 'no Ensino Médio',
     'QT_MAT_ESP_EJA': 'na EJA',
     'QT_MAT_ESP_PROF': 'na Educação Profissional',
+    # Cor/raça: o dicionário do INEP escreve "Cor/Raça Branca", e o bloco já se
+    # chama "Cor ou raça" — repetir o prefixo em cada linha só ocupa espaço.
+    'QT_MAT_BAS_BRANCA': 'Branca',
+    'QT_MAT_BAS_PRETA': 'Preta',
+    'QT_MAT_BAS_PARDA': 'Parda',
+    'QT_MAT_BAS_AMARELA': 'Amarela',
+    'QT_MAT_BAS_INDIGENA': 'Indígena',
+    'QT_MAT_BAS_ND': 'Não declarada',
+    # Faixa etária: a descrição oficial termina em "na data de referência do
+    # Censo", o que na tela viraria a mesma cauda em seis linhas seguidas.
+    'QT_MAT_BAS_0_3': 'Até 3 anos',
+    'QT_MAT_BAS_4_5': 'De 4 a 5 anos',
+    'QT_MAT_BAS_6_10': 'De 6 a 10 anos',
+    'QT_MAT_BAS_11_14': 'De 11 a 14 anos',
+    'QT_MAT_BAS_15_17': 'De 15 a 17 anos',
+    'QT_MAT_BAS_18_MAIS': '18 anos ou mais',
+    'QT_MAT_BAS_D': 'Diurno',
+    'QT_MAT_BAS_N': 'Noturno',
+    # O INEP chama de "turno não aplicável"; o que a linha conta, na prática,
+    # são as turmas semipresenciais e a distância.
+    'QT_MAT_BAS_EAD': 'Semipresencial ou a distância',
+    'QT_MAT_BAS_INT': 'Em tempo integral',
+    'QT_TRANSP_PUBLICO': 'Usa transporte escolar público',
 }
 # Explicação em português corrente para as linhas cujo nome, sozinho, não diz o
 # que está sendo contado. O texto oficial do INEP vai junto, embaixo — ele é
@@ -163,7 +213,9 @@ def ler_legendas():
     d, obs = {}, {}
     with open(caminho, encoding='utf-8-sig', newline='') as f:
         for linha in csv.reader(f, delimiter=';'):
-            if len(linha) > 2 and linha[1].startswith('QT_MAT'):
+            # 'QT_' e não 'QT_MAT': o transporte escolar é QT_TRANSP_PUBLICO,
+            # e com o filtro antigo ele entraria na tela sem descrição nenhuma.
+            if len(linha) > 2 and linha[1].startswith('QT_'):
                 col = linha[1].strip()
                 d[col] = re.sub(r'\s+', ' ', linha[2]).strip()
                 # a última coluna do dicionário é "Notas Importantes", onde o
@@ -263,16 +315,14 @@ def grava(caminho, obj):
         json.dump(obj, f, separators=(',', ':'), ensure_ascii=False)
 
 
+def colunas_do_arquivo(caminho):
+    """Só o cabeçalho do .csv.gz, para saber o que existe antes de pedir."""
+    with gzip.open(caminho, 'rt', encoding='utf-8', newline='') as f:
+        return set(next(csv.reader(f, delimiter=';')))
+
+
 def main():
     legendas, notas = ler_legendas()
-
-    cols = [TOTAL_GERAL, TOTAL_FUND]
-    for _, _grupo, total, itens, extras, _nota in BLOCOS:
-        if total and total not in cols:
-            cols.append(total)
-        for c in itens + extras:
-            if c not in cols:
-                cols.append(c)
 
     arqs = arquivos_fonte()
     if len(arqs) > 1:
@@ -282,6 +332,37 @@ def main():
     caminho = arqs[-1]
     ano = re.search(r'matriculas-(\d{4})', os.path.basename(caminho)).group(1)
     print('Lendo %s' % os.path.basename(caminho))
+
+    # Um bloco só entra se TODAS as colunas dele estiverem no arquivo. Isto não
+    # é zelo abstrato: o código que monta a tela e o arquivo de dados são
+    # publicados em momentos diferentes — o vigia do Censo abre um Pull Request
+    # com o arquivo, e você aceita quando quiser. Entre uma coisa e outra, o
+    # build rodaria pedindo colunas que ainda não chegaram e pararia, deixando
+    # o painel inteiro sem atualizar a educação por causa de um recorte novo.
+    # Assim o recorte novo simplesmente não aparece até o dado chegar.
+    existentes = colunas_do_arquivo(caminho)
+    blocos = []
+    faltando = []
+    for b in BLOCOS:
+        _nome, _grupo, total, itens, extras, _nota = b
+        precisa = ([total] if total else []) + list(itens) + list(extras)
+        ausentes = [c for c in precisa if c not in existentes]
+        if ausentes:
+            faltando.append((_nome, ausentes))
+        else:
+            blocos.append(b)
+    if faltando:
+        for nome, aus in faltando:
+            aviso('bloco "%s" fora desta geração: %s não está em %s'
+                  % (nome, ', '.join(aus), os.path.basename(caminho)))
+
+    cols = [TOTAL_GERAL, TOTAL_FUND]
+    for _, _grupo, total, itens, extras, _nota in blocos:
+        if total and total not in cols:
+            cols.append(total)
+        for c in itens + extras:
+            if c not in cols:
+                cols.append(c)
 
     consolidado, escolas, uf_do_mun, n = processar(caminho, cols)
     print('  %s escolas em %d municípios' % (format(n, ',').replace(',', '.'), len(consolidado)))
@@ -325,9 +406,9 @@ def main():
         if c in notas:
             it['obs'] = notas[c]
         return it
-    blocos = []
-    for nome, grupo, total, itens, extras, nota in BLOCOS:
-        blocos.append({
+    meta_blocos = []
+    for nome, grupo, total, itens, extras, nota in blocos:
+        meta_blocos.append({
             'nome': nome,
             'grupo': grupo,
             'total': idx[total] if total else None,
@@ -343,7 +424,7 @@ def main():
         for v in redes.values():
             for k in range(len(cols)):
                 nacional[k] += v[k]
-    for nome, _g, total, itens, _e, _n in BLOCOS:
+    for nome, _g, total, itens, _e, _n in blocos:
         if not (total and itens):
             continue
         t = nacional[idx[total]]
@@ -367,7 +448,7 @@ def main():
         'total': idx[TOTAL_GERAL],
         'totalFund': idx[TOTAL_FUND],
         'grupos': [{'id': g, 'nome': n, 'nota': d} for g, n, d in GRUPOS],
-        'blocos': blocos,
+        'blocos': meta_blocos,
         'municipios': sorted(consolidado),
     })
 

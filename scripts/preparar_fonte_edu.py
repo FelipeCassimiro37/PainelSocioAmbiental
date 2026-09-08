@@ -37,6 +37,30 @@ MAT = [
     'QT_MAT_ESP_PROF',
     'QT_MAT_BAS_FEM', 'QT_MAT_BAS_MASC',
     'QT_MAT_ZR_URB', 'QT_MAT_ZR_RUR', 'QT_MAT_ZR_NA',
+    # Cor ou raça declarada na matrícula.
+    'QT_MAT_BAS_BRANCA', 'QT_MAT_BAS_PRETA', 'QT_MAT_BAS_PARDA',
+    'QT_MAT_BAS_AMARELA', 'QT_MAT_BAS_INDIGENA', 'QT_MAT_BAS_ND',
+    # Faixa etária. O INEP publica cada faixa duas vezes, uma delas com sufixo
+    # _REF_31_03 — a mesma idade contada com outra data de referência. Trazer as
+    # duas duplicaria o dado no painel; fica a da data de referência do Censo,
+    # que é a que o próprio INEP usa como padrão nas suas sinopses.
+    'QT_MAT_BAS_0_3', 'QT_MAT_BAS_4_5', 'QT_MAT_BAS_6_10',
+    'QT_MAT_BAS_11_14', 'QT_MAT_BAS_15_17', 'QT_MAT_BAS_18_MAIS',
+    # Turno e jornada.
+    'QT_MAT_BAS_D', 'QT_MAT_BAS_N', 'QT_MAT_BAS_EAD', 'QT_MAT_BAS_INT',
+]
+
+
+# Colunas que o painel usa SE existirem, e cuja ausência não derruba a leitura.
+#
+# A distinção não é preguiça: as colunas de MAT são o que o painel promete e
+# faltar uma delas é motivo para parar e olhar. Estas outras são um acréscimo, e
+# o INEP mexe no conjunto de colunas entre edições — em 2025 ele partiu o pacote
+# em tabelas por assunto e mudou nomes. Derrubar a atualização inteira do painel
+# porque o transporte escolar saiu de lugar seria trocar um dado a menos por
+# nenhum dado.
+MAT_OPCIONAIS = [
+    'QT_TRANSP_PUBLICO',
 ]
 
 
@@ -50,10 +74,17 @@ def main(origem, destino_dir='fonte'):
     if faltam:
         raise SystemExit('Colunas ausentes no arquivo de origem: ' + ', '.join(faltam))
 
-    manter = [ix[c] for c in IDENT + MAT]
+    achadas = [c for c in MAT_OPCIONAIS if c in ix]
+    ausentes = [c for c in MAT_OPCIONAIS if c not in ix]
+    if ausentes:
+        print('  aviso: o arquivo do INEP não traz %s. O painel segue sem esses '
+              'recortes — eles são opcionais de propósito.' % ', '.join(ausentes))
+
+    colunas = MAT + achadas
+    manter = [ix[c] for c in IDENT + colunas]
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=';', lineterminator='\n')
-    w.writerow(IDENT + MAT)
+    w.writerow(IDENT + colunas)
 
     ano, n = None, 0
     for row in r:
