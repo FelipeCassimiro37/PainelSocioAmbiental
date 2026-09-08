@@ -753,7 +753,11 @@ def grava_censo(cab, linhas, ano, totais, membro, anterior):
     os.makedirs(SAIDA, exist_ok=True)
     with open(os.path.join(SAIDA, 'auto_censo.estado.json'), 'w', encoding='utf-8') as f:
         json.dump({'ano': int(ano), 'arquivoNoPacote': membro,
-                   'colunasMantidas': len(ident + mat), 'colunasNaOrigem': len(cab),
+                   # A lista, e não só a contagem: é ela que deixa a próxima
+                   # execução perceber sozinha que o painel passou a pedir um
+                   # recorte que esta base não tem.
+                   'colunas': ident + colunas,
+                   'colunasMantidas': len(ident + colunas), 'colunasNaOrigem': len(cab),
                    'verificadoEm': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC'),
                    'totais': totais, 'baseAnterior': anterior},
                   f, ensure_ascii=False, indent=2)
@@ -797,6 +801,19 @@ def estado_atual():
     return {}
 
 
+def colunas_da_base():
+    """As colunas do fonte/matriculas-<ano>.csv.gz mais recente, ou vazio."""
+    import glob, gzip, csv as _csv
+    arqs = sorted(glob.glob(os.path.join(RAIZ, 'fonte', 'matriculas-*.csv.gz')))
+    if not arqs:
+        return set()
+    try:
+        with gzip.open(arqs[-1], 'rt', encoding='utf-8', newline='') as f:
+            return set(next(_csv.reader(f, delimiter=';')))
+    except Exception:
+        return set()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--sondar', action='store_true',
@@ -818,7 +835,29 @@ def main():
     antes = estado_atual().get('ano')
     print('Ano mais recente no INEP: %d' % ano)
     print('Último processado aqui: %s' % (antes or '(nenhum)'))
-    novidade = ano != antes
+
+    # Novidade não é só ano novo: é também o painel passar a querer colunas que
+    # a base guardada não tem. Sem isto, acrescentar um recorte ao painel só
+    # chegaria aos dados se alguém lembrasse de rodar com --forcar — e se a
+    # fonte estivesse fora do ar naquele minuto, o recorte ficaria esperando
+    # para sempre, porque a rotina semanal diria 'sem novidade' e não tentaria
+    # mais. Foi exatamente o que ia acontecer com cor/raça, faixa etária, turno
+    # e tempo integral: publiquei as colunas e o INEP ficou inacessível.
+    _, mat, opcionais = colunas_do_painel()
+    guardadas = set(estado_atual().get('colunas') or [])
+    if not guardadas:
+        # Estado antigo, gravado antes de esta lista existir. Em vez de ficar
+        # cego até a próxima execução completa, lê o cabeçalho do próprio
+        # arquivo que está no repositório — é local, não custa rede, e é a
+        # verdade sobre o que a base tem.
+        guardadas = colunas_da_base()
+    faltando_na_base = [c for c in mat if c not in guardadas] if guardadas else []
+    if faltando_na_base:
+        print('O painel quer %d coluna(s) que a base guardada não tem: %s'
+              % (len(faltando_na_base), ', '.join(faltando_na_base[:6])
+                 + ('…' if len(faltando_na_base) > 6 else '')))
+
+    novidade = ano != antes or bool(faltando_na_base)
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
             f.write('novidade=%s\n' % ('true' if (novidade or args.forcar) else 'false'))
