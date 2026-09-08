@@ -51,7 +51,11 @@ jobs:
 
       - name: Baixar e preparar a base
         if: ${{ !inputs.sondar && (steps.checar.outputs.novidade == 'true' || inputs.forcar) }}
-        timeout-minutes: 25
+        # 40 e não 25: a primeira tomada de contato agora espera até dez
+        # minutos por um servidor que oscila, e depois dela ainda vem o
+        # download de 123 MB por faixas. Prazo curto transformaria a espera
+        # deliberada em morte por tempo esgotado.
+        timeout-minutes: 40
         run: python scripts/monitor_censo.py ${{ inputs.forcar && '--forcar' || '' }}
 
       # Nada entra no site sozinho: abre um Pull Request com a base nova para
