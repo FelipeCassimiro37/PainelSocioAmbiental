@@ -258,7 +258,8 @@ def so_ipv4():
 so_ipv4()
 
 
-def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2):
+def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2,
+          pausa=15):
     """
     Requisição com repetição, e com prazo curto por padrão.
 
@@ -279,7 +280,16 @@ def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2):
             # outro corte; esperar um pouco resolve na prática. Sem isso, um
             # download de 19 requisições tinha chance real de falhar por causa
             # de uma só — e a divulgação anual passaria batida.
-            time.sleep(min(2 ** tentativa, 15))
+            #
+            # `pausa` maior é para o caminho do download. Em 8 de setembro de
+            # 2026 o `download.inep.gov.br` respondeu a uma sondagem em 0,7s e,
+            # quarenta minutos depois, deixou duas execuções seguidas esgotarem
+            # o tempo no primeiro pedido de dois bytes. O passo tinha 25 minutos
+            # de prazo e desistia em três: quatro tentativas de 30 segundos com
+            # pausas de até 15. Contra um servidor que oscila ou limita ritmo,
+            # insistir depressa é o pior dos mundos — some com o prazo sem dar
+            # tempo de a maré virar.
+            time.sleep(min(2 ** tentativa * (pausa // 15 or 1), pausa))
         h = dict(ua or UAS[min(tentativa, len(UAS) - 1)])
         h.update(cabecalhos or {})
         try:
@@ -343,7 +353,12 @@ class ZipRemoto(io.RawIOBase):
         self.pos = 0
         self.baixado = 0
         self.pedidos = 0
-        with busca(url, {'Range': 'bytes=0-1'}, ua=UAS[1], espera=30, tentativas=4) as r:
+        # Sete tentativas com pausas até 120s: cerca de dez minutos de espera,
+        # bem dentro do prazo do passo. Se a fonte estiver de pé, isso atravessa
+        # uma oscilação; se estiver mesmo fechada, falha com a mesma clareza,
+        # só que dez minutos depois em vez de três — uma vez por ano.
+        with busca(url, {'Range': 'bytes=0-1'}, ua=UAS[1], espera=60,
+                   tentativas=7, pausa=120) as r:
             if r.status != 206:
                 raise ValueError('servidor não aceita Range (devolveu %s)' % r.status)
             faixa = r.headers.get('Content-Range', '')
@@ -374,7 +389,7 @@ class ZipRemoto(io.RawIOBase):
             return b''
         fim = self.pos + n - 1
         with busca(self.url, {'Range': 'bytes=%d-%d' % (self.pos, fim)},
-                   ua=UAS[1], espera=120, tentativas=5) as r:
+                   ua=UAS[1], espera=180, tentativas=6, pausa=60) as r:
             dados = r.read()
         self.pos += len(dados)
         self.baixado += len(dados)
