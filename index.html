@@ -624,16 +624,35 @@ summary.tema-cab .qt{margin-left:auto}
 .edu-graf .pct{font-size:11px;fill:var(--muted);font-family:var(--f-num)}
 .edu-graf .eixo{stroke:var(--line);stroke-width:1}
 .edu-graf .leg{font-size:11.5px;fill:var(--muted)}
+.edu-graf .rosca-n{font-family:var(--f-num);font-size:21px;font-weight:600;fill:var(--ink)}
+.edu-graf .rosca-r{font-size:11.5px;fill:var(--muted)}
+/* Título do gráfico: editável no lugar, sem virar um formulário. Só ganha
+   moldura quando o ponteiro passa ou quando está em edição — no repouso é
+   texto, que é o que ele é. */
+.graf-titulo{font-size:17px;font-weight:700;letter-spacing:-.015em;color:var(--ink);
+  padding:4px 8px;margin:0 0 10px -8px;border:1px dashed transparent;border-radius:4px;
+  cursor:text;outline:none;min-height:1.2em;line-height:1.3}
+.graf-titulo:hover{border-color:var(--line)}
+.graf-titulo:focus{border-color:var(--navy);border-style:solid;
+  background:color-mix(in srgb, var(--navy) 4%, transparent)}
+.graf-titulo:empty::before{content:attr(data-vazio);color:var(--muted);font-weight:400}
+.graf-linha{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.graf-linha .graf-titulo{flex:1;min-width:200px}
+.graf-meta{margin-left:auto;display:inline-flex;align-items:baseline;gap:14px;
+  font-family:var(--f-num);font-size:15px;font-weight:600;white-space:nowrap}
+.graf-meta small{font-family:var(--f-ui);font-size:11.5px;font-weight:400;color:var(--muted)}
 /* cartas do modo "Gráficos" */
 .graf-carta{padding:0 0 6px}
-.graf-cab{display:flex;align-items:baseline;gap:12px;padding:12px 16px 0;flex-wrap:wrap}
-.graf-cab h3{margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
-.graf-cab .tt{font-family:var(--f-num);font-size:15.5px;font-weight:600}
-.graf-cab .tt small{font-family:var(--f-ui);font-size:11.5px;font-weight:400;color:var(--muted)}
-.graf-cab .baixar{margin-left:auto;color:var(--navy);font-size:12.5px;font-weight:600;
+/* O botão de baixar, onde quer que ele apareça. Mesma história do ícone: estas
+   regras estavam presas ao cabeçalho que saiu, e sem elas o link voltou a ser
+   um <a> comum — sublinhado e com o ícone empilhado por cima do texto. */
+.baixar{color:var(--navy);font-size:12.5px;font-weight:600;text-decoration:none;
   display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.graf-cab .baixar:hover{text-decoration:underline}
-.graf-cab .baixar svg{width:13px;height:13px;fill:none;stroke:currentColor;
+.baixar:hover{text-decoration:underline}
+/* Tamanho do ícone do botão de baixar. Vale para qualquer lugar onde o botão
+   apareça: quando esta regra estava presa a um seletor de cabeçalho que depois
+   saiu, o SVG voltou ao tamanho intrínseco e abriu 300px de buraco na carta. */
+.baixar svg{width:13px;height:13px;fill:none;stroke:currentColor;
   stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .edu-fora{margin:14px 2px 0;font-size:12.5px;line-height:1.5;color:var(--muted)}
 .edu-fora b{color:var(--ink-2)}
@@ -2775,7 +2794,7 @@ function valeGrafico(b,redes){
 /* Barras horizontais em SVG escrito à mão. Sem biblioteca: são barras, eixo e
    rótulos, e trazer um pacote de gráficos para isso somaria peso ao painel
    inteiro por causa de uma tela. */
-function graficoBloco(b,redes,id){
+function graficoBloco(b,redes,id,titulo,extra){
   const itens=b.itens.map(x=>({rot:x.n, v:somaRedes(redes,x.i)})).filter(x=>x.v>0);
   if(!itens.length) return '';
   const total=itens.reduce((s,x)=>s+x.v,0);
@@ -2802,9 +2821,94 @@ function graficoBloco(b,redes,id){
   g+=`<line class="eixo" x1="${L}" y1="${top+2}" x2="${L}" y2="${yEixo}"></line>`
     +`<text class="leg" x="${L}" y="${yEixo+16}">matrículas · a porcentagem é sobre as ${
         intBR(total)} deste bloco</text>`;
+  // O título é editável na própria página. O padrão já traz o recorte e o
+  // lugar, que é o mínimo para o gráfico não ficar solto quando sai daqui; quem
+  // for usar troca por outro texto clicando em cima. Ele NÃO é decoração de
+  // tela: entra na imagem baixada, que é justamente onde o gráfico perde o
+  // contexto que na tela vinha do cabeçalho logo acima.
   return `<div class="edu-graf" id="${id}">
-    <svg viewBox="0 0 ${larg} ${h}" role="img"
+    <div class="graf-linha">
+      <div class="graf-titulo" contenteditable="true" role="textbox" spellcheck="false"
+           aria-label="Título do gráfico, editável"
+           data-vazio="Sem título">${escapaTexto(titulo||b.nome)}</div>
+      ${extra||''}
+    </div>
+    <svg class="grafico" viewBox="-8 0 ${larg+30} ${h}" role="img"
          aria-label="${b.nome}: ${itens.map(x=>x.rot+' '+intBR(x.v)).join('; ')}">${g}</svg>
+  </div>`;
+}
+
+/* ============ rosca de composição ============
+   A barra compara grandezas; a rosca mostra repartição de um todo. As duas
+   respondem a perguntas diferentes, e por isso convivem: as séries do
+   Fundamental ficam todas perto de 20% e em rosca viram fatias indistinguíveis,
+   enquanto "quem atende esses alunos" — 62% municipal, 19% privada, 18%
+   estadual, 0,6% federal — é exatamente a pergunta que a rosca responde de
+   relance e a tabela responde devagar.
+
+   O furo do meio não é enfeite: ele guarda o total, que é o denominador de
+   todas as fatias e a primeira coisa que alguém quer saber. */
+function graficoRosca(itens,id,titulo,extra,unidade){
+  const vivos=itens.filter(x=>x.v>0);
+  if(vivos.length<2) return '';
+  const total=vivos.reduce((s,x)=>s+x.v,0);
+  const larg=880, h=300, cx=210, cy=150, raio=112, furo=64;
+
+  // Tons do azul do painel, do mais escuro ao mais claro, na ordem em que as
+  // fatias entram — que é a ordem de tamanho. Sem cores arbitrárias: a fatia
+  // maior é a mais forte, e a legenda embaixo repete a mesma sequência.
+  const base=(getComputedStyle(document.documentElement)
+               .getPropertyValue('--navy')||'').trim()||'#17405F';
+  const ordenados=[...vivos].sort((a,b)=>b.v-a.v);
+  const opac=k=>Math.max(0.26, 1-k*(0.72/Math.max(1,ordenados.length-1)));
+
+  const ponto=(ang,r)=>[cx+r*Math.cos(ang), cy+r*Math.sin(ang)];
+  let ang=-Math.PI/2, fatias='';
+  ordenados.forEach((x,k)=>{
+    const passo=(x.v/total)*Math.PI*2;
+    const fim=ang+passo;
+    // Uma fatia de 100% não pode ser desenhada como arco: início e fim caem no
+    // mesmo ponto e o traçado some. Nesse caso vira um anel inteiro.
+    if(x.v===total){
+      fatias+=`<path d="M ${cx-raio} ${cy} a ${raio} ${raio} 0 1 0 ${raio*2} 0 a ${raio} ${raio} 0 1 0 ${-raio*2} 0
+                        M ${cx-furo} ${cy} a ${furo} ${furo} 0 1 1 ${furo*2} 0 a ${furo} ${furo} 0 1 1 ${-furo*2} 0"
+                     fill="${base}" fill-rule="evenodd" opacity="${opac(k)}"></path>`;
+    }else{
+      const [x1,y1]=ponto(ang,raio), [x2,y2]=ponto(fim,raio);
+      const [x3,y3]=ponto(fim,furo), [x4,y4]=ponto(ang,furo);
+      const grande=passo>Math.PI?1:0;
+      fatias+=`<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)}
+                        A ${raio} ${raio} 0 ${grande} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}
+                        L ${x3.toFixed(2)} ${y3.toFixed(2)}
+                        A ${furo} ${furo} 0 ${grande} 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z"
+                     fill="${base}" opacity="${opac(k)}"></path>`;
+    }
+    ang=fim;
+  });
+
+  const miolo=`<text class="rosca-n" x="${cx}" y="${cy-2}" text-anchor="middle">${intBR(total)}</text>`
+    +`<text class="rosca-r" x="${cx}" y="${cy+16}" text-anchor="middle">${escapaTexto(unidade||'no total')}</text>`;
+
+  const Lx=390, passoY=34, topo=cy-(ordenados.length*passoY)/2+8;
+  const legenda=ordenados.map((x,k)=>{
+    const y=topo+k*passoY;
+    return `<rect x="${Lx}" y="${y-9}" width="12" height="12" rx="2" fill="${base}" opacity="${opac(k)}"></rect>`
+      +`<text class="rot" x="${Lx+20}" y="${y+1}">${escapaTexto(x.rot)}</text>`
+      +`<text class="val" x="${larg-96}" y="${y+1}" text-anchor="end">${intBR(x.v)}</text>`
+      +`<text class="pct" x="${larg}" y="${y+1}" text-anchor="end">${br(f1(x.v/total*100))}%</text>`;
+  }).join('');
+
+  return `<div class="edu-graf" id="${id}">
+    <div class="graf-linha">
+      <div class="graf-titulo" contenteditable="true" role="textbox" spellcheck="false"
+           aria-label="Título do gráfico, editável"
+           data-vazio="Sem título">${escapaTexto(titulo||'')}</div>
+      ${extra||''}
+    </div>
+    <svg class="grafico" viewBox="-8 0 ${larg+30} ${h}" role="img"
+         aria-label="${escapaTexto(titulo||'')}: ${ordenados.map(x=>x.rot+' '+intBR(x.v)).join('; ')}">
+      ${fatias}${miolo}${legenda}
+    </svg>
   </div>`;
 }
 
@@ -2815,10 +2919,41 @@ function graficoBloco(b,redes,id){
    pequeno e sem alinhamento. */
 function baixaGrafico(id,nome){
   const caixa=document.getElementById(id);
-  const svg=caixa&&caixa.querySelector('svg');
+  // 'svg.grafico', e não 'svg': o botão de baixar mora dentro desta mesma caixa
+  // e o ícone dele também é um <svg> — que vem antes no documento. Pegar o
+  // primeiro que aparecesse exportava o ícone de 16 por 16 em vez do gráfico,
+  // e o arquivo saía com 32 por 112 pixels e um pedaço de letra dentro.
+  const svg=caixa&&caixa.querySelector('svg.grafico');
   if(!svg) return;
   const clone=svg.cloneNode(true);
-  const est={rot:'font-size:12px;fill:#3A454C',
+
+  // O título vive num <div> ao lado do SVG, porque é assim que dá para editar
+  // clicando. Para a imagem ele precisa virar <text> DENTRO do SVG: tudo o que
+  // já existe desce, e o desenho ganha altura para caber a linha nova. Sem
+  // isso, o PNG sairia com as barras e sem dizer de onde são.
+  const elTit=caixa.querySelector('.graf-titulo');
+  const titulo=(elTit?elTit.textContent:'').replace(/\s+/g,' ').trim();
+  const vb0=(svg.getAttribute('viewBox')||'-8 0 910 300').split(/\s+/).map(Number);
+  const alturaTit = titulo ? 40 : 0;
+  if(titulo){
+    const dentro=document.createElementNS('http://www.w3.org/2000/svg','g');
+    dentro.setAttribute('transform','translate(0,'+alturaTit+')');
+    while(clone.firstChild) dentro.appendChild(clone.firstChild);
+    const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+    tx.setAttribute('class','tit');
+    tx.setAttribute('x','0');
+    tx.setAttribute('y','22');
+    tx.textContent=titulo;
+    clone.appendChild(tx);
+    clone.appendChild(dentro);
+    clone.setAttribute('viewBox', vb0[0]+' '+vb0[1]+' '+vb0[2]+' '+(vb0[3]+alturaTit));
+    // o título usa o mesmo recuo das barras, senão fica colado na borda
+    tx.setAttribute('x', String(vb0[0]+6));
+  }
+  const est={tit:'font-size:17px;font-weight:700;fill:#10161C',
+             'rosca-n':'font-size:21px;font-weight:600;fill:#10161C;font-family:monospace',
+             'rosca-r':'font-size:11.5px;fill:#6E787E',
+             rot:'font-size:12px;fill:#3A454C',
              val:'font-size:12px;fill:#10161C;font-family:monospace',
              pct:'font-size:11px;fill:#6E787E;font-family:monospace',
              eixo:'stroke:#DCE1DF;stroke-width:1',
@@ -2828,7 +2963,7 @@ function baixaGrafico(id,nome){
     if(e) el.setAttribute('style',e+';font-family:system-ui,sans-serif');
   });
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  const vb=(svg.getAttribute('viewBox')||'0 0 760 300').split(/\s+/).map(Number);
+  const vb=(clone.getAttribute('viewBox')||'-8 0 910 300').split(/\s+/).map(Number);
   const esc=2, w=vb[2]*esc, h=vb[3]*esc;
   clone.setAttribute('width',w); clone.setAttribute('height',h);
   const texto=new XMLSerializer().serializeToString(clone);
@@ -2843,7 +2978,11 @@ function baixaGrafico(id,nome){
       if(!bl) return;
       const a=document.createElement('a');
       a.href=URL.createObjectURL(bl);
-      a.download=nome.replace(/[^\w\u00C0-\u017F]+/g,'-').replace(/^-|-$/g,'').toLowerCase()+'.png';
+      // O arquivo sai com o nome do título: se a pessoa reescreveu o título,
+      // é esse texto que ela reconhece depois na pasta de downloads.
+      const base=(titulo||nome||'grafico');
+      a.download=base.replace(/[^\w\u00C0-\u017F]+/g,'-').replace(/^-|-$/g,'')
+                     .toLowerCase().slice(0,80)+'.png';
       document.body.appendChild(a); a.click();
       setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
     },'image/png');
@@ -2963,7 +3102,7 @@ async function montaEduDetalhe(){
           imagem</a>
       </div>
       <div data-alvo="tab">${tabelaEtapa(b,redes)}</div>
-      <div data-alvo="graf" hidden>${graficoBloco(b,redes,id)}</div>
+      <div data-alvo="graf" hidden>${graficoBloco(b,redes,id,b.nome+' · '+ctx.nome)}</div>
     </details>`;
   };
 
@@ -2976,27 +3115,42 @@ async function montaEduDetalhe(){
   const corpoGraficos = ()=>{
     const bons=blocos.filter(b=>valeGrafico(b,redes));
     const fora=blocos.filter(b=>!valeGrafico(b,redes));
-    if(!bons.length)
+    let n=0;
+
+    // A repartição por rede abre a lista porque é a pergunta que vem antes de
+    // todas as outras: de quem são estas escolas. Ela já estava na tela como
+    // quatro cartões com porcentagem, que dizem os números mas não a proporção.
+    const cartaRede=(()=>{
+      const itens=redes.map(r=>({rot:r.nome, v:r.v[EDU.total]||0}));
+      if(itens.filter(x=>x.v>0).length<2) return '';
+      const id='gvrede';
+      const meta=`<span class="graf-meta"><a class="baixar" href="#" data-baixa="${id}"
+           title="Baixar este gráfico como imagem PNG">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7"/><path d="M2.5 12.5h11"/></svg>
+          Baixar imagem</a></span>`;
+      const g=graficoRosca(itens,id,'Matrículas por rede · '+ctx.nome,meta,'matrículas');
+      return g?`<div class="edu-bloco graf-carta">${g}</div>`:'';
+    })();
+
+    if(!bons.length && !cartaRede)
       return `<div class="edu-nada">Nenhum bloco deste recorte tem repartições
         suficientes para um gráfico ajudar.</div>`;
-    let n=0;
     const cartas=bons.map(b=>{
       const id='gv'+(++n);
+      // Sem <h3> aqui de propósito: o nome do bloco já é o começo do título
+      // editável, e repeti-lo logo acima deixava a mesma frase duas vezes na
+      // tela. O total e o botão vão para a direita da linha do título.
+      const meta=`<span class="graf-meta">${b.total!==null?intBR(somaRedes(redes,b.total))+' <small>matrículas</small>':''}
+        <a class="baixar" href="#" data-baixa="${id}"
+           title="Baixar este gráfico como imagem PNG">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7"/><path d="M2.5 12.5h11"/></svg>
+          Baixar imagem</a></span>`;
       return `<div class="edu-bloco graf-carta">
-        <div class="graf-cab">
-          <h3>${b.nome}</h3>
-          <span class="tt">${b.total!==null?intBR(somaRedes(redes,b.total)):''}
-            ${b.total!==null?'<small>matrículas</small>':''}</span>
-          <a class="baixar" href="#" data-baixa="${id}"
-             title="Baixar este gráfico como imagem PNG">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7"/><path d="M2.5 12.5h11"/></svg>
-            Baixar imagem</a>
-        </div>
-        ${graficoBloco(b,redes,id)}
+        ${graficoBloco(b,redes,id,b.nome+' · '+ctx.nome,meta)}
       </div>`;
     }).join('');
     const nomes=fora.map(b=>b.nome).join(', ');
-    return cartas + (fora.length ? `<p class="edu-fora">Sem gráfico:
+    return cartaRede + cartas + (fora.length ? `<p class="edu-fora">Sem gráfico:
       <b>${nomes}</b>. Nesses blocos as repartições são duas ou menos — dois
       números lado a lado a tabela mostra melhor, e a barra não acrescentaria
       nada. Eles continuam completos nas outras duas visões.</p>` : '');
@@ -3059,8 +3213,7 @@ async function montaEduDetalhe(){
   alvo.querySelectorAll('.graf-carta [data-baixa]').forEach(a=>{
     a.onclick=ev=>{
       ev.preventDefault();
-      const h=a.closest('.graf-carta').querySelector('h3');
-      baixaGrafico(a.dataset.baixa, (h?h.textContent:'grafico')+' '+ctx.nome);
+      baixaGrafico(a.dataset.baixa, ctx.nome);
     };
   });
 }
