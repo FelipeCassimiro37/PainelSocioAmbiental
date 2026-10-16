@@ -1,0 +1,57 @@
+{
+  "escolas_total": {
+    "nome": "Escolas em atividade",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "escolas_federais": {
+    "nome": "Escolas federais",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "escolas_estaduais": {
+    "nome": "Escolas estaduais",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "escolas_municipais": {
+    "nome": "Escolas municipais",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "escolas_privadas": {
+    "nome": "Escolas privadas",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "escolas_urbanas": {
+    "nome": "Escolas urbanas",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "escolas_rurais": {
+    "nome": "Escolas rurais",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "porte_pequeno": {
+    "nome": "Escolas de pequeno porte (até 50 matrículas)",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "porte_medio": {
+    "nome": "Escolas de médio porte (51 a 500 matrículas)",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "porte_grande": {
+    "nome": "Escolas de grande porte (mais de 500 matrículas)",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  },
+  "atend_especializado": {
+    "nome": "Escolas com atendimento educacional especializado (AEE)",
+    "ano": "2025",
+    "fonte": "INEP — Censo Escolar 2025"
+  }
+}

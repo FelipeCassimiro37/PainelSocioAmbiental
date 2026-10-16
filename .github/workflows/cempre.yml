@@ -1,0 +1,86 @@
+name: Vigiar o CEMPRE (salário médio)
+
+# O CEMPRE sai uma vez por ano, em junho. A verificação é barata — dois pedidos
+# de metadados ao SIDRA, sem baixar planilha nenhuma — então pode ser semanal.
+#
+# Sexta-feira para não dividir o dia com os outros vigias: todos gravam em
+# fonte/auto e abrem Pull Request, e dois que rodem junto conflitam. CAGED é
+# diário; CLP na terça, Censo Escolar na quarta, SINISA na quinta, PIB no
+# sábado.
+on:
+  schedule:
+    - cron: "0 13 * * 5"      # sexta-feira, 10:00 em Brasília
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Reprocessar mesmo sem edição nova"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vigiar-cempre
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tem edição nova?
+        id: checar
+        timeout-minutes: 6
+        run: python scripts/monitor_cempre.py --so-checar
+
+      - name: Consultar o SIDRA e preparar o indicador
+        if: ${{ steps.checar.outputs.novidade == 'true' || inputs.forcar }}
+        timeout-minutes: 15
+        run: python scripts/monitor_cempre.py ${{ inputs.forcar && '--forcar' || '' }}
+
+      - name: Abrir Pull Request
+        if: ${{ steps.checar.outputs.novidade == 'true' || inputs.forcar }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANO: ${{ steps.checar.outputs.ano }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonte/auto
+          if git diff --staged --quiet; then
+            echo "Edição nova anunciada, mas os números não mudaram. Nada a fazer."
+            exit 0
+          fi
+          ramo="cempre/$ANO"
+          git checkout -b "$ramo"
+          git commit -m "CEMPRE $ANO: salário médio mensal"
+          if [ -n "$(gh pr list --head "$ramo" --state open --json number --jq '.[0].number')" ]; then
+            git push --force origin "$ramo"
+          else
+            git push origin --delete "$ramo" 2>/dev/null || true
+            git push origin "$ramo"
+          fi
+          python - <<'PY' > /tmp/corpo.md
+          import json
+          e = json.load(open('fonte/auto/auto_cempre.estado.json', encoding='utf-8'))
+          t = e.get('totais', {})
+          print('# CEMPRE %s — salário médio mensal\n' % e['ano'])
+          print('Tabela do SIDRA: %d, variável %d.\n' % (e['tabela'], e['variavel']))
+          print('%d municípios · média das médias: %.2f salários mínimos.\n'
+                % (t.get('municipios', 0), t.get('media', 0)))
+          print('O valor é em salários mínimos, então a queda de um ano para o '
+                'outro pode ser só o mínimo subindo mais que os salários — vale '
+                'conferir antes de concluir que a renda caiu.\n')
+          print('Fonte: %s' % e['origem'])
+          PY
+          gh pr create --base main --head "$ramo" \
+            --title "CEMPRE $ANO: salário médio mensal" \
+            --body-file /tmp/corpo.md \
+            || gh pr edit "$ramo" --body-file /tmp/corpo.md

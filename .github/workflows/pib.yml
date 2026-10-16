@@ -1,0 +1,98 @@
+name: Vigiar o PIB dos Municípios (IBGE)
+
+# O IBGE divulga o PIB municipal uma vez por ano, em dezembro, com dois anos de
+# defasagem. Uma verificação semanal custa duas leituras do FTP; o pacote de
+# 20 MB só é baixado quando aparece edição ainda não processada.
+#
+# O sábado é de propósito. Todos os vigias gravam em fonte/auto e abrem Pull
+# Request, e dois que rodem junto nascem do mesmo estado do repositório e
+# conflitam na hora de aceitar. Os outros dias já estão ocupados: CAGED todo
+# dia de manhã, CLP na terça, Censo Escolar na quarta, SINISA na quinta,
+# CEMPRE na sexta.
+on:
+  schedule:
+    - cron: "0 13 * * 6"      # sábado, 10:00 em Brasília
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Reprocessar mesmo sem edição nova"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vigiar-pib
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install --quiet openpyxl
+
+      - name: Tem edição nova?
+        id: checar
+        timeout-minutes: 6
+        run: python scripts/monitor_pib.py --so-checar
+
+      - name: Baixar e preparar os indicadores
+        if: ${{ steps.checar.outputs.novidade == 'true' || inputs.forcar }}
+        timeout-minutes: 30
+        run: python scripts/monitor_pib.py ${{ inputs.forcar && '--forcar' || '' }}
+
+      # Nada entra no painel sozinho: abre um Pull Request para conferência.
+      - name: Abrir Pull Request
+        if: ${{ steps.checar.outputs.novidade == 'true' || inputs.forcar }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANO: ${{ steps.checar.outputs.ano }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonte/auto
+          if git diff --staged --quiet; then
+            echo "Edição nova anunciada, mas os números não mudaram. Nada a fazer."
+            exit 0
+          fi
+          ramo="pib/$ANO"
+          git checkout -b "$ramo"
+          git commit -m "PIB dos Municípios $ANO"
+          if [ -n "$(gh pr list --head "$ramo" --state open --json number --jq '.[0].number')" ]; then
+            git push --force origin "$ramo"
+          else
+            git push origin --delete "$ramo" 2>/dev/null || true
+            git push origin "$ramo"
+          fi
+          # O corpo sai do próprio estado gravado pelo vigia, para que o Pull
+          # Request mostre o ano de CADA indicador. O IBGE publica o PIB e o PIB
+          # per capita dois anos à frente do VAB por setor, e essa diferença
+          # precisa estar visível na hora de aceitar — foi exatamente o que, uma
+          # vez, fez o painel exibir PIB de 2023 com rótulo de 2021.
+          python - <<'PY' > /tmp/corpo.md
+          import json
+          e = json.load(open('fonte/auto/auto_pib.estado.json', encoding='utf-8'))
+          print('# PIB dos Municípios — edição %s\n' % e['ano'])
+          print('Arquivo lido: `%s`\n' % e['arquivo'])
+          print('| indicador | ano publicado |')
+          print('| --- | --- |')
+          for ind, ano in e.get('anosPorIndicador', {}).items():
+              print('| `%s` | %s |' % (ind, ano))
+          t = e.get('totais', {})
+          print('\n%d municípios · PIB somado: R$ %.2f tri'
+                % (t.get('municipios', 0), t.get('pib_somado', 0) / 1e12))
+          print('\nFonte: %s' % e['origem'])
+          PY
+          gh pr create --base main --head "$ramo" \
+            --title "PIB dos Municípios $ANO" \
+            --body-file /tmp/corpo.md \
+            || gh pr edit "$ramo" --body-file /tmp/corpo.md

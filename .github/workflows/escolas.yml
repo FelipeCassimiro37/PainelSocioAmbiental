@@ -1,0 +1,94 @@
+name: Vigiar as escolas (Censo Escolar)
+
+# Irmão do "Vigiar o Censo Escolar": o outro cuida das matrículas do subpainel
+# de educação, este das contagens de escolas da ficha do município. Os dois leem
+# o mesmo pacote anual do INEP, por isso rodam no mesmo dia, em horas
+# diferentes — o do censo às 12h UTC, este às 16h.
+#
+# O arquivo é grande: duas tabelas do pacote, cerca de 265 MB lidos por faixa de
+# bytes. Só são baixadas quando aparece ano que ainda não foi processado.
+on:
+  schedule:
+    - cron: "0 16 * * 3"      # quarta-feira, 13:00 em Brasília
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Reprocessar mesmo sem ano novo"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vigiar-escolas
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tem ano novo?
+        id: checar
+        timeout-minutes: 10
+        run: python scripts/monitor_escolas.py --so-checar
+
+      - name: Ler o censo e contar as escolas
+        if: ${{ steps.checar.outputs.novidade == 'true' || inputs.forcar }}
+        timeout-minutes: 90
+        run: python scripts/monitor_escolas.py ${{ inputs.forcar && '--forcar' || '' }}
+
+      - name: Abrir Pull Request
+        if: ${{ steps.checar.outputs.novidade == 'true' || inputs.forcar }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANO: ${{ steps.checar.outputs.ano }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonte/auto
+          if git diff --staged --quiet; then
+            echo "Ano novo anunciado, mas os números não mudaram. Nada a fazer."
+            exit 0
+          fi
+          ramo="escolas/$ANO"
+          git checkout -b "$ramo"
+          git commit -m "Censo Escolar $ANO: contagem de escolas por município"
+          if [ -n "$(gh pr list --head "$ramo" --state open --json number --jq '.[0].number')" ]; then
+            git push --force origin "$ramo"
+          else
+            git push origin --delete "$ramo" 2>/dev/null || true
+            git push origin "$ramo"
+          fi
+          # O corpo traz as definições junto dos totais. Estes indicadores já
+          # mudaram de sentido uma vez — saíram do QEdu, que não documentava o
+          # que contava — e quem aceitar o Pull Request precisa ver em que
+          # universo os números foram apurados, não só o número.
+          python - <<'PY' > /tmp/corpo.md
+          import json
+          e = json.load(open('fonte/auto/auto_escolas.estado.json', encoding='utf-8'))
+          t = e['totais']
+          print('# Censo Escolar %s — escolas por município\n' % e['ano'])
+          print('| indicador | %s |' % e['ano'])
+          print('| --- | ---: |')
+          for k, v in t.items():
+              if k.startswith(('escolas_', 'porte_', 'atend_')):
+                  print('| `%s` | %s |' % (k, format(v, ',d').replace(',', '.')))
+          print('\n%s municípios · %s linhas no censo · %s em atividade\n'
+                % (t['municipios'], t['linhasNoCenso'], t['emAtividade']))
+          print('## Definições\n')
+          for k, v in e['definicoes'].items():
+              print('- **%s**: %s' % (k, v))
+          print('\nFonte: %s' % e['origem'])
+          PY
+          gh pr create --base main --head "$ramo" \
+            --title "Censo Escolar $ANO: contagem de escolas por município" \
+            --body-file /tmp/corpo.md \
+            || gh pr edit "$ramo" --body-file /tmp/corpo.md

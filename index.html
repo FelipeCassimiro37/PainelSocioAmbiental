@@ -155,6 +155,21 @@ details.grp{display:block;border-top:1px solid var(--line-2)}
 .bar i{display:block;height:100%}
 .row .src{font-size:11.5px;color:#98A0A4;margin-top:5px;font-style:italic;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Link para a fonte do número. Em repouso é igual ao texto que havia antes —
+   a citação não deve competir com o valor, que é o que a pessoa veio ver. O
+   sublinhado e a setinha aparecem só no hover/foco, e é isso que informa que
+   dá para clicar. O foco visível é obrigatório: boa parte da consulta é feita
+   por teclado, e sem ele não há como saber onde se está. */
+a.fnt{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;
+  transition:color .12s}
+a.fnt svg{width:.85em;height:.85em;margin-left:.3em;vertical-align:-.08em;
+  fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;
+  stroke-linejoin:round;opacity:.45;transition:opacity .12s}
+a.fnt:hover,a.fnt:focus-visible{color:var(--ink);border-bottom-style:solid}
+a.fnt:hover svg,a.fnt:focus-visible svg{opacity:1}
+a.fnt:focus-visible{outline:2px solid var(--ink);outline-offset:2px;
+  border-radius:2px}
+@media print{ a.fnt{border-bottom:none} a.fnt svg{display:none} }
 .row .pos{font-family:var(--f-num);font-size:11px;color:var(--muted);margin-top:4px}
 /* Ressalva de um valor específico: o número é o que a fonte publicou, mas há
    algo sobre ele que quem lê precisa saber. Só aparece onde existe nota. */
@@ -1173,6 +1188,77 @@ function fonteAno(m){
   // está lá. O teste é por vizinhança de dígito.
   return new RegExp('(^|[^0-9])'+a+'([^0-9]|$)').test(f) ? f : f+' · '+a;
 }
+
+/* Escapa texto que vai para dentro de HTML montado por concatenação. O nome
+   não é `esc` porque esse identificador já é usado como variável local em
+   outros pontos do arquivo, e a sombra deixaria o leitor em dúvida. */
+function escHtml(t){
+  return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* ================= endereço de cada fonte ================= */
+/* Cada número do painel vira um link para onde ele foi publicado. O par é
+   feito pelo texto da fonte, não por uma lista indicador por indicador: o
+   dicionário tem 84 entradas e 13 fontes, então casar por padrão evita uma
+   tabela com 84 linhas para manter — e um indicador novo já nasce com link,
+   desde que a planilha escreva a fonte com o mesmo nome das outras.
+
+   A ORDEM IMPORTA: vence o primeiro padrão que casar, então os específicos
+   vêm antes dos genéricos. O caso que obriga a isso é o /ipea/: a taxa de
+   analfabetismo vem do "Ipea — Atlas do Desenvolvimento Humano", e se /ipea/
+   viesse antes ela cairia no Atlas da Violência, que é outra pesquisa.
+
+   Valor null quer dizer "sem link de propósito", não "esqueci": as séries das
+   secretarias estaduais de segurança são 27 origens diferentes, uma por
+   estado, e não existe uma página única para apontar. Mandar o leitor para
+   uma delas seria pior que não linkar. */
+const FONTES_URL=[
+  // Quando a própria fonte diz de qual tabela do SIDRA saiu, o link vai direto
+  // nela — é o caso das 12 faixas de escolaridade, que citam a tabela 10061.
+  [/sidra[,\s]*tabela\s*n?º?\s*(\d+)/i,'https://sidra.ibge.gov.br/tabela/$1'],
+  [/cadastro central de empresas|cempre/i,'https://sidra.ibge.gov.br/tabela/9509'],
+  [/pib dos munic/i,'https://www.ibge.gov.br/estatisticas/economicas/'+
+    'contas-nacionais/9088-produto-interno-bruto-dos-municipios.html'],
+  [/atlas do desenvolvimento humano|atlasbrasil|pnud/i,
+    'https://www.atlasbrasil.org.br/'],
+  [/atlas d[ae]?\s*viol/i,'https://www.ipea.gov.br/atlasviolencia/'],
+  [/censo demogr/i,'https://www.ibge.gov.br/estatisticas/sociais/populacao/'+
+    '22827-censo-demografico-2022.html'],
+  [/caged/i,'https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/'+
+    'acoes-e-programas/programas-projetos-acoes-obras-e-atividades/'+
+    'estatisticas-trabalho/novo-caged'],
+  [/sinisa/i,'https://www.gov.br/cidades/pt-br/acesso-a-informacao/'+
+    'acoes-e-programas/saneamento/sinisa/resultados-sinisa'],
+  [/censo escolar|qedu|inep/i,'https://www.gov.br/inep/pt-br/areas-de-atuacao/'+
+    'pesquisas-estatisticas-e-indicadores/censo-escolar'],
+  [/firjan/i,'https://www.firjan.com.br/ifdm/'],
+  [/secretarias? estaduais/i,null],
+  [/\bclp\b|competitividade/i,'https://www.clp.org.br/ranking-de-competitividade/'],
+  [/ipea|pesquisa econ[oô]mica aplicada/i,'https://www.ipea.gov.br/atlasviolencia/'],
+];
+/* Endereço da fonte, ou '' quando não há um para onde mandar. */
+function urlFonte(fonte){
+  const f=String(fonte||'').trim();
+  if(!f) return '';
+  for(const [padrao,destino] of FONTES_URL){
+    const m=f.match(padrao);
+    if(m) return destino ? destino.replace(/\$1/g,m[1]||'') : '';
+  }
+  return '';
+}
+/* A citação da fonte pronta para ir no HTML: link quando há endereço, texto
+   simples quando não há. `extra` é o sufixo que a ficha acrescenta quando o
+   número foi agregado pelo painel — fica fora do link, porque esse trecho não
+   é algo que a fonte publicou. */
+function citaFonte(m,extra){
+  const txt=fonteAno(m), u=urlFonte(m.fonte), fim=extra||'';
+  if(!u) return escHtml(txt)+escHtml(fim);
+  return '<a class="fnt" href="'+u+'" target="_blank" rel="noopener noreferrer"'+
+    ' title="Abrir a fonte: '+escHtml(txt)+'">'+escHtml(txt)+
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8'+
+    'M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>'+escHtml(fim);
+}
 function montarGrupos(){
   for(const id of IDS){
     const m=DIC[id];
@@ -1501,7 +1587,7 @@ function linhaFicha(id,bloco,pl,chave,tm,curto){
     '</span></div>'+
     (pct!==null?'<div class="bar"><i style="width:'+Math.max(2,pct*100)+'%;background:'+tm.ramp[4]+'"></i></div>':'')+
     (pos!==null?'<div class="pos">'+pos+'º de '+tot+' '+(st.nivel==='mun'?'no estado':'entre as UFs')+'</div>':'')+
-    '<div class="src">'+fonteAno(m)+origem+'</div>'+
+    '<div class="src">'+citaFonte(m,origem)+'</div>'+
     blocoRessalva(id,st.mun);
   return row;
 }
@@ -2396,7 +2482,7 @@ function cartaoIndicador(id,i,tm){
     ${P?`<div class="tr"><i style="width:${Math.max(2,P.pct*100)}%;background:${tm.ramp[4]}"></i></div>
         <div class="pos">${P.pos}º de ${P.tot} no estado</div>`:''}
     ${ref}
-    <div class="fonte" title="${fonteAno(m)}">${fonteAno(m)}</div>
+    <div class="fonte">${citaFonte(m)}</div>
     ${blocoRessalva(id,i)}
   </div>`;
 }
@@ -2704,7 +2790,7 @@ function cartaoCLP(i){
     <div class="tx">
       <div class="r">Ranking de Competitividade</div>
       <div class="v">${br(fInt(p))}º <small>de ${CLP.total} municípios</small></div>
-      <div class="d">${varTx} · ${CLP.fonte}</div>
+      <div class="d">${varTx} · ${citaFonte({fonte:CLP.fonte})}</div>
     </div>
     <a class="btn" href="competitividade.html#v=municipio&m=${cod}">Ver o detalhamento &rarr;</a>
   </div>`;
@@ -3182,7 +3268,7 @@ async function montaEduDetalhe(){
       </div>
     </div>
     <p class="edu-sub"><b>${intBR(total)}</b> matrículas na educação básica ·
-      ${ctx.sub} · ${redes.length} rede${redes.length>1?'s':''} · ${EDU.fonte}</p>
+      ${ctx.sub} · ${redes.length} rede${redes.length>1?'s':''} · ${citaFonte({fonte:EDU.fonte})}</p>
 
     <div class="edu-legenda">
       Matrículas <b>informadas pelas escolas do município</b>, não alunos que moram
@@ -3331,7 +3417,7 @@ async function montaEduEscolas(i){
     <button class="volta" id="escVolta">&larr; voltar para a visão detalhada</button>
     <div class="edu-cab"><div><h2>Escolas · ${META.nomes[i]}</h2></div></div>
     <p class="edu-sub">${intBR(lista.length)} escolas · ordenadas da maior para a menor ·
-      ${EDU.fonte}. Clique numa escola para ver as matrículas por etapa e série.</p>
+      ${citaFonte({fonte:EDU.fonte})}. Clique numa escola para ver as matrículas por etapa e série.</p>
     <div class="esc-filtros">
       <div class="esc-busca">
         <input id="escBusca" type="text" placeholder="Buscar escola pelo nome…"
@@ -3394,8 +3480,10 @@ function montaSobre(){
     `<tr><td><span class="dot" style="display:inline-block;background:${t.ramp[4]};margin-right:7px"></span>${t.nome}</td>`+
     `<td class="n">${D.porTema[k]||0}</td></tr>`).join('');
 
+  // A tabela de fontes do Sobre também leva link — é a lista completa de
+  // origens, e é dela que sai metade das citações de um diagnóstico.
   const fontes=Object.entries(D.porFonte).sort((a,b)=>b[1].n-a[1].n).map(([f,d])=>
-    `<tr><td>${f}</td><td class="n">${[...d.anos].sort().join(', ')}</td><td class="n">${d.n}</td></tr>`).join('');
+    `<tr><td>${citaFonte({fonte:f})}</td><td class="n">${[...d.anos].sort().join(', ')}</td><td class="n">${d.n}</td></tr>`).join('');
 
   // Estados sem série das secretarias. Filtra pela fonte, e não pelo tema:
   // a taxa de homicídios vem do IPEA e cobre o país inteiro, então usar o tema

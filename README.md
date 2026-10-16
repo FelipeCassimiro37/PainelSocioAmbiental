@@ -35,6 +35,27 @@ O `index.html` carrega `meta.json` e a malha na abertura, e busca os demais
 arquivos só quando você seleciona um indicador ou entra num estado. Nada é
 baixado duas vezes: o navegador guarda em cache.
 
+## Cada número leva à sua fonte
+
+A citação que aparece embaixo de todo indicador — na ficha, nos cartões, na
+tabela da aba Sobre — é um link para a página onde o dado foi publicado. Serve
+para o momento em que o número vai para um documento técnico e é preciso
+conferir ou citar a origem.
+
+O endereço não é escolhido indicador por indicador: a tabela `FONTES_URL`, no
+`index.html`, casa o **texto da fonte** com um endereço. São 13 fontes para 84
+indicadores, e assim um indicador novo já nasce com link, desde que a planilha
+escreva a fonte com o mesmo nome das outras. Quando a fonte diz de qual tabela
+do SIDRA saiu — `(SIDRA, tabela 10061)` —, o link vai direto nela.
+
+Uma fonte fica sem link de propósito: as séries das secretarias estaduais de
+segurança pública são 27 origens diferentes, uma por estado, e não existe
+página única para apontar.
+
+Se você acrescentar uma fonte nova, acrescente também uma linha em
+`FONTES_URL`. **A ordem importa**: vence o primeiro padrão que casar, então
+padrões específicos vêm antes dos genéricos.
+
 ## Configurar o Google Sheets (uma vez só)
 
 1. Suba `base-painel-socioambiental.xlsx` para o Google Drive, clique com o
@@ -165,6 +186,80 @@ rodada da automação o site reflete a mudança. Para sair na hora:
 
 Não precisa recortar por estado, não precisa PROCV, não precisa mexer nas 27
 abas de UF.
+
+## Caso 2b — as fontes que se atualizam sozinhas
+
+Parte das fontes não precisa do passo a passo acima: há um vigia para cada uma,
+em `scripts/monitor_*.py`, rodando semanalmente pelo GitHub Actions. O vigia
+pergunta à fonte se saiu edição nova, e só então baixa e processa. O resultado
+vai para `fonte/auto/`, não para a planilha.
+
+| vigia | fonte | quando roda | o que atualiza |
+| --- | --- | --- | --- |
+| `monitor_caged.py` | CAGED (MTE) | todo dia, 08:00 | estoque, admissões, desligamentos, saldo |
+| `monitor_clp.py` | CLP | terça | ranking de competitividade |
+| `monitor_censo.py` | Censo Escolar (INEP) | quarta, 12h | matrículas por escola (subpainel de educação) |
+| `monitor_escolas.py` | Censo Escolar (INEP) | quarta, 16h | contagem de escolas por município |
+| `monitor_sinisa.py` | SINISA | quinta | água, esgoto e resíduos sólidos |
+| `monitor_cempre.py` | CEMPRE (IBGE) | sexta | salário médio mensal |
+| `monitor_pib.py` | PIB dos Municípios (IBGE) | sábado | PIB, PIB per capita, VAB e participações |
+
+Três coisas que vale saber sobre essa camada:
+
+- **Nada entra no painel sozinho.** O vigia abre um Pull Request e espera você
+  aceitar. O corpo do Pull Request traz os totais para conferência.
+- **`fonte/auto/` vence a planilha.** O `build.py` lê a planilha primeiro e os
+  arquivos de `fonte/auto/` depois, então o valor do robô sobrescreve o que
+  estiver na aba correspondente. Corrigir um desses indicadores à mão na
+  planilha não adianta — a correção é desfeita na rodada seguinte.
+- **Cada `auto_X.csv` vem com um `auto_X.meta.json`** que carrega o nome, o ano
+  e a fonte de cada indicador. É dali que sai a citação exibida no painel, e é
+  por isso que o ano fica certo sem ninguém editar o dicionário.
+
+Para rodar um vigia na mão: **Actions → o workflow dele → Run workflow**. A
+opção *Reprocessar mesmo sem edição nova* serve para refazer os arquivos depois
+de mexer no script.
+
+### O que mudou nas escolas, e por quê
+
+Os indicadores `escolas_*`, `porte_*` e `atend_especializado` vinham do QEdu.
+O QEdu não produz dado: ele exibe o Censo Escolar do INEP. Trocar pela fonte
+primária tirou um intermediário do caminho e, principalmente, deixou a
+definição de cada indicador escrita no `monitor_escolas.py`, em vez de
+dependente de uma escolha que o QEdu nunca documentou.
+
+Duas definições mudaram, e **o número caiu por isso, não porque fecharam
+escolas**:
+
+- **`escolas_total` agora conta só escolas em atividade.** O censo registra
+  também paralisadas e extintas — em 2025, 33.652 das 214.192 linhas. Contá-las
+  inflava o total de cada município em cerca de 16% com estabelecimentos que
+  não atendem ninguém. O rótulo do painel passou a dizer *Escolas em atividade*
+  para a mudança ficar visível em vez de silenciosa.
+- **`atend_especializado` virou *escolas que oferecem AEE*** (`TP_AEE` 1 ou 2).
+  O microdado oferece dois candidatos parecidos: oferecer o atendimento e ter
+  sala de recursos multifuncionais — o segundo é infraestrutura, não
+  atendimento. O rótulo fala em atendimento, então vale o serviço.
+
+O que **não** mudou: as faixas de porte (até 50, 51 a 500, acima de 500) foram
+deduzidas da série anterior e mantidas, para não quebrar a comparação com o que
+já saiu em relatório. Aplicadas ao censo, reproduzem a distribuição antiga com
+erro de 0,7 ponto percentual.
+
+Ao citar esses números num relatório, vale escrever o universo junto: "escolas
+em atividade, Censo Escolar 2025 (INEP)". É a diferença que explica qualquer
+divergência com um número do QEdu.
+
+### Um aviso que o PIB deixou
+
+O IBGE publica o PIB municipal e o VAB por setor em ritmos diferentes: na
+edição 2023, o PIB e o PIB per capita chegaram a 2023, mas o VAB por setor
+parou em 2021. Quem copiar a planilha inteira rotulando tudo com o ano da
+edição coloca no painel um VAB de 2021 anunciado como 2023 — ou, no sentido
+contrário, esconde um PIB de 2023 sob o rótulo 2021. O `monitor_pib.py` lê cada
+indicador do ano mais recente em que a coluna tem valor e grava esse ano no
+`meta.json`, por isso os indicadores desse bloco aparecem com anos diferentes.
+Isso é o certo, não um descuido.
 
 ## Caso 3 — acrescentar um indicador novo
 
