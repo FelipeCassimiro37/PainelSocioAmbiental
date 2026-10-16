@@ -179,6 +179,30 @@ def conta_porte(z, por_mun):
     return classificadas
 
 
+def agrega(por_mun):
+    """
+    Totais por UF e do Brasil, somados dos municípios.
+
+    Não é luxo: o `build.py` prefere um total "oficial" — vindo de linha de UF
+    ou de país — à soma que ele mesmo faria. Enquanto esses totais vinham do
+    QEdu e os municípios também, tudo batia. Ao trocar os municípios para o
+    Censo Escolar sem trocar os totais, o painel passou a mostrar 180.540
+    escolas somando os municípios e 212.386 no recorte Brasil — o mesmo
+    indicador com dois valores, dependendo de onde se olhasse. Gravar os três
+    níveis aqui fecha essa porta: os totais saem dos mesmos dados que os
+    municípios, então não há como divergirem.
+
+    A UF sai dos dois primeiros dígitos do código do município, que é como o
+    IBGE numera. Não depende de tabela de-para nenhuma.
+    """
+    por_uf = collections.defaultdict(collections.Counter)
+    brasil = collections.Counter()
+    for cod, c in por_mun.items():
+        por_uf[cod[:2]].update(c)
+        brasil.update(c)
+    return por_uf, brasil
+
+
 def confere(por_mun, classificadas):
     """
     Conferências que falham alto em vez de publicar número errado em silêncio.
@@ -252,15 +276,22 @@ def main():
     print('  baixado %.0f MB em %d pedidos' % (cru.baixado / 1e6, cru.pedidos))
     soma = confere(por_mun, classificadas)
 
+    por_uf, brasil = agrega(por_mun)
     caminho_csv = os.path.join(AUTO, 'auto_escolas.csv')
     with open(caminho_csv, 'w', encoding='utf-8', newline='') as f:
         f.write('codigo;' + ';'.join(ORDEM) + '\n')
+        # Zero explícito, não vazio: um município pode legitimamente não ter
+        # escola federal nenhuma, e deixar em branco faria o painel exibir
+        # "sem dado" onde o dado existe e é zero.
+        linha = lambda cod, c: (cod + ';' +
+                                ';'.join(str(c.get(i, 0)) for i in ORDEM) + '\n')
         for cod in sorted(por_mun):
-            c = por_mun[cod]
-            # Zero explícito, não vazio: um município pode legitimamente não ter
-            # escola federal nenhuma, e deixar em branco faria o painel exibir
-            # "sem dado" onde o dado existe e é zero.
-            f.write(cod + ';' + ';'.join(str(c.get(i, 0)) for i in ORDEM) + '\n')
+            f.write(linha(cod, por_mun[cod]))
+        # UF e Brasil fecham o arquivo. O build.py reconhece o nível pelo
+        # tamanho do código — 7 dígitos é município, 2 é UF, "BR" é país.
+        for uf in sorted(por_uf):
+            f.write(linha(uf, por_uf[uf]))
+        f.write(linha('BR', brasil))
 
     fonte = 'INEP — Censo Escolar %d' % ano
     meta = {ind: {'nome': NOMES[ind], 'ano': str(ano), 'fonte': fonte}

@@ -85,13 +85,24 @@ def melhor_tabela():
     return tabela, ano
 
 
-def valores(tabela, ano):
-    """Salário médio por código de município, para o ano pedido."""
-    url = ('https://apisidra.ibge.gov.br/values/t/%d/n6/all/v/%d/p/%d'
-           '?formato=json' % (tabela, VARIAVEL, ano))
+def valores(tabela, ano, nivel='n6'):
+    """
+    Salário médio por código territorial, para o ano pedido.
+
+    `nivel` segue a notação do SIDRA: n6 município, n3 UF, n1 Brasil. Os três
+    são gravados porque o `build.py` prefere um total vindo de linha de UF ou
+    de país à média que ele mesmo calcularia dos municípios — e aqui a
+    diferença é real, não arredondamento: o salário médio do país não é a média
+    dos 5.570 salários médios municipais, é a razão entre a massa salarial e o
+    pessoal assalariado do país inteiro. Deixar o painel calcular daria um
+    número que o IBGE não publica.
+    """
+    url = ('https://apisidra.ibge.gov.br/values/t/%d/%s/all/v/%d/p/%d'
+           '?formato=json' % (tabela, nivel, VARIAVEL, ano))
     bruto = busca(url)
     if len(bruto) < 2:
-        raise SystemExit('A tabela %d não devolveu linhas para %d.' % (tabela, ano))
+        raise SystemExit('A tabela %d não devolveu linhas de %s para %d.'
+                         % (tabela, nivel, ano))
 
     unidade = bruto[1].get('MN', '')
     if 'alário' not in unidade and 'alario' not in unidade:
@@ -100,11 +111,16 @@ def valores(tabela, ano):
         raise SystemExit("A variável %d voltou em '%s', não em salários mínimos. "
                          "Confira %s." % (VARIAVEL, unidade, PAGINA))
 
+    # Tamanho do código esperado em cada nível. O Brasil vem como "1" no SIDRA
+    # e é gravado como "BR", que é o que o build.py entende.
+    tamanho = {'n6': 7, 'n3': 2, 'n1': 1}[nivel]
     saida = {}
     for linha in bruto[1:]:
         cod = str(linha.get('D1C', '')).strip()
-        if len(cod) != 7:
+        if len(cod) != tamanho:
             continue
+        if nivel == 'n1':
+            cod = 'BR'
         v = str(linha.get('V', '')).strip()
         if v in AUSENTES:
             continue
@@ -150,9 +166,15 @@ def main():
         raise SystemExit('Só %d municípios voltaram com salário médio em %d. '
                          'Esperado perto de 5.570 — a consulta veio incompleta.'
                          % (len(dados), ano))
+    ufs = valores(tabela, ano, 'n3')
+    pais = valores(tabela, ano, 'n1')
+    if len(ufs) != 27 or len(pais) != 1:
+        raise SystemExit('Vieram %d UFs e %d linha(s) de Brasil; esperado 27 e 1. '
+                         'Confira %s.' % (len(ufs), len(pais), PAGINA))
 
     media = sum(dados.values()) / len(dados)
     print('  %d municípios · média das médias: %.2f sal. mín.' % (len(dados), media))
+    print('  27 UFs · Brasil: %.2f sal. mín.' % pais['BR'])
     if not 1.0 < media < 6.0:
         print('  AVISO: a média saiu fora da faixa histórica (1 a 6 salários '
               'mínimos). Confira a unidade antes de publicar.')
@@ -162,6 +184,10 @@ def main():
         f.write('codigo;%s\n' % IND)
         for cod in sorted(dados):
             f.write('%s;%s\n' % (cod, repr(dados[cod])))
+        # UF e Brasil fecham o arquivo, como no vigia das escolas.
+        for cod in sorted(ufs):
+            f.write('%s;%s\n' % (cod, repr(ufs[cod])))
+        f.write('BR;%s\n' % repr(pais['BR']))
 
     meta = {IND: {'nome': NOME, 'ano': str(ano),
                   'fonte': 'IBGE — Cadastro Central de Empresas %d' % ano}}

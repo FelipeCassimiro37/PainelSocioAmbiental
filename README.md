@@ -37,24 +37,52 @@ baixado duas vezes: o navegador guarda em cache.
 
 ## Cada número leva à sua fonte
 
-A citação que aparece embaixo de todo indicador — na ficha, nos cartões, na
-tabela da aba Sobre — é um link para a página onde o dado foi publicado. Serve
-para o momento em que o número vai para um documento técnico e é preciso
-conferir ou citar a origem.
+A citação embaixo de todo indicador — na ficha, nos cartões, na tabela da aba
+Sobre — é um link. Serve para o momento em que o número vai para um documento
+técnico e é preciso conferir ou citar a origem.
 
-O endereço não é escolhido indicador por indicador: a tabela `FONTES_URL`, no
-`index.html`, casa o **texto da fonte** com um endereço. São 13 fontes para 84
-indicadores, e assim um indicador novo já nasce com link, desde que a planilha
-escreva a fonte com o mesmo nome das outras. Quando a fonte diz de qual tabela
-do SIDRA saiu — `(SIDRA, tabela 10061)` —, o link vai direto nela.
+O link é montado em três tentativas, da mais específica para a mais genérica,
+e a primeira que acertar vence:
+
+1. **A consulta do SIDRA já aberta no município escolhido.** É o destino bom:
+   a pessoa cai em cima do número. Cobre os 20 indicadores do Censo 2022, do
+   PIB e do CEMPRE, mais as 12 faixas de escolaridade.
+2. **O perfil do município no Atlas do Desenvolvimento Humano**, para IDHM,
+   Gini e taxa de analfabetismo.
+3. **A página da pesquisa**, pelo texto da fonte. É o fundo do poço, para as
+   fontes que não publicam endereço por município: CAGED, SINISA, Censo
+   Escolar e FIRJAN.
+
+Numa ficha de município isso dá 127 links, 62 deles apontando para o
+município. A dica que aparece ao passar o mouse diz qual dos dois casos é —
+"Ver o dado deste município na fonte" ou "Abrir a fonte" —, porque a diferença
+importa antes de clicar.
 
 Uma fonte fica sem link de propósito: as séries das secretarias estaduais de
-segurança pública são 27 origens diferentes, uma por estado, e não existe
-página única para apontar.
+segurança pública são 27 origens, uma por estado, sem página única.
 
-Se você acrescentar uma fonte nova, acrescente também uma linha em
-`FONTES_URL`. **A ordem importa**: vence o primeiro padrão que casar, então
-padrões específicos vêm antes dos genéricos.
+### Mexer nessa parte
+
+Três tabelas no `index.html`, todas com comentário no lugar:
+
+- `SIDRA` — a consulta de cada tabela do SIDRA. A gramática da URL não é
+  documentada pelo IBGE: foi lida do botão "Copiar Url" da própria
+  ferramenta. Dois detalhes que custam tempo se forem redescobertos do zero:
+  **sem `/resultado` no fim** a aplicação abre o montador de consulta em vez
+  da tabela (e ainda apaga o resto do endereço da barra, o que faz parecer que
+  o link foi ignorado); e **`v/allxp` não funciona** nas tabelas sem
+  classificação — é preciso listar as variáveis uma a uma. Os códigos saem de
+  `servicodados.ibge.gov.br/api/v3/agregados/<tabela>/metadados`.
+- `SIDRA_DE_IND` — qual tabela mostra qual indicador.
+- `FONTES_URL` — o par por texto da fonte. **A ordem importa**: vence o
+  primeiro padrão que casar, então os específicos vêm antes dos genéricos.
+  O caso que obriga a isso é o `/ipea/`: a taxa de analfabetismo vem do
+  "Ipea — Atlas do Desenvolvimento Humano", e se `/ipea/` viesse antes ela
+  cairia no Atlas da Violência, que é outra pesquisa.
+
+Indicador novo de fonte que já existe não precisa de nada: cai na terceira
+tentativa sozinho, desde que a planilha escreva a fonte com o mesmo nome das
+outras.
 
 ## Configurar o Google Sheets (uma vez só)
 
