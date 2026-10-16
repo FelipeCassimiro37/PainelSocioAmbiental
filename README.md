@@ -198,7 +198,8 @@ vai para `fonte/auto/`, não para a planilha.
 | --- | --- | --- | --- |
 | `monitor_caged.py` | CAGED (MTE) | todo dia, 08:00 | estoque, admissões, desligamentos, saldo |
 | `monitor_clp.py` | CLP | terça | ranking de competitividade |
-| `monitor_censo.py` | Censo Escolar (INEP) | quarta | matrículas por escola (subpainel de educação) |
+| `monitor_censo.py` | Censo Escolar (INEP) | quarta, 12h | matrículas por escola (subpainel de educação) |
+| `monitor_escolas.py` | Censo Escolar (INEP) | quarta, 16h | contagem de escolas por município |
 | `monitor_sinisa.py` | SINISA | quinta | água, esgoto e resíduos sólidos |
 | `monitor_cempre.py` | CEMPRE (IBGE) | sexta | salário médio mensal |
 | `monitor_pib.py` | PIB dos Municípios (IBGE) | sábado | PIB, PIB per capita, VAB e participações |
@@ -218,6 +219,36 @@ Três coisas que vale saber sobre essa camada:
 Para rodar um vigia na mão: **Actions → o workflow dele → Run workflow**. A
 opção *Reprocessar mesmo sem edição nova* serve para refazer os arquivos depois
 de mexer no script.
+
+### O que mudou nas escolas, e por quê
+
+Os indicadores `escolas_*`, `porte_*` e `atend_especializado` vinham do QEdu.
+O QEdu não produz dado: ele exibe o Censo Escolar do INEP. Trocar pela fonte
+primária tirou um intermediário do caminho e, principalmente, deixou a
+definição de cada indicador escrita no `monitor_escolas.py`, em vez de
+dependente de uma escolha que o QEdu nunca documentou.
+
+Duas definições mudaram, e **o número caiu por isso, não porque fecharam
+escolas**:
+
+- **`escolas_total` agora conta só escolas em atividade.** O censo registra
+  também paralisadas e extintas — em 2025, 33.652 das 214.192 linhas. Contá-las
+  inflava o total de cada município em cerca de 16% com estabelecimentos que
+  não atendem ninguém. O rótulo do painel passou a dizer *Escolas em atividade*
+  para a mudança ficar visível em vez de silenciosa.
+- **`atend_especializado` virou *escolas que oferecem AEE*** (`TP_AEE` 1 ou 2).
+  O microdado oferece dois candidatos parecidos: oferecer o atendimento e ter
+  sala de recursos multifuncionais — o segundo é infraestrutura, não
+  atendimento. O rótulo fala em atendimento, então vale o serviço.
+
+O que **não** mudou: as faixas de porte (até 50, 51 a 500, acima de 500) foram
+deduzidas da série anterior e mantidas, para não quebrar a comparação com o que
+já saiu em relatório. Aplicadas ao censo, reproduzem a distribuição antiga com
+erro de 0,7 ponto percentual.
+
+Ao citar esses números num relatório, vale escrever o universo junto: "escolas
+em atividade, Censo Escolar 2025 (INEP)". É a diferença que explica qualquer
+divergência com um número do QEdu.
 
 ### Um aviso que o PIB deixou
 

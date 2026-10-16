@@ -1,0 +1,27 @@
+{
+  "ano": 2025,
+  "origem": "https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/censo-escolar",
+  "definicoes": {
+    "universo": "TP_SITUACAO_FUNCIONAMENTO = 1 (em atividade)",
+    "porte": "QT_MAT_BAS: até 50 / 51 a 500 / acima de 500",
+    "atend_especializado": "TP_AEE em (1, 2) — oferece AEE"
+  },
+  "verificadoEm": "2026-10-16 14:15 UTC",
+  "totais": {
+    "municipios": 5571,
+    "linhasNoCenso": 214192,
+    "emAtividade": 180540,
+    "classificadasPorPorte": 178766,
+    "escolas_total": 180540,
+    "escolas_federais": 716,
+    "escolas_estaduais": 29998,
+    "escolas_municipais": 107372,
+    "escolas_privadas": 42454,
+    "escolas_urbanas": 129777,
+    "escolas_rurais": 50763,
+    "porte_pequeno": 33047,
+    "porte_medio": 119934,
+    "porte_grande": 25785,
+    "atend_especializado": 52513
+  }
+}
