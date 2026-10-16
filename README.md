@@ -35,6 +35,28 @@ O `index.html` carrega `meta.json` e a malha na abertura, e busca os demais
 arquivos só quando você seleciona um indicador ou entra num estado. Nada é
 baixado duas vezes: o navegador guarda em cache.
 
+## As três fichas: município, estado e país
+
+A mesma página serve aos três recortes — os 84 indicadores em cartões, agrupados
+por setor, com a fonte linkada em cada um. Muda só a comparação de rodapé:
+município se compara com o seu estado, estado com o Brasil, e o Brasil não se
+compara com ninguém. A posição também: "12º de 853 no estado" para município,
+"2º de 27 entre as UFs" para estado.
+
+De onde vem o número de um recorte agregado: do total que a fonte publica,
+quando ela publica; da soma dos municípios, quando não. **Índices não se
+somam** — o IDHM do Brasil é o que o PNUD calcula para o país, não a média dos
+5.570 IDHMs municipais, e densidade é população total dividida por área total,
+não a média das densidades. A ficha traz essa nota em cima dos setores, para
+que ninguém some à mão e estranhe a diferença.
+
+No código isso é uma convenção só: as funções que leem valor (`valorMun`,
+`posicaoNoEstado`, `alvoSidra`, `cartaoIndicador`) aceitam **ou** o índice do
+município na malha, **ou** uma chave — `'BR'` ou o código de dois dígitos da
+UF, que é como `META.agregados` já se indexa. `ehAgregado(i)` é o teste.
+Acrescentar um recorte novo não pede estrutura nova, pede uma chave nova em
+`META.agregados`.
+
 ## Cada número leva à sua fonte
 
 A citação embaixo de todo indicador — na ficha, nos cartões, na tabela da aba
@@ -333,6 +355,36 @@ nome do ano. Como esse nome muda a cada edição, vale listar as alternativas:
 | id | nome | tema | unidade | formato | somavel | ano | coluna | aba |
 |---|---|---|---|---|---|---|---|---|
 | `taxa_analf` | Taxa de analfabetismo (15 anos ou mais) | educacao | % | pct | 0 | 2022 | `taxa_analf\|2022\|2023` | `fonte_analfabetismo` |
+
+## Varredura de consistência
+
+```
+python scripts/conferir.py            # roda e resume
+python scripts/conferir.py --detalhe  # lista os municípios de cada achado
+```
+
+Diferente do relatório do `build.py`, que confere a LEITURA das fontes, este
+olha o resultado já publicado e procura o que só aparece cruzando um número com
+outro: agregado de UF que não fecha com os municípios, partes que não somam o
+todo, densidade que não bate com população dividida por área, percentual fora
+de 0 a 100, contagem negativa.
+
+A saída é dividida em **ERRO** (número errado no ar), **AVISO** (suspeito,
+confira) e **NOTA** (esperado, registrado para não assustar quem ler). Sai com
+código 1 se houver ERRO, então dá para pendurar no CI.
+
+Três coisas que a varredura já sabe que são normais, e marca como NOTA em vez
+de alarme:
+
+- **A área do Rio Grande do Sul** não fecha com a soma dos seus municípios: a
+  Lagoa dos Patos e a Lagoa Mirim entram na área do estado e não pertencem a
+  município nenhum. São uns 13 mil km² de diferença.
+- **O PIB per capita** de 29 municípios não bate com `pib_total ÷ pop_total`,
+  porque o IBGE divide pela população **estimada do ano de referência** e o
+  painel carrega a do Censo 2022. A conta do IBGE é a que vale.
+- **Vinte indicadores cobrem menos de metade dos municípios**: são as séries
+  das secretarias estaduais de segurança, que só alguns estados publicam, e o
+  esgotamento sanitário do SINISA.
 
 ## O que conferir no relatório
 
