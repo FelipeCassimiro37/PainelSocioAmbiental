@@ -1198,6 +1198,101 @@ function escHtml(t){
 }
 
 /* ================= endereço de cada fonte ================= */
+/* O link de uma fonte é montado em três tentativas, da mais específica para a
+   mais genérica, e a primeira que acertar vence:
+
+     1. SIDRA_DE_IND — a consulta do SIDRA que mostra ESTE indicador NESTE
+        município, já aberta no resultado. É o destino bom: a pessoa cai em
+        cima do número, não numa página de onde ainda precisa procurar.
+     2. ATLAS_IND    — o perfil do município no Atlas do Desenvolvimento
+        Humano, para o que vem de lá.
+     3. FONTES_URL   — a página da pesquisa, por padrão no texto da fonte.
+        É o fundo do poço, para as fontes que não publicam endereço por
+        município (CAGED, SINISA, Censo Escolar, FIRJAN).
+
+   A terceira continua valendo a pena porque casa por TEXTO: são 13 fontes
+   para 84 indicadores, e um indicador novo já nasce com link desde que a
+   planilha escreva a fonte com o mesmo nome das outras. */
+
+/* A gramática da URL do SIDRA não é documentada, e foi lida do próprio botão
+   "Copiar Url" da ferramenta. Em resumo:
+
+     sidra.ibge.gov.br/tabela/<T>#/<nível>/<código>/<consulta>/resultado
+
+   Três detalhes que custaram tentativa até aparecerem:
+
+   - Sem `/resultado` no fim, a aplicação abre o montador de consulta em vez
+     da tabela, e ainda apaga o resto do endereço da barra — o que faz parecer
+     que o link foi ignorado quando na verdade foi lido.
+   - As classificações precisam estar TODAS escolhidas e TODAS citadas no
+     layout (`/l/...`). Pedir `v/allxp/p/all` sem elas devolve "Erro
+     executando consulta", que é o que a tabela 10061 fazia.
+   - Os códigos de "Total" de cada classificação (c1568/120704 e companhia)
+     não são inventados: saem de
+     servicodados.ibge.gov.br/api/v3/agregados/<T>/metadados, e é de lá que
+     devem ser relidos se o IBGE reorganizar a tabela.
+
+   A consulta de cada tabela fica abaixo. Mudou a tabela, muda só esta linha. */
+const SIDRA={
+  // Censo 2022 — população, área e densidade
+  4714:  'v/93,6318,614/p/all/l/v,p,t',
+  // Censo 2022 — população por situação do domicílio (urbana e rural)
+  9923:  'v/93,1000093/p/all/c1/all/l/v,p,t+c1',
+  // Censo 2022 — população por sexo (idade e forma de declaração em Total)
+  9514:  'v/93,1000093/p/all/c2/all/c287/100362/c286/113635/l/v,p,t+c2',
+  // PIB dos Municípios — PIB total e VAB por setor, todos em mil reais.
+  // Só as variáveis de valor: as de "participação" que o SIDRA publica são a
+  // fatia do município no Brasil ou no estado, e não a fatia do setor dentro
+  // do VAB do município, que é o que o painel mostra. Levar para elas seria
+  // mandar a pessoa conferir um número contra outro com o mesmo nome.
+  // `last 5` e não `last 1` de propósito: o IBGE publica o PIB dois anos à
+  // frente do VAB por setor, então um único ano deixaria metade da tela vazia
+  // e pareceria falha do link.
+  5938:  'v/37,498,513,517,6575,525/p/last%205/l/v,p,t',
+  // CEMPRE — salário médio (em salários mínimos e em reais), massa salarial e
+  // pessoal assalariado, que são o numerador e o denominador da conta
+  9509:  'v/1606,10143,662,708/p/all/l/v,p,t',
+  // Censo 2022 — nível de instrução. A única com classificações a zelar.
+  10061: 'v/allxp/p/all/c1568/120704/c58/95253/c2/6794/c86/95251/'+
+         'l/v,p+c1568+c58,t+c2+c86',
+};
+/* Qual tabela mostra qual indicador. */
+const SIDRA_DE_IND={
+  pop_total:4714, area_km2:4714, dens_dem:4714,
+  pop_urbana:9923, pop_rural:9923, prop_pop_urb:9923,
+  pct_homens:9514, pct_mulheres:9514,
+  pib_total:5938, pib_pc:5938,
+  vab_total:5938, vab_agro:5938, vab_ind:5938, vab_adm:5938, vab_serv:5938,
+  part_vab_agro:5938, part_vab_ind:5938, part_vab_adm:5938, part_vab_serv:5938,
+  salario_medio:9509,
+};
+/* Indicadores cujo destino é o perfil do município no Atlas. O Atlas usa o
+   código do IBGE SEM o dígito verificador — 3106200 vira 310620. */
+const ATLAS_IND={idhm:1, gini:1, taxa_analf:1};
+
+/* Território a usar no link, na notação do SIDRA: n6 município, n3 UF, n1
+   país. Quando o painel está no recorte Brasil o código é 1, que é como o
+   IBGE numera o país. */
+function alvoSidra(iMun){
+  if(iMun!==undefined&&iMun!==null&&META.municipios[iMun])
+    return {n:'n6',cod:String(META.municipios[iMun])};
+  if(st.nivel==='mun'&&st.mun!==null&&META.municipios[st.mun])
+    return {n:'n6',cod:String(META.municipios[st.mun])};
+  if(st.nivel==='uf'&&st.uf) return {n:'n3',cod:String(st.uf)};
+  return {n:'n1',cod:'1'};
+}
+function urlSidra(tabela,alvo){
+  const base='https://sidra.ibge.gov.br/tabela/'+tabela;
+  const consulta=SIDRA[tabela];
+  // Tabela sem receita aqui: abre a tabela mesmo, que ainda é melhor que a
+  // página da pesquisa. Acontece quando a fonte cita um número que não está
+  // em SIDRA — melhor um link honesto e genérico do que uma consulta inventada
+  // que devolve erro.
+  if(!consulta) return base;
+  const a=alvo||{n:'n1',cod:'1'};
+  return base+'#/'+a.n+'/'+a.cod+'/'+consulta+'/resultado';
+}
+
 /* Cada número do painel vira um link para onde ele foi publicado. O par é
    feito pelo texto da fonte, não por uma lista indicador por indicador: o
    dicionário tem 84 entradas e 13 fontes, então casar por padrão evita uma
@@ -1237,13 +1332,27 @@ const FONTES_URL=[
   [/\bclp\b|competitividade/i,'https://www.clp.org.br/ranking-de-competitividade/'],
   [/ipea|pesquisa econ[oô]mica aplicada/i,'https://www.ipea.gov.br/atlasviolencia/'],
 ];
-/* Endereço da fonte, ou '' quando não há um para onde mandar. */
-function urlFonte(fonte){
+/* Endereço da fonte, ou '' quando não há um para onde mandar.
+   `id` é o indicador e `alvo` o território; sem eles a função ainda devolve o
+   link genérico, que é o que a aba Sobre e os subpainéis usam. */
+function urlFonte(fonte,id,alvo){
+  // 1. a consulta do SIDRA que mostra este indicador neste território
+  const t=SIDRA_DE_IND[id];
+  if(t) return urlSidra(t,alvo);
+  // 2. o perfil do município no Atlas, quando há município escolhido
+  if(ATLAS_IND[id]&&alvo&&alvo.n==='n6')
+    return 'https://www.atlasbrasil.org.br/perfil/municipio/'+alvo.cod.slice(0,6);
+  // 3. a página da pesquisa, pelo texto da fonte
   const f=String(fonte||'').trim();
   if(!f) return '';
   for(const [padrao,destino] of FONTES_URL){
     const m=f.match(padrao);
-    if(m) return destino ? destino.replace(/\$1/g,m[1]||'') : '';
+    if(!m) continue;
+    if(!destino) return '';
+    // Fonte que cita a tabela do SIDRA: vale a pena passar pelo montador, que
+    // acrescenta o território e abre no resultado quando a tabela é conhecida.
+    if(m[1]&&/sidra/i.test(destino)) return urlSidra(Number(m[1]),alvo);
+    return destino;
   }
   return '';
 }
@@ -1251,11 +1360,17 @@ function urlFonte(fonte){
    simples quando não há. `extra` é o sufixo que a ficha acrescenta quando o
    número foi agregado pelo painel — fica fora do link, porque esse trecho não
    é algo que a fonte publicou. */
-function citaFonte(m,extra){
-  const txt=fonteAno(m), u=urlFonte(m.fonte), fim=extra||'';
+function citaFonte(m,extra,id,alvo){
+  const txt=fonteAno(m), u=urlFonte(m.fonte,id,alvo), fim=extra||'';
   if(!u) return escHtml(txt)+escHtml(fim);
+  // O título diz para onde vai. Quando o link leva ao território escolhido, o
+  // texto muda para dizer isso — é a diferença entre "abre a pesquisa" e "abre
+  // o número deste município", e quem lê merece saber qual dos dois antes de
+  // clicar.
+  const daqui=alvo&&alvo.n==='n6'&&(SIDRA_DE_IND[id]||ATLAS_IND[id]);
+  const dica=(daqui?'Ver o dado deste município na fonte: ':'Abrir a fonte: ')+txt;
   return '<a class="fnt" href="'+u+'" target="_blank" rel="noopener noreferrer"'+
-    ' title="Abrir a fonte: '+escHtml(txt)+'">'+escHtml(txt)+
+    ' title="'+escHtml(dica)+'">'+escHtml(txt)+
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8'+
     'M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>'+escHtml(fim);
 }
@@ -1587,7 +1702,7 @@ function linhaFicha(id,bloco,pl,chave,tm,curto){
     '</span></div>'+
     (pct!==null?'<div class="bar"><i style="width:'+Math.max(2,pct*100)+'%;background:'+tm.ramp[4]+'"></i></div>':'')+
     (pos!==null?'<div class="pos">'+pos+'º de '+tot+' '+(st.nivel==='mun'?'no estado':'entre as UFs')+'</div>':'')+
-    '<div class="src">'+citaFonte(m,origem)+'</div>'+
+    '<div class="src">'+citaFonte(m,origem,id,alvoSidra())+'</div>'+
     blocoRessalva(id,st.mun);
   return row;
 }
@@ -2482,7 +2597,7 @@ function cartaoIndicador(id,i,tm){
     ${P?`<div class="tr"><i style="width:${Math.max(2,P.pct*100)}%;background:${tm.ramp[4]}"></i></div>
         <div class="pos">${P.pos}º de ${P.tot} no estado</div>`:''}
     ${ref}
-    <div class="fonte">${citaFonte(m)}</div>
+    <div class="fonte">${citaFonte(m,"",id,alvoSidra(i))}</div>
     ${blocoRessalva(id,i)}
   </div>`;
 }
@@ -2790,7 +2905,7 @@ function cartaoCLP(i){
     <div class="tx">
       <div class="r">Ranking de Competitividade</div>
       <div class="v">${br(fInt(p))}º <small>de ${CLP.total} municípios</small></div>
-      <div class="d">${varTx} · ${citaFonte({fonte:CLP.fonte})}</div>
+      <div class="d">${varTx} · ${citaFonte({fonte:CLP.fonte},"","",alvoSidra())}</div>
     </div>
     <a class="btn" href="competitividade.html#v=municipio&m=${cod}">Ver o detalhamento &rarr;</a>
   </div>`;
