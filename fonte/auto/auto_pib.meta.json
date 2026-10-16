@@ -1,0 +1,57 @@
+{
+  "vab_agro": {
+    "nome": "VAB agropecuária",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  },
+  "vab_ind": {
+    "nome": "VAB indústria",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  },
+  "vab_serv": {
+    "nome": "VAB serviços",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  },
+  "vab_adm": {
+    "nome": "VAB administração pública",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  },
+  "vab_total": {
+    "nome": "VAB total",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  },
+  "pib_total": {
+    "nome": "PIB total",
+    "ano": "2023",
+    "fonte": "IBGE — PIB dos Municípios 2023"
+  },
+  "pib_pc": {
+    "nome": "PIB per capita",
+    "ano": "2023",
+    "fonte": "IBGE — PIB dos Municípios 2023"
+  },
+  "part_vab_agro": {
+    "nome": "Participação da agropecuária no VAB",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  },
+  "part_vab_ind": {
+    "nome": "Participação da indústria no VAB",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  },
+  "part_vab_serv": {
+    "nome": "Participação dos serviços no VAB",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  },
+  "part_vab_adm": {
+    "nome": "Participação da adm. pública no VAB",
+    "ano": "2021",
+    "fonte": "IBGE — PIB dos Municípios 2021"
+  }
+}

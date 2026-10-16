@@ -61,7 +61,7 @@ dois — mas **entra no total do Brasil**, porque são vínculos reais e é o Br
 que serve de comparação nos relatórios do painel. Consequência esperada: o
 Brasil não é a soma exata das 27 UFs, exatamente como o MTE publica.
 """
-import argparse, csv, io, json, os, re, sys, unicodedata
+import argparse, codecs, csv, io, json, os, re, sys, unicodedata
 from datetime import datetime, timezone
 
 import urllib.parse, urllib.request
@@ -133,6 +133,42 @@ def link_sumario(html, url_mes):
     return None
 
 
+def itens_do_drive(pasta_id):
+    """
+    Nome e id de cada item de uma pasta pública do Drive.
+
+    A página do Drive monta a lista por JavaScript, mas embute os mesmos dados
+    numa variável `_DRIVE_ivd`. Ler essa variável evita depender de navegador.
+    Os padrões antigos, que liam o HTML direto, ficam como reserva: se o Google
+    mudar a variável de nome, ainda há uma chance de achar os arquivos.
+    """
+    listagem, _ = busca('https://drive.google.com/drive/folders/' + pasta_id)
+    achados = []
+
+    m = re.search(r"_DRIVE_ivd['\"]?\]\s*=\s*'(.*?)';", listagem, re.S)
+    if m:
+        try:
+            bruto = codecs.decode(m.group(1).replace('\\/', '/'), 'unicode_escape')
+            for item in json.loads(bruto)[0]:
+                achados.append((item[0], item[2]))
+        except Exception as erro:          # estrutura mudou: cai para o plano B
+            print('  aviso: não consegui ler a listagem do Drive (%s)' % erro)
+
+    for fid, nome in re.findall(r'\["([A-Za-z0-9_-]{25,})",(?:[^]]*?)"([^"]*?\.xlsx)"',
+                                listagem):
+        achados.append((fid, nome))
+    for fid, nome in re.findall(
+            r'data-id="([A-Za-z0-9_-]{20,})"[^>]*>.*?([^<>"]*?\.xlsx)', listagem, re.S):
+        achados.append((fid, nome))
+
+    vistos, unicos = set(), []
+    for fid, nome in achados:
+        if fid not in vistos:
+            vistos.add(fid)
+            unicos.append((fid, nome))
+    return unicos
+
+
 def link_planilha(url_mes, html=None):
     """
     Endereço direto da planilha de tabelas, achada pela pasta do Drive.
@@ -145,19 +181,35 @@ def link_planilha(url_mes, html=None):
     """
     if html is None:
         html, _ = busca(url_mes)
-    pasta = re.search(r'drive\.google\.com/drive/folders/([A-Za-z0-9_-]{20,})', html)
+    # O caminho do Drive varia: a divulgação de agosto/2026 passou a sair como
+    # /drive/u/1/folders/..., com o número da conta no meio. O trecho /u/<n>/ é
+    # opcional aqui para não quebrar de novo quando o MTE trocar de conta.
+    pasta = re.search(
+        r'drive\.google\.com/drive/(?:u/\d+/)?folders/([A-Za-z0-9_-]{20,})', html)
     if not pasta:
         raise SystemExit('Não achei a pasta do Google Drive em ' + url_mes +
                          '. O MTE mudou a forma de publicar os anexos.')
-    listagem, _ = busca('https://drive.google.com/drive/folders/' + pasta.group(1))
+    achados = itens_do_drive(pasta.group(1))
 
-    achados = []
-    for fid, nome in re.findall(r'\["([A-Za-z0-9_-]{25,})",(?:[^]]*?)"([^"]*?\.xlsx)"',
-                                listagem):
-        achados.append((fid, nome))
-    for fid, nome in re.findall(
-            r'data-id="([A-Za-z0-9_-]{20,})"[^>]*>.*?([^<>"]*?\.xlsx)', listagem, re.S):
-        achados.append((fid, nome))
+    # Desde a divulgação de agosto/2026 a pasta não traz mais os arquivos
+    # soltos: ela guarda subpastas por ano ("2026") e, dentro, por competência
+    # ("202608"). Quando não houver .xlsx no primeiro nível, desce por essas
+    # subpastas — preferindo as de nome mais alto, que são as mais recentes.
+    if not any(nome.lower().endswith('.xlsx') for _, nome in achados):
+        subpastas = [(fid, nome) for fid, nome in achados if nome.isdigit()]
+        for fid, _ in sorted(subpastas, key=lambda x: x[1], reverse=True):
+            dentro = itens_do_drive(fid)
+            if any(n.lower().endswith('.xlsx') for _, n in dentro):
+                achados = dentro
+                break
+            netos = [(f, n) for f, n in dentro if n.isdigit()]
+            for f2, _ in sorted(netos, key=lambda x: x[1], reverse=True):
+                mais = itens_do_drive(f2)
+                if any(n.lower().endswith('.xlsx') for _, n in mais):
+                    achados = mais
+                    break
+            if any(n.lower().endswith('.xlsx') for _, n in achados):
+                break
 
     vistos, candidatos = set(), []
     for fid, nome in achados:

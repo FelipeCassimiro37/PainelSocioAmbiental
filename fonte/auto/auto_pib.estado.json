@@ -1,0 +1,23 @@
+{
+  "ano": 2023,
+  "anosPorIndicador": {
+    "vab_agro": 2021,
+    "vab_ind": 2021,
+    "vab_serv": 2021,
+    "vab_adm": 2021,
+    "vab_total": 2021,
+    "pib_total": 2023,
+    "pib_pc": 2023,
+    "part_vab_agro": 2021,
+    "part_vab_ind": 2021,
+    "part_vab_serv": 2021,
+    "part_vab_adm": 2021
+  },
+  "arquivo": "base_de_dados_2010_2023_xlsx.zip",
+  "origem": "https://www.ibge.gov.br/estatisticas/economicas/contas-nacionais/9088-produto-interno-bruto-dos-municipios.html",
+  "verificadoEm": "2026-10-16 13:35 UTC",
+  "totais": {
+    "municipios": 5570,
+    "pib_somado": 10943345438880.0
+  }
+}
