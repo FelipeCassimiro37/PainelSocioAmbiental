@@ -15,7 +15,7 @@
   },
   "arquivo": "base_de_dados_2010_2023_xlsx.zip",
   "origem": "https://www.ibge.gov.br/estatisticas/economicas/contas-nacionais/9088-produto-interno-bruto-dos-municipios.html",
-  "verificadoEm": "2026-10-16 13:35 UTC",
+  "verificadoEm": "2026-10-16 18:19 UTC",
   "totais": {
     "municipios": 5570,
     "pib_somado": 10943345438880.0

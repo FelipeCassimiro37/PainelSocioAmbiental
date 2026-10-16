@@ -469,6 +469,12 @@ summary .rot{flex:1}
 
 /* ---------- página do município ---------- */
 #vistaMunicipio{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
+/* Nota da ficha de Brasil/estado: explica de onde vem um agregado antes que
+   alguém o some à mão e estranhe a diferença. Discreta de propósito — é
+   contexto, não aviso. */
+.nota-agregado{margin:0 0 18px;padding:11px 14px;border-left:3px solid var(--line);
+  background:#FAFBFA;color:var(--muted);font-size:12.5px;line-height:1.55;
+  border-radius:0 var(--r) var(--r) 0}
 .mun{max-width:1180px;margin:0 auto;padding:22px 26px 60px}
 
 .mun-topo{display:flex;gap:24px;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap}
@@ -1274,6 +1280,10 @@ const ATLAS_IND={idhm:1, gini:1, taxa_analf:1};
    país. Quando o painel está no recorte Brasil o código é 1, que é como o
    IBGE numera o país. */
 function alvoSidra(iMun){
+  // Também aceita a chave de um recorte agregado, que é o que as páginas de
+  // estado e de país passam: 'BR' vira n1/1 e o código da UF vira n3.
+  if(iMun==='BR') return {n:'n1',cod:'1'};
+  if(typeof iMun==='string'&&iMun.length===2) return {n:'n3',cod:iMun};
   if(iMun!==undefined&&iMun!==null&&META.municipios[iMun])
     return {n:'n6',cod:String(META.municipios[iMun])};
   if(st.nivel==='mun'&&st.mun!==null&&META.municipios[st.mun])
@@ -1654,6 +1664,9 @@ function ehOficial(chave,id){ return (META.oficiais[chave]||[]).indexOf(id)>=0; 
    nota no município errado. Vale só no nível municipal: no estado e no país o
    valor exibido é outra conta, e a ressalva não se aplica a ela. */
 function ressalva(id,iGlobal){
+  // Ressalva é sempre de um município: ela vem de fonte/auto/ indexada pelo
+  // código do IBGE. Num recorte agregado não há a quem atribuí-la.
+  if(typeof iGlobal==='string') return '';
   if(st.nivel!=='mun'||iGlobal===undefined||iGlobal===null||iGlobal<0) return '';
   const n=(META.notas||{})[id];
   return n ? (n[META.municipios[iGlobal]]||'') : '';
@@ -1945,12 +1958,24 @@ function montaSelects(){
       if(st.nivel==='pais'){ st.uf=null; st.mun=null; }
       if(st.nivel==='uf'){ st.mun=null; }
       if(st.nivel!=='pais'&&!st.uf) st.uf=UFCODES[0];
-      aplicar(true); };
+      // Quem já está lendo uma ficha e troca de recorte quer a ficha do novo
+      // recorte, não voltar para o mapa.
+      const naFicha = st.vista==='municipio';
+      aplicar(true).then(()=>{ if(naFicha) trocaVista('municipio'); }); };
   });
 }
 function sincronizaControles(){
+  // A aba da ficha serve aos três recortes, então o rótulo acompanha o que
+  // está selecionado. Só fica escondida quando não há recorte nenhum, o que
+  // não acontece na prática — o painel abre no Brasil.
   const bm=$('.nav button[data-v="municipio"]');
-  if(bm) bm.hidden = (st.mun===null||st.mun===undefined);
+  if(bm){
+    bm.hidden=false;
+    bm.textContent = st.nivel==='uf' ? 'Estado'
+                   : st.nivel==='pais' ? 'País' : 'Município';
+    // Só o recorte de município pode não ter nada escolhido.
+    if(st.nivel==='mun'&&(st.mun===null||st.mun===undefined)) bm.hidden=true;
+  }
   $('#segNivel').querySelectorAll('button')
     .forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.n===st.nivel)));
   $('#indList').querySelectorAll('.ind')
@@ -2492,9 +2517,10 @@ function vaiPara(it){
   else { st.nivel='mun'; st.uf=META.uf[it.i]; st.mun=it.i; }
   CAIXAS.forEach(c=>{ c.inp.value=''; if(c.limpar) c.limpar.hidden=true; c.inp.blur(); });
   fechaTodasIr();
-  const paraFicha = it.t==='mun';
-  if(st.vista!=='mapa' && !paraFicha) trocaVista('mapa');
-  aplicar(true).then(()=>{ if(paraFicha) trocaVista('municipio'); });
+  // Brasil e estado agora também têm ficha, então toda escolha na busca
+  // leva à ficha do que foi escolhido. Antes, só município fazia isso e o
+  // resto caía no mapa — que responde "onde", e não "quanto".
+  aplicar(true).then(()=>trocaVista('municipio'));
 }
 
 
@@ -2549,15 +2575,41 @@ const icone = (nome,cor) => (IC[nome]||IC.mapa).replace('<svg',
   `<svg style="color:${cor||'currentColor'}"`);
 
 /* ================= página do município ================= */
+/* ================= recorte: município, estado ou país =================
+   A ficha nasceu só para município, e `i` era sempre o índice global de um na
+   malha. Com as páginas de estado e de país, o mesmo lugar passa a receber
+   também uma CHAVE — 'BR' ou o código de dois dígitos da UF —, e tudo que lê
+   valor aprende a distinguir os dois casos.
+
+   Chave em vez de um objeto {tipo, …} porque é o que o resto do arquivo já
+   usa: META.agregados e META.oficiais são indexados por 'BR' e por código de
+   UF. Inventar outra representação só para a ficha obrigaria a converter de um
+   lado para o outro em cada chamada. */
+const ehAgregado = i => typeof i === 'string';
 function valorMun(id,i){
+  if(ehAgregado(i)){
+    const v=(META.agregados[i]||{})[id];
+    return v===undefined?null:v;
+  }
   const bloco=cacheUF.get(META.ufSiglas[META.uf[i]]);
   if(!bloco||!bloco[id]) return null;
   const p=munsByUF.get(META.uf[i]).indexOf(i);
   const v=p>=0?bloco[id][p]:null;
   return v===undefined?null:v;
 }
-/* posição e percentil do município dentro do estado */
+/* Posição e percentil: do município dentro do estado, ou do estado entre as
+   27 UFs. O Brasil não se compara com ninguém e fica sem posição. */
 function posicaoNoEstado(id,i){
+  if(ehAgregado(i)){
+    if(i==='BR') return null;
+    const v=valorMun(id,i);
+    if(v===null||typeof v!=='number') return null;
+    const lim=UFCODES.map(u=>(META.agregados[u]||{})[id])
+                     .filter(x=>typeof x==='number').sort(d3.ascending);
+    if(lim.length<2) return null;
+    return {pos:lim.length-d3.bisect(lim,v)+1, tot:lim.length,
+            pct:d3.bisect(lim,v)/lim.length, entre:'entre as UFs'};
+  }
   const bloco=cacheUF.get(META.ufSiglas[META.uf[i]]);
   if(!bloco||!bloco[id]) return null;
   const v=valorMun(id,i);
@@ -2565,37 +2617,45 @@ function posicaoNoEstado(id,i){
   const lim=bloco[id].filter(x=>x!==null&&x!==undefined).sort(d3.ascending);
   if(lim.length<2) return null;
   return {pos:lim.length-d3.bisect(lim,v)+1, tot:lim.length,
-          pct:d3.bisect(lim,v)/lim.length};
+          pct:d3.bisect(lim,v)/lim.length, entre:'no estado'};
 }
 function cartaoIndicador(id,i,tm){
   const m=DIC[id], v=valorMun(id,i), txt=m.formato==='texto';
   const nulo=(v===null||v===undefined||v==='');
   const P=nulo||txt?null:posicaoNoEstado(id,i);
-  const uf=META.uf[i];
-  const vUF=(META.agregados[uf]||{})[id], vBR=(META.agregados.BR||{})[id];
+  // Cada recorte se compara com o de cima: município com o seu estado, estado
+  // com o Brasil. O Brasil não tem com quem se comparar e fica sem a linha.
+  const agreg=ehAgregado(i);
+  const refChave = agreg ? (i==='BR'?null:'BR') : META.uf[i];
+  const refNome  = agreg ? 'do Brasil' : 'do estado';
+  const vRef=refChave?(META.agregados[refChave]||{})[id]:undefined;
+  const vBR=(META.agregados.BR||{})[id];
   let ref='';
-  if(!nulo&&!txt&&typeof v==='number'&&typeof vUF==='number'&&vUF!==0){
-    const d=(v/vUF-1)*100;
-    // Somáveis se comparam como parcela do estado; taxas e índices, como
+  if(!nulo&&!txt&&typeof v==='number'&&typeof vRef==='number'&&vRef!==0){
+    const d=(v/vRef-1)*100;
+    // Somáveis se comparam como parcela do todo; taxas e índices, como
     // distância da média. Dizer que a população de BH está "88% abaixo de MG"
     // seria absurdo — ela é 11% do estado.
     let como;
     if(m.somavel){
-      const parte=v/vUF*100;
-      como=`${br(f1(parte))}% do total do estado`;
+      const parte=v/vRef*100;
+      como=`${br(f1(parte))}% do total ${refNome}`;
     }else{
       const dif=br(f1(Math.abs(d)));
-      como = Math.abs(d)<1 ? 'na média do estado'
-           : `${dif}% ${d>0?'acima':'abaixo'} da média do estado`;
+      como = Math.abs(d)<1 ? `na média ${refNome}`
+           : `${dif}% ${d>0?'acima':'abaixo'} da média ${refNome}`;
     }
-    ref=`<div class="ref">${como}${typeof vBR==='number'&&!m.somavel?` · Brasil ${fmt(vBR,id,true)}`:''}</div>`;
+    // O "· Brasil X" sobra quando a comparação já é com o Brasil.
+    const extra=(typeof vBR==='number'&&!m.somavel&&refChave!=='BR')
+      ? ` · Brasil ${fmt(vBR,id,true)}` : '';
+    ref=`<div class="ref">${como}${extra}</div>`;
   }
   return `<div class="card">
     <div class="n">${icone(ICONE_IND[id]||ICONE_TEMA[m.tema],tm.ramp[4])}<span>${nomeLongo(id)}</span></div>
     <div class="v${nulo?' na':''}${txt&&!nulo?' txt':''}">${fmt(v,id,false)}${
       (m.unidade&&m.formato!=='pct'&&!nulo&&!txt)?` <small>${m.unidade}</small>`:''}</div>
     ${P?`<div class="tr"><i style="width:${Math.max(2,P.pct*100)}%;background:${tm.ramp[4]}"></i></div>
-        <div class="pos">${P.pos}º de ${P.tot} no estado</div>`:''}
+        <div class="pos">${P.pos}º de ${P.tot} ${P.entre}</div>`:''}
     ${ref}
     <div class="fonte">${citaFonte(m,"",id,alvoSidra(i))}</div>
     ${blocoRessalva(id,i)}
@@ -2609,7 +2669,7 @@ function kpi(id,i,rot){
   return `<div class="kpi">
     <div class="ic">${icone(ICONE_IND[id]||'mapa',tm.ramp[4])}<span>${rot||m.nome}</span></div>
     <div class="vl">${fmt(v,id,true)}${(m.unidade&&m.formato!=='pct'&&!nulo)?` <small>${m.unidade}</small>`:''}</div>
-    ${P?`<div class="cmp"><b>${P.pos}º</b> de ${P.tot} no estado</div>`:'<div class="cmp">&nbsp;</div>'}
+    ${P?`<div class="cmp"><b>${P.pos}º</b> de ${P.tot} ${P.entre}</div>`:'<div class="cmp">&nbsp;</div>'}
   </div>`;
 }
 function parVisual(titulo,a,b,i,icA,icB,corA,corB){
@@ -2625,6 +2685,35 @@ function parVisual(titulo,a,b,i,icA,icB,corA,corB){
     <div class="lados">${linha(a,icA,corA,va,pa)}${linha(b,icB,corB,vb,pb)}</div>
     <div class="barra"><i style="width:${pa}%;background:${corA}"></i><i style="width:${pb}%;background:${corB}"></i></div>
   </div>`;
+}
+
+/* Contorno do recorte agregado: o país inteiro, ou o estado dentro do país.
+   Mesma ideia do localizador do município, um nível acima — o estado aparece
+   destacado no Brasil, e o Brasil aparece sozinho. Sem o vermelho de
+   "você está aqui": aqui o destaque É a página toda, então a cor fica discreta
+   para não competir com os números. */
+function desenhaContorno(chave){
+  const cv=$('#munMapa'); if(!cv||!feats) return;
+  const todos=feats.filter(Boolean);
+  if(!todos.length) return;
+  const daUF = chave==='BR' ? null
+    : (munsByUF.get(chave)||[]).map(k=>feats[k]).filter(Boolean);
+  const L=250, A=180, dp=Math.min(2,window.devicePixelRatio||1);
+  cv.width=L*dp; cv.height=A*dp;
+  const pj=d3.geoMercator().fitExtent([[8,8],[L-8,A-8]],
+    {type:'FeatureCollection',features:todos});
+  const c=cv.getContext('2d');
+  c.setTransform(dp,0,0,dp,0,0);
+  c.clearRect(0,0,L,A);
+  const gen=d3.geoPath(pj,c);
+  c.beginPath(); todos.forEach(f=>gen(f));
+  c.fillStyle = chave==='BR' ? '#C9D3CE' : '#E7EAEC'; c.fill();
+  c.lineWidth=.25; c.strokeStyle='#fff'; c.stroke();
+  if(daUF&&daUF.length){
+    c.beginPath(); daUF.forEach(f=>gen(f));
+    c.fillStyle='#7E9A8C'; c.fill();
+    c.lineWidth=.8; c.strokeStyle='#4E6558'; c.stroke();
+  }
 }
 
 /* mapa localizador: o estado inteiro, com o município em destaque */
@@ -2662,9 +2751,10 @@ function idsDoTema(tema){
 function temComDado(ids,i){
   return ids.filter(k=>{ const v=valorMun(k,i); return v!==null&&v!==undefined&&v!==''; });
 }
-function blocoSemDado(){
-  return `<div class="aviso-sem">Nenhuma fonte publica estes indicadores para este
-    município. Ausência de dado não significa ausência do fenômeno.</div>`;
+function blocoSemDado(rotulo){
+  return `<div class="aviso-sem">Nenhuma fonte publica estes indicadores para
+    ${rotulo||'este município'}. Ausência de dado não significa ausência do
+    fenômeno.</div>`;
 }
 /* Um setor recolhível. O <details> guarda o estado em fechadosMun, para que
    recolher um setor sobreviva a um redesenho da página. */
@@ -2684,28 +2774,41 @@ function secaoTema(tema,tm,i){
         title="Abrir uma aba só com os indicadores de ${tm.nome}">Ampliar setor</button>
     </summary>
     ${comDado.length ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
-                     : blocoSemDado()}
+                     : blocoSemDado(rotuloRecorte(i))}
   </details>`;
+}
+
+/* Como chamar o recorte no meio de uma frase. */
+function rotuloRecorte(i){
+  if(i==='BR') return 'o Brasil';
+  if(ehAgregado(i)) return META.ufNomes[i]||'este estado';
+  return 'este município';
 }
 
 /* Página de um setor só: mesmo município, um tema, cartões maiores. */
 function montaSetor(i,tema){
-  const tm=TEMAS[tema], uf=META.uf[i], sig=META.ufSiglas[uf];
+  const tm=TEMAS[tema];
   const ids=idsDoTema(tema), comDado=temComDado(ids,i);
+  // O subtítulo identifica o recorte: "Belo Horizonte · MG", "Minas Gerais"
+  // ou "Brasil".
+  const quem = ehAgregado(i)
+    ? (i==='BR' ? '<b>Brasil</b>'
+               : `<b>${META.ufNomes[i]}</b> · ${META.ufSiglas[i]}`)
+    : `<b>${META.nomes[i]}</b> · ${META.ufSiglas[META.uf[i]]}`;
   const chips=Object.entries(TEMAS).filter(([t])=>idsDoTema(t).length)
     .map(([t,x])=>`<button type="button" data-zoom="${t}"
         aria-pressed="${t===tema}">${x.nome}</button>`).join('');
   return `<div class="mun foco">
     <button class="volta" id="munVolta">&larr; voltar para todos os setores</button>
     <div class="setor-topo">${icone(ICONE_TEMA[tema],tm.ramp[4])}<h2>${tm.nome}</h2></div>
-    <p class="setor-sub"><b>${META.nomes[i]}</b> · ${sig} &nbsp;·&nbsp;
+    <p class="setor-sub">${quem} &nbsp;·&nbsp;
       ${comDado.length} de ${ids.length} indicadores com dado</p>
     <div class="setor-chips">${chips}</div>
     ${tema==='educacao'?`<div class="mun-ferramentas">
       <button type="button" class="btn-mini" data-detalhe="1">Visão detalhada das matrículas</button>
     </div>`:''}
     ${comDado.length ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
-                     : blocoSemDado()}
+                     : blocoSemDado(rotuloRecorte(i))}
   </div>`;
 }
 
@@ -2726,8 +2829,126 @@ function ligaZoomSetor(alvo,i){
   });
 }
 
+/* ================= ficha de um recorte agregado =================
+   A mesma página do município, para o Brasil e para cada estado. Existe
+   porque escolher "Brasil" caía no mapa, e o mapa responde "onde", não
+   "quanto": para ler os 84 indicadores de um estado era preciso passar pela
+   ficha lateral, um indicador por vez.
+
+   Reaproveita os mesmos cartões do município — toda a diferença está em
+   `valorMun` e `posicaoNoEstado` entenderem uma chave ('BR' ou o código da
+   UF) além do índice. O que não existe aqui é o mapa localizador (o recorte
+   JÁ é a área inteira) e o cartão do CLP (o ranking é municipal). */
+async function montaAgregado(chave){
+  const alvo=$('#vistaMunicipio');
+  const ehBR = chave==='BR';
+  const nome = ehBR ? 'Brasil' : (META.ufNomes[chave]||chave);
+  const tmD=TEMAS.demografia;
+
+  if(st.setor && TEMAS[st.setor]){
+    alvo.innerHTML=montaSetor(chave,st.setor);
+    $('#munVolta').onclick=()=>{ st.setor=null; montaMunicipio(); gravarHash();
+                                 alvo.scrollTop=0; };
+    ligaZoomSetor(alvo,chave);
+    return;
+  }
+
+  let secoes='';
+  for(const [tema,tm] of Object.entries(TEMAS)) secoes+=secaoTema(tema,tm,chave);
+
+  const nMun = ehBR ? N : (munsByUF.get(chave)||[]).length;
+  const comDadoTotal = IDS.filter(k=>{
+    const v=valorMun(k,chave); return v!==null&&v!==undefined&&v!==''; }).length;
+
+  alvo.innerHTML=`<div class="mun">
+    <div class="mun-topo">
+      <div class="mun-id">
+        <button class="volta" id="munVolta">&larr; voltar ao mapa</button>
+        <h2>${nome}</h2>
+        <p class="uf">${ehBR ? `${nMun.toLocaleString('pt-BR')} municípios · 27 unidades da federação`
+                             : `${META.ufSiglas[chave]} · ${nMun.toLocaleString('pt-BR')} municípios`}</p>
+        <p class="cod">${comDadoTotal} de ${IDS.length} indicadores com dado</p>
+        <div class="acoesM">
+          <button class="btn sec" id="munMapaBtn">Ver no mapa</button>
+          <button class="btn sec" id="munCmp">Comparar</button>
+          <button class="btn sec" id="munPdf">Gerar PDF</button>
+        </div>
+      </div>
+      <div class="mun-mapa">
+        <canvas id="munMapa" width="250" height="180"
+          aria-label="Contorno de ${nome}"></canvas>
+        <div class="leg">${ehBR?'Brasil':META.ufNomes[chave]}</div>
+      </div>
+    </div>
+
+    <div class="destaques">
+      ${kpi('pop_total',chave,'População')}
+      ${kpi('area_km2',chave,'Área')}
+      ${kpi('dens_dem',chave,'Densidade')}
+      ${kpi('pib_total',chave,'PIB')}
+      ${kpi('pib_pc',chave,'PIB per capita')}
+      ${kpi('idhm',chave,'IDHM')}
+    </div>
+
+    <div class="pares">
+      ${parVisual('Onde a população vive','pop_urbana','pop_rural',chave,'predios','mato',
+                  tmD.ramp[5],'#5F8C4A')}
+      ${parVisual('Distribuição por sexo','pct_homens','pct_mulheres',chave,'homem','mulher',
+                  tmD.ramp[3],tmD.ramp[5])}
+    </div>
+
+    <div class="nota-agregado">
+      ${ehBR
+        ? 'Os números do Brasil vêm do total publicado pela fonte quando ela o '
+          +'publica, e da soma dos municípios quando não. Índices como o IDHM '
+          +'não se somam: são os que a própria fonte calcula para o país.'
+        : `Os números de ${nome} vêm do total publicado pela fonte quando ela o `
+          +'publica, e da soma dos seus municípios quando não. A posição entre '
+          +'as 27 unidades da federação aparece em cada indicador comparável.'}
+    </div>
+
+    <div class="mun-ferramentas">
+      <button type="button" class="btn-mini" id="munRecolher">Recolher todos os setores</button>
+      <button type="button" class="btn-mini" id="munExpandir">Expandir todos</button>
+    </div>
+
+    ${secoes}
+  </div>`;
+
+  try{ desenhaContorno(chave); }catch(e){ console.warn('contorno:',e); }
+
+  alvo.querySelectorAll('details.tema-bloco').forEach(d=>{
+    d.addEventListener('toggle',()=>{
+      d.open ? fechadosMun.delete(d.dataset.tema) : fechadosMun.add(d.dataset.tema);
+    });
+  });
+  const todos=abrir=>alvo.querySelectorAll('details.tema-bloco')
+    .forEach(d=>{ d.open=abrir; });
+  $('#munRecolher').onclick=()=>todos(false);
+  $('#munExpandir').onclick=()=>todos(true);
+  ligaZoomSetor(alvo,chave);
+
+  $('#munVolta').onclick=()=>trocaVista('mapa');
+  $('#munMapaBtn').onclick=()=>trocaVista('mapa');
+  $('#munCmp').onclick=()=>{
+    const it = ehBR ? {t:'br'} : {t:'uf',cod:chave};
+    const igual = x => x.t===it.t && (it.t==='br'||x.cod===it.cod);
+    if(!selecao.some(igual) && selecao.length<5) selecao.push(it);
+    trocaVista('comparar');
+  };
+  $('#munPdf').onclick=()=>{
+    $$('input[name=escopo]').forEach(r=>{ r.checked = r.value===(ehBR?'br':'uf'); });
+    if(!ehBR){ const sel=$('#relUF'); if(sel) sel.value=chave; }
+    $$('#relInds .cols input').forEach(c=>{ c.checked=true; });
+    infoRel(); gerarPDF();
+  };
+}
+
 let ultimoMunFicha=null;
 async function montaMunicipio(){
+  // Brasil e estado têm ficha própria, montada com os mesmos cartões.
+  if(st.nivel==='pais') return montaAgregado('BR');
+  if(st.nivel==='uf'&&st.uf)  { await garanteUF(st.uf); return montaAgregado(st.uf); }
   const i=st.mun;
   const alvo=$('#vistaMunicipio');
   // Trocar de município volta para a ficha inteira: quem clica noutra cidade no

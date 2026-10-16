@@ -165,11 +165,16 @@ def ler_planilha(bruto, ano):
 
 
 def montar(linhas, anos):
-    """Converte para a unidade do painel e calcula as participações."""
+    """
+    Converte para a unidade do painel e calcula as participações.
+
+    Devolve também a lista de municípios com VAB total zero ou negativo, que
+    ficam sem participação e ganham uma ressalva no painel.
+    """
     for part, origem in PARTICIPACOES.items():
         if origem in anos and 'vab_total' in anos:
             anos[part] = min(anos[origem], anos['vab_total'])
-    saida = {}
+    saida, negativos = {}, []
     for cod, campos in linhas.items():
         v = {}
         for ind, (_, fator) in COLUNAS.items():
@@ -181,12 +186,21 @@ def montar(linhas, anos):
             except (TypeError, ValueError):
                 continue
         total = v.get('vab_total')
-        if total:
+        # Só faz sentido repartir um bolo positivo. O IBGE publica VAB
+        # negativo de vez em quando — em 2021, Cachoeira Dourada (GO) teve VAB
+        # industrial de -477 milhões, por ajuste de uma usina —, e dividir por
+        # um total negativo produz "participação da indústria: 209,6%" com as
+        # outras três negativas. Números sem significado nenhum, que num
+        # diagnóstico viram erro de quem copiou. Nesse caso não se publica
+        # participação; o VAB em si continua, porque é o que a fonte diz.
+        if total and total > 0:
             for part, origem in PARTICIPACOES.items():
                 if origem in v:
                     v[part] = round(v[origem] / total * 100, 2)
+        elif total is not None and total <= 0:
+            negativos.append(cod)
         saida[cod] = v
-    return saida
+    return saida, negativos
 
 
 def main():
@@ -223,7 +237,7 @@ def main():
     bruto = busca(url_zip, binario=True)
     print('  %.1f MB' % (len(bruto) / 1e6))
     linhas, anos = ler_planilha(bruto, ano)
-    dados = montar(linhas, anos)
+    dados, negativos = montar(linhas, anos)
     if not dados:
         raise SystemExit('A planilha não trouxe nenhuma linha até o ano %s.' % ano)
     for ind in ORDEM:
@@ -252,6 +266,17 @@ def main():
     meta = {ind: {'nome': NOMES[ind], 'ano': str(anos[ind]),
                   'fonte': 'IBGE — PIB dos Municípios %s' % anos[ind]}
             for ind in ORDEM if ind in anos}
+
+    # Ressalva nos municípios de VAB não positivo. O número do VAB fica — é o
+    # que a fonte publica —, mas quem o lê precisa saber por que as
+    # participações estão em branco ao lado, em vez de concluir que faltou
+    # dado. A nota vai no vab_total, que é onde a estranheza começa.
+    if negativos and 'vab_total' in meta:
+        texto = ('VAB total não positivo nesta edição do IBGE — as '
+                 'participações por setor não se aplicam.')
+        meta['vab_total']['notas'] = {cod: texto for cod in negativos}
+        print('  %d município(s) com VAB total <= 0: %s'
+              % (len(negativos), ', '.join(negativos[:5])))
     with open(os.path.join(AUTO, 'auto_pib.meta.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
