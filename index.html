@@ -1210,8 +1210,8 @@ function escHtml(t){
      1. SIDRA_DE_IND — a consulta do SIDRA que mostra ESTE indicador NESTE
         município, já aberta no resultado. É o destino bom: a pessoa cai em
         cima do número, não numa página de onde ainda precisa procurar.
-     2. ATLAS_IND    — o perfil do município no Atlas do Desenvolvimento
-        Humano, para o que vem de lá.
+     2. ATLAS_IND    — o perfil do município ou do estado no Atlas do
+        Desenvolvimento Humano, para o que vem de lá.
      3. FONTES_URL   — a página da pesquisa, por padrão no texto da fonte.
         É o fundo do poço, para as fontes que não publicam endereço por
         município (CAGED, SINISA, Censo Escolar, FIRJAN).
@@ -1272,9 +1272,22 @@ const SIDRA_DE_IND={
   part_vab_agro:5938, part_vab_ind:5938, part_vab_adm:5938, part_vab_serv:5938,
   salario_medio:9509,
 };
-/* Indicadores cujo destino é o perfil do município no Atlas. O Atlas usa o
-   código do IBGE SEM o dígito verificador — 3106200 vira 310620. */
+/* Indicadores cujo destino é o Atlas do Desenvolvimento Humano. */
 const ATLAS_IND={idhm:1, gini:1, taxa_analf:1};
+/* Perfil do Atlas no recorte pedido.
+
+   Município usa o código do IBGE SEM o dígito verificador — 3106200 vira
+   310620 —, e UF usa o código de dois dígitos. Não existe perfil do país: o
+   Atlas trata o Brasil como pano de fundo das comparações, não como recorte
+   próprio. Nesse caso o link vai para a página onde se escolhe um perfil, que
+   é mais útil que a home. */
+function urlAtlas(alvo){
+  const base='https://www.atlasbrasil.org.br/perfil';
+  if(!alvo) return base;
+  if(alvo.n==='n6') return base+'/municipio/'+alvo.cod.slice(0,6);
+  if(alvo.n==='n3') return base+'/uf/'+alvo.cod;
+  return base;
+}
 
 /* Território a usar no link, na notação do SIDRA: n6 município, n3 UF, n1
    país. Quando o painel está no recorte Brasil o código é 1, que é como o
@@ -1349,9 +1362,8 @@ function urlFonte(fonte,id,alvo){
   // 1. a consulta do SIDRA que mostra este indicador neste território
   const t=SIDRA_DE_IND[id];
   if(t) return urlSidra(t,alvo);
-  // 2. o perfil do município no Atlas, quando há município escolhido
-  if(ATLAS_IND[id]&&alvo&&alvo.n==='n6')
-    return 'https://www.atlasbrasil.org.br/perfil/municipio/'+alvo.cod.slice(0,6);
+  // 2. o perfil do Atlas no recorte atual (município, UF ou a escolha)
+  if(ATLAS_IND[id]) return urlAtlas(alvo);
   // 3. a página da pesquisa, pelo texto da fonte
   const f=String(fonte||'').trim();
   if(!f) return '';
@@ -1377,8 +1389,9 @@ function citaFonte(m,extra,id,alvo){
   // texto muda para dizer isso — é a diferença entre "abre a pesquisa" e "abre
   // o número deste município", e quem lê merece saber qual dos dois antes de
   // clicar.
-  const daqui=alvo&&alvo.n==='n6'&&(SIDRA_DE_IND[id]||ATLAS_IND[id]);
-  const dica=(daqui?'Ver o dado deste município na fonte: ':'Abrir a fonte: ')+txt;
+  const daqui=alvo&&(alvo.n==='n6'||alvo.n==='n3')&&(SIDRA_DE_IND[id]||ATLAS_IND[id]);
+  const onde = !daqui ? '' : (alvo.n==='n3' ? 'deste estado' : 'deste município');
+  const dica=(daqui?'Ver o dado '+onde+' na fonte: ':'Abrir a fonte: ')+txt;
   return '<a class="fnt" href="'+u+'" target="_blank" rel="noopener noreferrer"'+
     ' title="'+escHtml(dica)+'">'+escHtml(txt)+
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8'+
