@@ -69,8 +69,11 @@ e a primeira que acertar vence:
 1. **A consulta do SIDRA já aberta no município escolhido.** É o destino bom:
    a pessoa cai em cima do número. Cobre os 20 indicadores do Censo 2022, do
    PIB e do CEMPRE, mais as 12 faixas de escolaridade.
-2. **O perfil do município no Atlas do Desenvolvimento Humano**, para IDHM,
-   Gini e taxa de analfabetismo.
+2. **O perfil no Atlas do Desenvolvimento Humano**, para IDHM, Gini e taxa de
+   analfabetismo: `/perfil/municipio/<código sem dígito>` ou `/perfil/uf/<cód>`.
+   O Atlas não tem perfil do país — trata o Brasil como pano de fundo das
+   comparações —, então no recorte nacional o link vai para a página onde se
+   escolhe um perfil.
 3. **A página da pesquisa**, pelo texto da fonte. É o fundo do poço, para as
    fontes que não publicam endereço por município: CAGED, SINISA, Censo
    Escolar e FIRJAN.
@@ -105,6 +108,21 @@ Três tabelas no `index.html`, todas com comentário no lugar:
 Indicador novo de fonte que já existe não precisa de nada: cai na terceira
 tentativa sozinho, desde que a planilha escreva a fonte com o mesmo nome das
 outras.
+
+### "Erro executando consulta" no SIDRA
+
+De vez em quando o SIDRA abre com essa mensagem em vez da tabela. **Não é o
+link.** É o servidor do IBGE derrubando a consulta, e acontece mais na primeira
+vez que se abre uma tabela — recarregar a página resolve.
+
+Isso foi conferido: a mesma URL que devolveu o erro, repetida em seguida sem
+mudar um caractere, trouxe o resultado normalmente. Antes de sair atrás de um
+defeito no painel, recarregue uma vez.
+
+A alternativa seria tirar o `/resultado` do fim da URL, o que abre o montador
+de consulta com o território já escolhido e nunca mostra o erro — mas aí a
+pessoa precisa clicar em "Visualizar" para ver o número, que é justamente o
+passo que estes links existem para poupar. Fica como está.
 
 ## Configurar o Google Sheets (uma vez só)
 
