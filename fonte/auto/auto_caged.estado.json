@@ -1,10 +1,9 @@
 {
-  "divulgacao": "2026-08",
-  "arquivo": "3-tabelas_Agosto de 2026.xlsx",
-  "sumarioExecutivo": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/acoes-e-programas/programas-projetos-acoes-obras-e-atividades/estatisticas-trabalho/novo-caged/2026/agosto/sumario-executivo_agosto-de-2026.pdf",
-  "mesEstoque": "2026-08",
+  "divulgacao": "2026-09",
+  "arquivo": "3-tabelas_Setembro de 2026.xlsx",
+  "sumarioExecutivo": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/acoes-e-programas/programas-projetos-acoes-obras-e-atividades/estatisticas-trabalho/novo-caged/2026/setembro/sumario-executivo_setembro-de-2026.pdf",
+  "mesEstoque": "2026-09",
   "janelaFluxos": [
-    "2025-09",
     "2025-10",
     "2025-11",
     "2025-12",
@@ -15,21 +14,22 @@
     "2026-05",
     "2026-06",
     "2026-07",
-    "2026-08"
+    "2026-08",
+    "2026-09"
   ],
   "rotulos": {
-    "caged_estoque": "ago/2026",
-    "caged_admissoes": "set/2025 a ago/2026",
-    "caged_deslig": "set/2025 a ago/2026",
-    "caged_saldo": "set/2025 a ago/2026",
-    "caged_var": "set/2025 a ago/2026"
+    "caged_estoque": "set/2026",
+    "caged_admissoes": "out/2025 a set/2026",
+    "caged_deslig": "out/2025 a set/2026",
+    "caged_saldo": "out/2025 a set/2026",
+    "caged_var": "out/2025 a set/2026"
   },
-  "verificadoEm": "2026-10-16 13:12 UTC",
+  "verificadoEm": "2026-11-13 18:28 UTC",
   "totais": {
-    "estoque": 48244696,
-    "admissoes": 26709897,
-    "desligamentos": 25822189,
-    "saldo": 887708,
+    "estoque": 48359577,
+    "admissoes": 26655368,
+    "desligamentos": 25868295,
+    "saldo": 787073,
     "municipios": 5571,
     "conferidoCom": "Tabela 7.1 (Brasil + 27 UFs)"
   }
