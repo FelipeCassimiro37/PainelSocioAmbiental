@@ -1,22 +1,22 @@
 {
   "caged_estoque": {
-    "ano": "ago/2026",
+    "ano": "set/2026",
     "fonte": "CAGED — Ministério do Trabalho e Emprego"
   },
   "caged_admissoes": {
-    "ano": "set/2025 a ago/2026",
+    "ano": "out/2025 a set/2026",
     "fonte": "CAGED — Ministério do Trabalho e Emprego"
   },
   "caged_deslig": {
-    "ano": "set/2025 a ago/2026",
+    "ano": "out/2025 a set/2026",
     "fonte": "CAGED — Ministério do Trabalho e Emprego"
   },
   "caged_saldo": {
-    "ano": "set/2025 a ago/2026",
+    "ano": "out/2025 a set/2026",
     "fonte": "CAGED — Ministério do Trabalho e Emprego"
   },
   "caged_var": {
-    "ano": "set/2025 a ago/2026",
+    "ano": "out/2025 a set/2026",
     "fonte": "CAGED — Ministério do Trabalho e Emprego"
   }
 }
