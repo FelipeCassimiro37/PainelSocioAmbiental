@@ -66,6 +66,9 @@ from datetime import datetime, timezone
 
 import urllib.parse, urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rede                                    # noqa: E402
+
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SAIDA = os.path.join(RAIZ, 'fonte', 'auto')
 
@@ -95,8 +98,13 @@ def chave(s):
 
 
 def busca(url, binario=False, limite=None):
-    req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=180) as r:
+    """
+    Conteúdo e endereço final da URL.
+
+    O endereço final importa: o MTE redireciona, e várias rotinas daqui
+    dependem de saber onde se chegou, não de onde se pediu.
+    """
+    with rede.abre(url, cabecalhos=UA, espera=180) as r:
         dados = r.read(limite) if limite else r.read()
         return (dados, r.geturl()) if binario else (dados.decode('utf-8', 'replace'), r.geturl())
 

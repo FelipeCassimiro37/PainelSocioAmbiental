@@ -19,9 +19,12 @@ próxima tabela, basta acrescentar o número aqui.
 
 Saída: fonte/auto/auto_cempre.csv + auto_cempre.meta.json + auto_cempre.estado.json
 """
-import argparse, gzip, io, json, os, zlib
+import argparse, gzip, io, json, os, sys, zlib
 from datetime import datetime, timezone
 import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rede                                    # noqa: E402
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUTO = os.path.join(RAIZ, 'fonte', 'auto')
@@ -47,8 +50,7 @@ def busca(url, espera=300):
     o resultado seria um `json.loads` reclamando do primeiro caractere, que
     parece erro de API e não é.
     """
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req, timeout=espera) as r:
+    with rede.abre(url, espera=espera) as r:
         dados = r.read()
         codificacao = (r.headers.get('Content-Encoding') or '').lower()
     if 'gzip' in codificacao or dados[:2] == b'\x1f\x8b':
