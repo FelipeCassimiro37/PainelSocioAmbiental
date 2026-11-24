@@ -21,6 +21,9 @@ import argparse, io, json, os, re, sys, zipfile
 from datetime import datetime, timezone
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rede                                    # noqa: E402
+
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUTO = os.path.join(RAIZ, 'fonte', 'auto')
 FTP = 'https://ftp.ibge.gov.br/Pib_Municipios/'
@@ -69,9 +72,7 @@ def chave(t):
 
 
 def busca(url, binario=False):
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req, timeout=300) as r:
-        dados = r.read()
+    dados = rede.le(url, espera=300)
     return dados if binario else dados.decode('utf-8', 'ignore')
 
 

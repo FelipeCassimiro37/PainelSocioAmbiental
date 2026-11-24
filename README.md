@@ -288,6 +288,28 @@ Para rodar um vigia na mão: **Actions → o workflow dele → Run workflow**. A
 opção *Reprocessar mesmo sem edição nova* serve para refazer os arquivos depois
 de mexer no script.
 
+### Quando um vigia falha por rede
+
+Os servidores das fontes caem. Em novembro de 2026 houve três execuções do
+CAGED, duas do CEMPRE e uma do CLP mortas por "Connection reset by peer" ou
+"timed out" — nenhuma por defeito do script, todas por queda momentânea do
+outro lado.
+
+Todos os vigias passam a tentar de novo, pelo `scripts/rede.py`: quatro
+tentativas, com a pausa dobrando (2s, 4s, 8s). O que ele **não** repete é tão
+importante quanto: um 404 ou 403 desiste na primeira resposta. Repetir quatro
+vezes um 404 gasta um minuto para chegar à mesma conclusão e disfarça de
+instabilidade o que é mudança de endereço na fonte — justamente o que o vigia
+existe para descobrir.
+
+Quando a tentativa falha e a seguinte funciona, o log do Actions registra a
+linha `rede instável (…) — tentativa 1 de 4`. Execução verde com essa linha é
+normal. Execução vermelha depois de quatro tentativas significa que a fonte
+ficou fora o tempo todo: espere a próxima rodada antes de investigar.
+
+**Um X vermelho que não quer dizer nada é pior que inútil** — ensina a ignorar
+a aba Actions, e aí o X que importa passa batido junto.
+
 ### O que mudou nas escolas, e por quê
 
 Os indicadores `escolas_*`, `porte_*` e `atend_especializado` vinham do QEdu.
