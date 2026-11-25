@@ -204,6 +204,13 @@ a.fnt:focus-visible{outline:2px solid var(--ink);outline-offset:2px;
 .row .n a.fnt.ic{font-size:0;border:0;margin-left:5px;vertical-align:1px}
 .row .n a.fnt.ic svg{width:11px;height:11px;margin:0;opacity:0}
 .row:hover .n a.fnt.ic svg,.row .n a.fnt.ic:focus-visible svg{opacity:.7}
+.sg-det>summary{list-style:none;cursor:pointer;padding:10px 16px;font-size:13px;font-weight:600;
+  color:var(--ink-2);border-bottom:1px solid var(--line-2);display:flex;gap:6px;align-items:baseline}
+.sg-det>summary::-webkit-details-marker{display:none}
+.sg-det>summary::before{content:'\25B6';font-size:8px;color:var(--muted);transition:transform .15s}
+.sg-det[open]>summary::before{transform:rotate(90deg)}
+.sg-det>summary .cont{font-weight:400;color:var(--muted);font-size:11.5px}
+.sg-det>summary:hover{color:var(--navy)}
 .src-seq{padding:8px 16px 11px;font-size:11.5px;color:#98A0A4;font-style:italic;
   border-bottom:1px solid var(--line-2);line-height:1.4}
 /* Ressalva de um valor específico: o número é o que a fonte publicou, mas há
@@ -610,6 +617,20 @@ summary.tema-cab .qt{margin-left:auto}
 .mun.foco .card .v{font-size:20.5px}
 
 .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:10px}
+.sub-detalhe{margin-top:14px;background:var(--card);border:1px solid var(--line-2);
+  border-radius:var(--r);box-shadow:var(--sombra)}
+.sub-detalhe>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;
+  justify-content:flex-start;text-align:left;
+  padding:12px 15px;font-size:14px;font-weight:600;color:var(--ink-2);user-select:none}
+.sub-detalhe>summary::-webkit-details-marker{display:none}
+.sub-detalhe>summary .seta{font-size:9px;color:var(--muted);transition:transform .15s;margin-left:0}
+.sub-detalhe[open]>summary .seta{transform:rotate(90deg)}
+.sub-detalhe>summary:hover{color:var(--navy)}
+.sub-detalhe>summary .qt{margin-left:auto;font-size:12.5px;font-weight:400;color:var(--muted)}
+.sub-detalhe>.sub-nota{margin:0 15px 12px}
+.sub-detalhe>.grade{padding:0 15px 15px}
+.sub-nota{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0}
+.sub-nota.sozinha{margin-top:12px}
 .card{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);
   padding:12px 14px;transition:box-shadow .16s,border-color .16s,transform .16s}
 .card:hover{border-color:var(--line);box-shadow:var(--sombra-alta);transform:translateY(-1px)}
@@ -1867,6 +1888,21 @@ function ficha(){
       };
       det.appendChild(bt);
     }
+    if(tema==='seguranca'){
+      // Mesmas duas camadas da ficha (ver gradeTema): o comum primeiro, o
+      // detalhe das secretarias recolhido e só com o que tem número.
+      for(const id of ordenaSeg(avulsos.filter(k=>!ehDetalheSec(k))))
+        det.appendChild(linhaFicha(id,bloco,pl,chave,tm,false));
+      const linhas=avulsos.filter(ehDetalheSec).map(id=>linhaFicha(id,bloco,pl,chave,tm,false))
+        .filter(r=>!r.querySelector('.v.na'));
+      if(linhas.length){
+        const sub=document.createElement('details'); sub.className='sg-det';
+        sub.innerHTML='<summary>Roubos e furtos por tipo (secretaria estadual)'+
+          '<span class="cont">'+linhas.length+'</span></summary>';
+        linhas.forEach(r=>sub.appendChild(r));
+        det.appendChild(sub);
+      }
+    }else
     for(const id of avulsos) det.appendChild(linhaFicha(id,bloco,pl,chave,tm,false));
     for(const grupo of grupos){
       const cx=document.createElement('div'); cx.className='sg';
@@ -2874,6 +2910,51 @@ function blocoSemDado(rotulo){
     ${rotulo||'este município'}. Ausência de dado não significa ausência do
     fenômeno.</div>`;
 }
+/* Segurança tem duas camadas. A principal vale para o país inteiro com a
+   mesma régua: CVLI e taxa (SINESP) e a taxa de homicídios (IPEA). A segunda
+   é o detalhe por tipo de crime das secretarias estaduais — útil num estudo
+   quando existe, mas só 11 estados publicam, cada um com a sua lista. Mostrar
+   os 16 cartões sempre enchia a ficha de "sem dado" nos outros 16 estados;
+   então o detalhe fica recolhido, só com o que tem número, e some de vez
+   (com uma linha explicando) onde a secretaria não publica. */
+const SEG_PRINCIPAIS=['tx_cvli','cvli','tx_homicidios'];
+const ehDetalheSec = id => DIC[id].tema==='seguranca' && /secretaria/i.test(DIC[id].fonte||'');
+function ordenaSeg(ids){
+  const pos=id=>{ const k=SEG_PRINCIPAIS.indexOf(id); return k<0?99:k; };
+  return ids.slice().sort((a,b)=>pos(a)-pos(b));
+}
+/* A contagem "N de M com dado" do cabeçalho do setor. Em segurança, o
+   detalhe que a secretaria do estado não publica não entra no M: "3 de 20"
+   em Goiânia parecia falta de dado do painel, quando é só que Goiás não
+   divulga roubo por tipo — e a linha sob os cartões já diz isso. */
+function contaTema(tema,ids,i){
+  const com=temComDado(ids,i).length;
+  if(tema!=='seguranca') return {com, tot:ids.length};
+  const sem=ids.filter(k=>ehDetalheSec(k)&&!temComDado([k],i).length).length;
+  return {com, tot:ids.length-sem};
+}
+function gradeTema(tema,ids,i,tm){
+  if(tema!=='seguranca')
+    return `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`;
+  const princ=ordenaSeg(ids.filter(k=>!ehDetalheSec(k)));
+  const det=temComDado(ids.filter(ehDetalheSec),i);
+  const onde = ehAgregado(i) ? (i==='BR'?'dos estados que publicam':'de '+META.ufSiglas[i])
+                             : 'de '+META.ufSiglas[META.uf[i]];
+  let extra;
+  if(det.length){
+    extra=`<details class="sub-detalhe">
+      <summary><span class="seta">&#9654;</span>Roubos e furtos por tipo — secretaria
+        estadual ${onde}<span class="qt">${det.length} com dado</span></summary>
+      <p class="sub-nota">Cada secretaria publica a sua própria lista de crimes, então
+        estes números não se comparam entre estados.</p>
+      <div class="grade">${det.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>
+    </details>`;
+  }else if(i!=='BR'){
+    extra=`<p class="sub-nota sozinha">Roubos e furtos por tipo: a secretaria de segurança
+      ${onde} não publica esses números por município.</p>`;
+  }else extra='';
+  return `<div class="grade">${princ.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>${extra}`;
+}
 /* Um setor recolhível. O <details> guarda o estado em fechadosMun, para que
    recolher um setor sobreviva a um redesenho da página. */
 function secaoTema(tema,tm,i){
@@ -2885,14 +2966,13 @@ function secaoTema(tema,tm,i){
       <span class="seta">&#9654;</span>
       ${icone(ICONE_TEMA[tema],tm.ramp[4])}
       <h3>${tm.nome}</h3>
-      <span class="qt">${comDado.length} de ${ids.length} com dado</span>
+      <span class="qt">${(c=>c.com+' de '+c.tot)(contaTema(tema,ids,i))} com dado</span>
       ${tema==='educacao'?`<button type="button" class="tema-zoom" data-detalhe="1"
         title="Matrículas por rede, etapa e série, e a lista de escolas">Visão detalhada</button>`:''}
       <button type="button" class="tema-zoom" data-zoom="${tema}"
         title="Abrir uma aba só com os indicadores de ${tm.nome}">Ampliar setor</button>
     </summary>
-    ${comDado.length ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
-                     : blocoSemDado(rotuloRecorte(i))}
+    ${comDado.length ? gradeTema(tema,ids,i,tm) : blocoSemDado(rotuloRecorte(i))}
   </details>`;
 }
 
@@ -2920,13 +3000,12 @@ function montaSetor(i,tema){
     <button class="volta" id="munVolta">&larr; voltar para todos os setores</button>
     <div class="setor-topo">${icone(ICONE_TEMA[tema],tm.ramp[4])}<h2>${tm.nome}</h2></div>
     <p class="setor-sub">${quem} &nbsp;·&nbsp;
-      ${comDado.length} de ${ids.length} indicadores com dado</p>
+      ${(c=>c.com+' de '+c.tot)(contaTema(tema,ids,i))} indicadores com dado</p>
     <div class="setor-chips">${chips}</div>
     ${tema==='educacao'?`<div class="mun-ferramentas">
       <button type="button" class="btn-mini" data-detalhe="1">Visão detalhada das matrículas</button>
     </div>`:''}
-    ${comDado.length ? `<div class="grade">${ids.map(k=>cartaoIndicador(k,i,tm)).join('')}</div>`
-                     : blocoSemDado(rotuloRecorte(i))}
+    ${comDado.length ? gradeTema(tema,ids,i,tm) : blocoSemDado(rotuloRecorte(i))}
   </div>`;
 }
 
