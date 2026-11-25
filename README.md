@@ -274,6 +274,7 @@ vai para `fonte/auto/`, não para a planilha.
 | vigia | fonte | quando roda | o que atualiza |
 | --- | --- | --- | --- |
 | `monitor_caged.py` | CAGED (MTE) | todo dia, 08:00 | estoque, admissões, desligamentos, saldo |
+| `monitor_sinesp.py` | SINESP VDE (Ministério da Justiça) | segunda | CVLI e taxa de CVLI por município |
 | `monitor_clp.py` | CLP | terça | ranking de competitividade |
 | `monitor_censo.py` | Censo Escolar (INEP) | quarta, 12h | matrículas por escola (subpainel de educação) |
 | `monitor_escolas.py` | Censo Escolar (INEP) | quarta, 16h | contagem de escolas por município |
@@ -296,6 +297,19 @@ Três coisas que vale saber sobre essa camada:
 Para rodar um vigia na mão: **Actions → o workflow dele → Run workflow**. A
 opção *Reprocessar mesmo sem edição nova* serve para refazer os arquivos depois
 de mexer no script.
+
+### Segurança: por que CVLI, e não roubos
+
+O SINESP VDE é a única base nacional de segurança que desce ao município — e
+desce só para os eventos com vítima. Roubos e furtos ele publica por estado.
+Então o indicador comum aos 27 estados é o **CVLI** (vítimas de homicídio
+doloso + feminicídio + latrocínio + lesão corporal seguida de morte; o
+feminicídio é parcela própria porque o SINESP não o conta dentro do
+homicídio). A taxa usa a estimativa de população do IBGE do mesmo ano.
+
+O arquivo traz o nome do município, não o código. O casamento é por UF + nome
+sem acento; as seis grafias que diferem da malha estão em `GRAFIAS`, no começo
+do script. Se surgir uma nova, o vigia avisa no log e no Pull Request.
 
 ### Quando um vigia falha por rede
 
