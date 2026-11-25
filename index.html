@@ -8,7 +8,7 @@
      recebe 404 em toda visita, enchendo o console de um erro que não é erro e
      que atrapalha quem for depurar algo de verdade. Três barras na cor do
      painel — o bastante para distinguir a aba. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2317405F'/%3E%3Cg fill='%23F2F4F2'%3E%3Crect x='7' y='17' width='5' height='9' rx='1'/%3E%3Crect x='14' y='11' width='5' height='15' rx='1'/%3E%3Crect x='21' y='6' width='5' height='20' rx='1'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="marca/houer-simbolo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -17,10 +17,16 @@
 <style>
 :root{
   --ink:#10161C; --ink-2:#3A454C; --muted:#6E787E;
-  --paper:#F2F4F2; --card:#FFFFFF; --line:#DCE1DF; --line-2:#EDF0EE;
-  --navy:#17405F; --navy-d:#0E2C43; --sel:#C4452B;
-  /* âmbar: a segunda cor da casa, para ação e para o que leva para fora */
-  --ambar:#FBD9AE; --ambar-f:#C98A2E; --ambar-tx:#5B3B12;
+  --paper:#F2F4F7; --card:#FFFFFF; --line:#DCE1E8; --line-2:#EDF0F4;
+  /* Azuis tirados do símbolo da Houer: o degradê dele vai de #2858A6 em cima
+     a #0B3052 embaixo, e o miolo — onde o olho pousa — fica em #184278. O
+     marinho do painel é esse miolo, um tom mais fundo para segurar texto
+     branco com folga; o azul vivo é o topo do símbolo, para destaque em
+     fundo claro; o céu é o mesmo azul bem diluído, para destaque em fundo
+     escuro. Não há segunda cor quente: a marca não tem, e o painel já tem
+     cor de sobra nos mapas. */
+  --navy:#163E6C; --navy-d:#0C2C50; --sel:#C4452B;
+  --azul:#2A5CAB; --ceu:#C9DBF4; --ceu-tx:#A9C1E0;
   /* verde e vermelho só com sentido: variação que subiu, variação que caiu */
   --sobe:#2E6B4F; --desce:#B03A24;
   /* traço do Brasil desenhado atrás da busca, na capa */
@@ -43,25 +49,32 @@ html,body{margin:0;height:100%}
 body{font-family:var(--f-ui);color:var(--ink);background:var(--paper);font-size:15.5px;
   line-height:1.45;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
 button,select,input{font-family:inherit;font-size:inherit;color:inherit}
-::selection{background:var(--ambar)}
+::selection{background:var(--ceu)}
 
 /* Grade de três faixas: as laterais são 1fr cada, então a do meio fica
    centrada na janela independentemente do que entra à esquerda ou à direita.
-   Com flex, a busca se deslocava a cada botão novo no topo. */
+   Com flex, a busca se deslocava a cada botão novo no topo.
+   As laterais têm piso no próprio conteúdo (max-content): quando a marca e o
+   menu não cabem na metade da tela, a busca cede uns pixels para a direita em
+   vez de o menu ser cortado. Com o símbolo da Houer no topo, isso passou a
+   acontecer entre 1260 e 1800 px. */
 .top{background:var(--navy);color:#fff;flex:none;display:grid;align-items:center;
-  grid-template-columns:minmax(0,1fr) minmax(240px,clamp(280px,30vw,440px)) minmax(0,1fr);
+  grid-template-columns:minmax(max-content,1fr) minmax(240px,clamp(280px,30vw,440px)) minmax(max-content,1fr);
   gap:18px;padding:0 20px;height:60px;border-bottom:3px solid var(--navy-d)}
 .top-esq{display:flex;align-items:center;gap:16px;min-width:0}
 /* Título e contagens empilhados: lado a lado, com as fontes maiores, o bloco
    da esquerda não cabia na sua faixa e quebrava em três linhas. */
-.top-marca{display:flex;align-items:center;flex:none}
+.top-marca{display:flex;align-items:center;gap:11px;flex:none}
+/* O símbolo vai em branco chapado: o degradê original some contra o marinho,
+   e o miolo branco com as setas vazadas lê bem em 28 px. */
+.top-simbolo{width:28px;height:28px;flex:none;display:block}
 .top-marca h1{white-space:nowrap}
 .top .acoes{justify-self:end;min-width:0}
 .top h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
-.top .sub{font-family:var(--f-num);font-size:11.5px;color:#9FC0D6;letter-spacing:.04em;
+.top .sub{font-family:var(--f-num);font-size:11.5px;color:var(--ceu-tx);letter-spacing:.04em;
   margin-top:2px}
 .badge{margin-left:auto;font-family:var(--f-num);font-size:11px;letter-spacing:.08em;
-  background:#EAF1F6;color:#17405F;padding:5px 9px;border-radius:var(--r)}
+  background:#E8EFF8;color:var(--navy);padding:5px 9px;border-radius:var(--r)}
 
 .shell{flex:1;display:grid;grid-template-columns:270px minmax(0,1fr) 348px;min-height:0}
 .rail,.side{background:var(--card);overflow-y:auto;min-height:0}
@@ -125,7 +138,7 @@ details.grp .sg{margin:6px 16px 10px}
   color:#fff;padding:7px 10px;border-radius:var(--r);font-size:13px;max-width:215px;z-index:5;
   box-shadow:0 4px 14px #0003}
 .tip b{display:block;font-weight:600;margin-bottom:2px}
-.tip span{font-family:var(--f-num);color:var(--ambar)}
+.tip span{font-family:var(--f-num);color:var(--ceu)}
 
 .legend{padding:14px 20px 16px;flex:none}
 .ramp{height:12px;border-radius:2px;position:relative;display:flex;overflow:visible}
@@ -216,6 +229,7 @@ a.fnt:focus-visible{outline:2px solid var(--ink);outline-offset:2px;
   text-align:center;padding:40px 0 64px}
 .capa-meio h2{margin:0 0 8px;font-size:40px;font-weight:700;letter-spacing:-.03em;
   color:var(--ink);font-family:var(--f-ui)}
+.capa-marca{display:block;height:40px;width:auto;margin:0 auto 26px}
 .capa-meio .lead{margin:0 0 30px;font-size:16px;line-height:1.5;color:var(--muted)}
 .capa-ir{position:relative;text-align:left}
 .capa-ir>svg{position:absolute;left:19px;top:50%;transform:translateY(-50%);
@@ -303,12 +317,12 @@ details.grp{border-bottom:1px solid var(--line-2)}
 .mini:hover{color:var(--ink)}
 /* ---------- navegação e ações no topo ---------- */
 .nav{display:flex;gap:2px;margin-left:14px}
-.nav button{background:none;border:0;color:#B9D2E3;padding:9px 16px;border-radius:var(--r);
+.nav button{background:none;border:0;color:#BCD0EA;padding:9px 16px;border-radius:var(--r);
   cursor:pointer;font-size:14.5px;font-weight:600}
 .nav button:hover{background:#ffffff18;color:#fff}
-.nav-externo{color:var(--ambar);padding:7px 13px;border-radius:var(--r);font-size:13px;
-  font-weight:600;text-decoration:none;border:1px solid color-mix(in srgb, var(--ambar) 33%, transparent);white-space:nowrap}
-.nav-externo:hover{background:var(--ambar);color:var(--ambar-tx)}
+.nav-externo{color:var(--ceu);padding:7px 13px;border-radius:var(--r-p);font-size:13px;
+  font-weight:600;text-decoration:none;border:1px solid color-mix(in srgb, var(--ceu) 38%, transparent);white-space:nowrap}
+.nav-externo:hover{background:var(--ceu);color:var(--navy-d)}
 /* Quem cede espaço quando falta é o título, não o menu: o menu é navegação e
    ficava cortado pela metade; o título é decorativo e some com reticências.
    Antes o .nav tinha min-width:0 e era ele que encolhia. */
@@ -331,14 +345,14 @@ details.grp{border-bottom:1px solid var(--line-2)}
 .top .acoes{gap:9px}
 .nav button[aria-pressed="true"]{background:#ffffff26;color:#fff;font-weight:600}
 .acoes{margin-left:auto;display:flex;align-items:center;gap:12px}
-.btn-rel{background:var(--ambar);border:0;color:var(--ambar-tx);font-weight:600;font-size:13.5px;
+.btn-rel{background:#fff;border:0;color:var(--navy);font-weight:600;font-size:13.5px;
   padding:8px 14px;border-radius:var(--r-p);cursor:pointer;white-space:nowrap}
-.btn-rel:hover{background:#F7CB90}
-.btn-link{background:#ffffff1f;border:1px solid #ffffff33;color:#DCE9F1;font-size:13.5px;
+.btn-rel:hover{background:var(--ceu);color:var(--navy-d)}
+.btn-link{background:#ffffff1f;border:1px solid #ffffff33;color:#E1EBF7;font-size:13.5px;
   padding:7px 12px;border-radius:var(--r-p);cursor:pointer;white-space:nowrap}
 .btn-link:hover{background:#ffffff33;color:#fff}
 .btn-link.ok{background:#CFE8CF;border-color:#CFE8CF;color:#245024}
-.badge{font-family:var(--f-num);font-size:11px;letter-spacing:.06em;color:#9FC0D6;
+.badge{font-family:var(--f-num);font-size:11px;letter-spacing:.06em;color:var(--ceu-tx);
   background:none;padding:0;white-space:nowrap}
 /* ---------- comparação ---------- */
 #vistaComparar{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
@@ -430,15 +444,15 @@ summary .rot{flex:1}
 /* ---------- ir para um lugar ---------- */
 .ir{position:relative;width:100%}
 .ir svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;
-  fill:none;stroke:#9FC0D6;stroke-width:1.6;pointer-events:none}
+  fill:none;stroke:var(--ceu-tx);stroke-width:1.6;pointer-events:none}
 .ir input{width:100%;padding:7px 26px 7px 28px;border:1px solid #ffffff33;border-radius:var(--r);
   background:#ffffff1a;color:#fff;font-size:14px}
-.ir input::placeholder{color:#9FC0D6}
+.ir input::placeholder{color:var(--ceu-tx)}
 .ir input:focus{background:#fff;color:var(--ink);border-color:#fff;outline:none}
 .ir input:focus + button{color:var(--muted)}
 .ir input:focus ~ svg,.ir:focus-within svg{stroke:var(--muted)}
 .ir button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;
-  border:0;color:#9FC0D6;font-size:17.5px;line-height:1;cursor:pointer;padding:2px 5px}
+  border:0;color:var(--ceu-tx);font-size:17.5px;line-height:1;cursor:pointer;padding:2px 5px}
 .ir ul{position:absolute;top:calc(100% + 5px);left:0;right:0;margin:0;padding:4px;
   list-style:none;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:0 10px 28px #0000002e;max-height:330px;overflow-y:auto;z-index:40}
@@ -460,23 +474,21 @@ summary .rot{flex:1}
    alguns pixels cada. Sem isso o título ficava com reticências por 4 px. */
 @media (max-width:1700px){
   .badge{display:none}
-  .top h1{letter-spacing:.07em}
   .top .sub{font-size:11px;letter-spacing:.02em}
   .nav button{padding:9px 12px}
 }
 @media (max-width:1600px){
-  .top{grid-template-columns:minmax(0,1fr) minmax(220px,clamp(240px,22vw,360px)) minmax(0,1fr);
+  .top{grid-template-columns:minmax(max-content,1fr) minmax(200px,clamp(240px,22vw,360px)) minmax(max-content,1fr);
        gap:12px;padding:0 14px}
   .top-esq{gap:12px}
   .nav button{padding:8px 10px}
   .btn-link,.btn-rel{padding:7px 10px}
   .nav-externo{padding:7px 10px}
-  .top h1{letter-spacing:.1em}
 }
 /* Abaixo de 1450 a marca precisa mesmo encolher: com o título no tamanho
    cheio, o menu não cabe na sua faixa e passava por cima da busca. */
 @media (max-width:1450px){
-  .top h1{font-size:14px;letter-spacing:.06em}
+  .top h1{font-size:14px}
   .top .sub{font-size:10.5px}
   .nav button{padding:8px 9px;font-size:13px}
   .top .acoes{flex-wrap:wrap;justify-content:flex-end}
@@ -486,7 +498,7 @@ summary .rot{flex:1}
 @media (max-width:1250px){
   .top{display:flex;height:auto;min-height:56px;flex-wrap:wrap;padding:9px 14px;gap:10px}
   .top-esq{flex:1 1 100%;gap:10px}
-  .top h1{font-size:14px;letter-spacing:.1em}
+  .top h1{font-size:14px}
   .nav{margin-left:auto}
   .nav button{padding:6px 10px;font-size:13.5px}
   .acoes{margin-left:0}
@@ -752,7 +764,7 @@ summary.tema-cab .qt{margin-left:auto}
 
 /* elo com o Ranking de Competitividade, na página do município */
 .clp-cartao{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--card);
-  border:1px solid var(--line-2);border-left:3px solid var(--ambar-f);
+  border:1px solid var(--line-2);border-left:3px solid var(--azul);
   border-radius:var(--r-g);box-shadow:var(--sombra);
   padding:16px 20px;margin-bottom:24px}
 .clp-cartao .tx{flex:1;min-width:240px}
@@ -884,23 +896,25 @@ summary.tema-cab .qt{margin-left:auto}
   body{background:#fff;display:block;height:auto}
   body > *{display:none !important}
   #impressao{display:block !important;font-size:9.5pt;color:#10161C}
-  .pdf-cab{border-bottom:2px solid #17405F;padding-bottom:6px;margin-bottom:14px;
-    display:flex;align-items:baseline;gap:10px}
-  .pdf-cab h1{margin:0;font-size:12pt;letter-spacing:.14em;text-transform:uppercase;color:#17405F}
+  .pdf-cab{border-bottom:2px solid #163E6C;padding-bottom:7px;margin-bottom:14px;
+    display:flex;align-items:center;gap:10px}
+  .pdf-cab img{height:8.5mm;width:auto;display:block}
+  .pdf-cab h1{margin:0;padding-left:10px;border-left:1px solid #DCE1E8;
+    font-size:12pt;font-weight:600;color:#163E6C}
   .pdf-cab span{font-size:8pt;color:#6E787E;margin-left:auto}
   .pdf-lugar{page-break-before:always;break-before:page}
   .pdf-lugar:first-of-type{page-break-before:avoid;break-before:auto}
   .pdf-lugar > h2{margin:0 0 1px;font-size:15pt}
   .pdf-lugar > .id{font-size:8.5pt;color:#6E787E;margin-bottom:10px}
-  .pdf-tema{font-size:8.5pt;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-    color:#17405F;border-bottom:1px solid #DCE1DF;padding-bottom:3px;margin:12px 0 6px}
+  .pdf-tema{font-size:10pt;font-weight:700;
+    color:#163E6C;border-bottom:1px solid #DCE1E8;padding-bottom:3px;margin:12px 0 6px}
   .pdf-grade{columns:2;column-gap:10mm}
-  .pdf-item{break-inside:avoid;padding:3px 0;border-bottom:1px dotted #DCE1DF;
+  .pdf-item{break-inside:avoid;padding:3px 0;border-bottom:1px dotted #DCE1E8;
     display:flex;justify-content:space-between;gap:8px;align-items:baseline}
   .pdf-item b{font-weight:400}
   .pdf-item span{font-weight:700;white-space:nowrap;text-align:right}
   .pdf-item span.na{font-weight:400;color:#9AA2A6}
-  .pdf-fontes{margin-top:14px;padding-top:8px;border-top:1px solid #DCE1DF;
+  .pdf-fontes{margin-top:14px;padding-top:8px;border-top:1px solid #DCE1E8;
     font-size:7.5pt;color:#6E787E;line-height:1.5}
   .pdf-fontes b{color:#3A454C}
 }
@@ -917,6 +931,7 @@ summary.tema-cab .qt{margin-left:auto}
 <header class="top">
   <div class="top-esq">
   <div class="top-marca">
+    <img class="top-simbolo" src="marca/houer-simbolo-branco.svg" alt="Houer" width="28" height="28">
     <h1>Painel Socioambiental</h1>
   </div>
   <nav class="nav">
@@ -948,6 +963,7 @@ summary.tema-cab .qt{margin-left:auto}
   <canvas class="capa-arte" id="capaArte" aria-hidden="true"></canvas>
   <div class="capa-veu" aria-hidden="true"></div>
   <div class="capa-meio">
+    <img class="capa-marca" src="marca/houer-assinatura.svg" alt="Houer" width="155" height="40">
     <h2>Painel Socioambiental</h2>
     <p class="lead">Indicadores oficiais dos municípios brasileiros, reunidos e
       comparáveis. Comece pelo lugar que você quer conhecer.</p>
@@ -2049,7 +2065,7 @@ const rotulo = it => it.t==='br' ? 'Brasil'
   : it.t==='uf' ? META.ufNomes[it.cod] : META.nomes[it.i];
 const subrotulo = it => it.t==='br' ? 'país'
   : it.t==='uf' ? 'estado' : META.ufSiglas[META.uf[it.i]]+' · '+META.municipios[it.i];
-const corItem = it => it.t==='br' ? '#17405F' : (it.t==='uf' ? '#3F9C9F' : '#C4452B');
+const corItem = it => it.t==='br' ? '#163E6C' : (it.t==='uf' ? '#3F9C9F' : '#C4452B');
 
 function valorDe(it,id){
   if(it.t==='br') return agregado('BR')[id];
@@ -2408,7 +2424,8 @@ async function gerarPDF(){
   try{
     for(const it of lugares) if(it.t==='mun') await garanteUF(META.uf[it.i]);
     const esc2=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    let html='<div class="pdf-cab"><h1>Painel Socioambiental</h1>'+
+    let html='<div class="pdf-cab"><img src="marca/houer-assinatura.svg" alt="Houer">'+
+      '<h1>Painel Socioambiental</h1>'+
       '<span>extraído em '+new Date().toLocaleDateString('pt-BR')+
       ' · dados de '+esc2(META.atualizado||'')+'</span></div>';
     const fontes=new Set();
@@ -2439,6 +2456,13 @@ async function gerarPDF(){
     }
     $('#impressao').innerHTML=html;
     $('#modalRel').classList.remove('on');
+    // A marca é imagem: se a impressão abrir antes de ela carregar, o PDF sai
+    // com o cabeçalho em branco. Espera a carga — ou desiste em 2 s, porque um
+    // PDF sem logo é melhor que um botão que não responde.
+    const logo=$('#impressao img');
+    if(logo&&!logo.complete) await Promise.race([
+      new Promise(r=>{logo.onload=logo.onerror=r;}),
+      new Promise(r=>setTimeout(r,2000))]);
     setTimeout(()=>window.print(),120);
   }catch(e){
     alert('Não foi possível montar o PDF: '+(e.message||e));
@@ -3267,7 +3291,7 @@ function graficoBloco(b,redes,id,titulo,extra){
   const larg=880, faixa=larg-L-R;
   const h=top+itens.length*alt+base;
   const cor=(getComputedStyle(document.documentElement)
-              .getPropertyValue('--navy')||'').trim()||'#17405F';
+              .getPropertyValue('--navy')||'').trim()||'#163E6C';
   let g='';
   itens.forEach((x,k)=>{
     const y=top+k*alt, w=Math.max(2,(x.v/max)*faixa);
@@ -3318,7 +3342,7 @@ function graficoRosca(itens,id,titulo,extra,unidade){
   // fatias entram — que é a ordem de tamanho. Sem cores arbitrárias: a fatia
   // maior é a mais forte, e a legenda embaixo repete a mesma sequência.
   const base=(getComputedStyle(document.documentElement)
-               .getPropertyValue('--navy')||'').trim()||'#17405F';
+               .getPropertyValue('--navy')||'').trim()||'#163E6C';
   const ordenados=[...vivos].sort((a,b)=>b.v-a.v);
   const opac=k=>Math.max(0.26, 1-k*(0.72/Math.max(1,ordenados.length-1)));
 
@@ -3416,7 +3440,7 @@ function baixaGrafico(id,nome){
              rot:'font-size:12px;fill:#3A454C',
              val:'font-size:12px;fill:#10161C;font-family:monospace',
              pct:'font-size:11px;fill:#6E787E;font-family:monospace',
-             eixo:'stroke:#DCE1DF;stroke-width:1',
+             eixo:'stroke:#DCE1E8;stroke-width:1',
              leg:'font-size:11.5px;fill:#6E787E'};
   clone.querySelectorAll('[class]').forEach(el=>{
     const e=est[el.getAttribute('class')];
