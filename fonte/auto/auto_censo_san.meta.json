@@ -1,0 +1,38 @@
+{
+  "censo_agua_rede": {
+    "nome": "Moradores com água da rede geral (Censo)",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2022",
+    "fonte": "IBGE — Censo Demográfico 2022 (SIDRA, tabela 6894)"
+  },
+  "censo_esgoto_rede": {
+    "nome": "Moradores com esgoto ligado à rede (Censo)",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2022",
+    "fonte": "IBGE — Censo Demográfico 2022 (SIDRA, tabela 7555)"
+  },
+  "censo_esgoto_fossa": {
+    "nome": "Moradores com fossa séptica sem rede (Censo)",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2022",
+    "fonte": "IBGE — Censo Demográfico 2022 (SIDRA, tabela 7555)"
+  },
+  "censo_lixo_coleta": {
+    "nome": "Moradores com lixo coletado (Censo)",
+    "tema": "saneamento",
+    "unidade": "%",
+    "formato": "pct",
+    "somavel": "0",
+    "ano": "2022",
+    "fonte": "IBGE — Censo Demográfico 2022 (SIDRA, tabela 9541)"
+  }
+}

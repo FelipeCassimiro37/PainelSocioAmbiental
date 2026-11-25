@@ -1366,6 +1366,12 @@ const SIDRA={
   9923:  'v/93,1000093/p/all/c1/all/l/v,p,t+c1',
   // Censo 2022 — população por sexo (idade e forma de declaração em Total)
   9514:  'v/93,1000093/p/all/c2/all/c287/100362/c286/113635/l/v,p,t+c2',
+  // Censo 2022 — moradores por forma de abastecimento de água, tipo de
+  // esgotamento e destino do lixo. Idade e cor ou raça em Total; todas as
+  // categorias à mostra, para a pessoa ver de onde sai o percentual.
+  6894:  'v/382,1000382/p/all/c1821/all/c58/95253/c86/95251/l/v,p,t+c1821',
+  7555:  'v/382,1000382/p/all/c11558/all/c58/95253/c86/95251/l/v,p,t+c11558',
+  9541:  'v/382,1000382/p/all/c67/all/c58/95253/c86/95251/l/v,p,t+c67',
   // PIB dos Municípios — PIB total e VAB por setor, todos em mil reais.
   // Só as variáveis de valor: as de "participação" que o SIDRA publica são a
   // fatia do município no Brasil ou no estado, e não a fatia do setor dentro
@@ -1391,6 +1397,8 @@ const SIDRA_DE_IND={
   vab_total:5938, vab_agro:5938, vab_ind:5938, vab_adm:5938, vab_serv:5938,
   part_vab_agro:5938, part_vab_ind:5938, part_vab_adm:5938, part_vab_serv:5938,
   salario_medio:9509,
+  censo_agua_rede:6894, censo_esgoto_rede:7555, censo_esgoto_fossa:7555,
+  censo_lixo_coleta:9541,
 };
 /* Indicadores cujo destino é o Atlas do Desenvolvimento Humano. */
 const ATLAS_IND={idhm:1, gini:1, taxa_analf:1};
@@ -1534,7 +1542,23 @@ function montarGrupos(){
   for(const t in GRUPOS) for(const g in GRUPOS[t])
     recorteAtual[t+'|'+g]=GRUPOS[t][g].recortes[0];
 }
-const soltos = tema => IDS.filter(k=>DIC[k].tema===tema&&!DIC[k].grupo);
+/* Ordem de leitura dentro do setor, quando a da planilha não serve. Em
+   saneamento entram duas fontes para a mesma pergunta — o SINISA (o que o
+   prestador declara, 2024) e o Censo (o que o morador responde, 2022) — e o
+   par só ajuda se ficar lado a lado: água com água, esgoto com esgoto, lixo
+   com lixo. O que não está na lista vem depois, na ordem da planilha. */
+const ORDEM_TEMA={
+  saneamento:['agua_cob','censo_agua_rede','perdas','consumo','emp_agua',
+              'esgoto_cob','censo_esgoto_rede','censo_esgoto_fossa','esgoto_trat','emp_esgoto',
+              'res_cob_total','censo_lixo_coleta','res_cob_rural','res_seletiva',
+              'res_disp_inad','res_massa_pc'],
+};
+const soltos = tema => {
+  const ids=IDS.filter(k=>DIC[k].tema===tema&&!DIC[k].grupo), ord=ORDEM_TEMA[tema];
+  if(!ord) return ids;
+  const pos=k=>{ const i=ord.indexOf(k); return i<0?ord.length+ids.indexOf(k):i; };
+  return ids.slice().sort((a,b)=>pos(a)-pos(b));
+};
 const gruposDo = tema => Object.keys(GRUPOS[tema]||{});
 function idsDoGrupo(tema,grupo){
   const b=GRUPOS[tema][grupo];
@@ -4066,6 +4090,13 @@ function montaSobre(){
           de 4 mil habitantes já dão 50 por 100 mil. Roubos e furtos o SINESP só
           publica por estado; por município, só existem nas secretarias que os
           divulgam.</p>
+        <p>Em <strong>saneamento</strong>, duas fontes respondem perguntas diferentes e
+          ficam lado a lado. O <strong>SINISA</strong> (2024) é o que o prestador declara
+          sobre a população que atende — e no esgoto só cobre os municípios onde há
+          prestador declarando. O <strong>Censo 2022</strong> é o que o morador respondeu,
+          em todos os municípios: água da rede geral, esgoto ligado à rede, fossa
+          séptica sem rede e lixo coletado. Quando as duas divergem muito, vale
+          entender por quê antes de citar uma delas.</p>
         ${semSeg.length ? `<p>As séries de roubo e furto das secretarias estaduais
           faltam em ${semSeg.length} estados: <strong>${semSeg.join(', ')}</strong>.</p>` : ''}
         <p>Quando um indicador aparece zerado em <em>todos</em> os municípios de um estado,

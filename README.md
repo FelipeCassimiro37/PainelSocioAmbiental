@@ -298,6 +298,15 @@ Para rodar um vigia na mão: **Actions → o workflow dele → Run workflow**. A
 opção *Reprocessar mesmo sem edição nova* serve para refazer os arquivos depois
 de mexer no script.
 
+### Saneamento: SINISA e Censo lado a lado
+
+`scripts/censo_saneamento.py` grava em `fonte/auto/auto_censo_san.*` quatro
+indicadores do Censo 2022 (percentual de moradores): água da rede geral,
+esgoto ligado à rede, fossa séptica sem rede e lixo coletado. Não tem vigia —
+o Censo não muda até o próximo —, roda-se uma vez à mão. O SINISA diz o que o
+prestador declara; o Censo, o que o morador respondeu, em todos os municípios.
+No SIDRA, `-` é zero absoluto, não ausência: o script lê assim.
+
 ### Segurança: por que CVLI, e não roubos
 
 O SINESP VDE é a única base nacional de segurança que desce ao município — e
