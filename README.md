@@ -60,7 +60,7 @@ não a média das densidades. A ficha traz essa nota em cima dos setores, para
 que ninguém some à mão e estranhe a diferença.
 
 No código isso é uma convenção só: as funções que leem valor (`valorMun`,
-`posicaoNoEstado`, `alvoSidra`, `cartaoIndicador`) aceitam **ou** o índice do
+`alvoSidra`, `cartaoIndicador`) aceitam **ou** o índice do
 município na malha, **ou** uma chave — `'BR'` ou o código de dois dígitos da
 UF, que é como `META.agregados` já se indexa. `ehAgregado(i)` é o teste.
 Acrescentar um recorte novo não pede estrutura nova, pede uma chave nova em

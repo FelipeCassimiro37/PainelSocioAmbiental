@@ -549,24 +549,6 @@ summary .rot{flex:1}
   white-space:nowrap;
   line-height:1.1;color:var(--ink)}
 .kpi .vl small{font-family:var(--f-ui);font-size:12px;font-weight:400;color:var(--muted)}
-.kpi .cmp{margin-top:7px;font-size:12px;color:var(--muted);line-height:1.4}
-.kpi .cmp b{font-weight:600;color:var(--ink-2)}
-
-.pares{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:28px}
-.par{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-g);
-  padding:17px 19px;box-shadow:var(--sombra)}
-.par h4{margin:0 0 14px;font-family:var(--f-ui);font-size:11px;font-weight:600;
-  letter-spacing:.01em;color:var(--muted)}
-.par .lados{display:flex;gap:16px;margin-bottom:12px}
-.par .lado{flex:1;display:flex;gap:10px;align-items:flex-start}
-.par .lado svg{width:30px;height:30px;flex:none;margin-top:1px}
-.par .lado .tx{min-width:0}
-.par .lado .n{font-size:13px;color:var(--muted);line-height:1.3}
-.par .lado .v{font-family:var(--f-num);font-size:18.5px;font-weight:600;letter-spacing:-.02em}
-.par .lado .p{font-family:var(--f-num);font-size:12px;color:var(--muted)}
-.par .barra{height:7px;border-radius:99px;overflow:hidden;display:flex}
-.par .barra i{display:block;height:100%}
-.par .ref{margin-top:8px;font-size:12px;color:var(--muted)}
 
 .tema-bloco{margin-bottom:26px}
 .tema-cab{display:flex;align-items:center;gap:9px;margin-bottom:12px;
@@ -2683,28 +2665,6 @@ function valorMun(id,i){
   const v=p>=0?bloco[id][p]:null;
   return v===undefined?null:v;
 }
-/* Posição e percentil: do município dentro do estado, ou do estado entre as
-   27 UFs. O Brasil não se compara com ninguém e fica sem posição. */
-function posicaoNoEstado(id,i){
-  if(ehAgregado(i)){
-    if(i==='BR') return null;
-    const v=valorMun(id,i);
-    if(v===null||typeof v!=='number') return null;
-    const lim=UFCODES.map(u=>(META.agregados[u]||{})[id])
-                     .filter(x=>typeof x==='number').sort(d3.ascending);
-    if(lim.length<2) return null;
-    return {pos:lim.length-d3.bisect(lim,v)+1, tot:lim.length,
-            pct:d3.bisect(lim,v)/lim.length, entre:'entre as UFs'};
-  }
-  const bloco=cacheUF.get(META.ufSiglas[META.uf[i]]);
-  if(!bloco||!bloco[id]) return null;
-  const v=valorMun(id,i);
-  if(v===null||typeof v!=='number') return null;
-  const lim=bloco[id].filter(x=>x!==null&&x!==undefined).sort(d3.ascending);
-  if(lim.length<2) return null;
-  return {pos:lim.length-d3.bisect(lim,v)+1, tot:lim.length,
-          pct:d3.bisect(lim,v)/lim.length, entre:'no estado'};
-}
 function cartaoIndicador(id,i,tm){
   const m=DIC[id], v=valorMun(id,i), txt=m.formato==='texto';
   const nulo=(v===null||v===undefined||v==='');
@@ -2726,26 +2686,12 @@ function cartaoIndicador(id,i,tm){
 function kpi(id,i,rot){
   const m=DIC[id], v=valorMun(id,i);
   const nulo=(v===null||v===undefined);
-  const P=nulo?null:posicaoNoEstado(id,i);
   const tm=TEMAS[m.tema];
+  // Sem a posição no estado: mesma decisão dos cartões (etapa 2). "464º em
+  // área" não ajuda ninguém a entender o município.
   return `<div class="kpi">
     <div class="ic">${icone(ICONE_IND[id]||'mapa',tm.ramp[4])}<span>${rot||m.nome}</span></div>
     <div class="vl">${fmt(v,id,true)}${(m.unidade&&m.formato!=='pct'&&!nulo)?` <small>${m.unidade}</small>`:''}</div>
-    ${P?`<div class="cmp"><b>${P.pos}º</b> de ${P.tot} ${P.entre}</div>`:'<div class="cmp">&nbsp;</div>'}
-  </div>`;
-}
-function parVisual(titulo,a,b,i,icA,icB,corA,corB){
-  const va=valorMun(a,i), vb=valorMun(b,i);
-  if(va===null&&vb===null) return '';
-  const ta=(va||0)+(vb||0);
-  const pa=ta?(va||0)/ta*100:50, pb=100-pa;
-  const linha=(id,ic,cor,val,perc)=>`<div class="lado">${icone(ic,cor)}
-    <div class="tx"><div class="n">${DIC[id].nome}</div>
-    <div class="v">${fmt(val,id,true)}</div>
-    <div class="p">${ta?perc.toFixed(1).replace('.',',')+'%':'—'}</div></div></div>`;
-  return `<div class="par"><h4>${titulo}</h4>
-    <div class="lados">${linha(a,icA,corA,va,pa)}${linha(b,icB,corB,vb,pb)}</div>
-    <div class="barra"><i style="width:${pa}%;background:${corA}"></i><i style="width:${pb}%;background:${corB}"></i></div>
   </div>`;
 }
 
@@ -2898,14 +2844,13 @@ function ligaZoomSetor(alvo,i){
    ficha lateral, um indicador por vez.
 
    Reaproveita os mesmos cartões do município — toda a diferença está em
-   `valorMun` e `posicaoNoEstado` entenderem uma chave ('BR' ou o código da
+   `valorMun` e `alvoSidra` entenderem uma chave ('BR' ou o código da
    UF) além do índice. O que não existe aqui é o mapa localizador (o recorte
    JÁ é a área inteira) e o cartão do CLP (o ranking é municipal). */
 async function montaAgregado(chave){
   const alvo=$('#vistaMunicipio');
   const ehBR = chave==='BR';
   const nome = ehBR ? 'Brasil' : (META.ufNomes[chave]||chave);
-  const tmD=TEMAS.demografia;
 
   if(st.setor && TEMAS[st.setor]){
     alvo.innerHTML=montaSetor(chave,st.setor);
@@ -2952,12 +2897,6 @@ async function montaAgregado(chave){
       ${kpi('idhm',chave,'IDHM')}
     </div>
 
-    <div class="pares">
-      ${parVisual('Onde a população vive','pop_urbana','pop_rural',chave,'predios','mato',
-                  tmD.ramp[5],'#5F8C4A')}
-      ${parVisual('Distribuição por sexo','pct_homens','pct_mulheres',chave,'homem','mulher',
-                  tmD.ramp[3],tmD.ramp[5])}
-    </div>
 
     <div class="nota-agregado">
       ${ehBR
@@ -2965,8 +2904,8 @@ async function montaAgregado(chave){
           +'publica, e da soma dos municípios quando não. Índices como o IDHM '
           +'não se somam: são os que a própria fonte calcula para o país.'
         : `Os números de ${nome} vêm do total publicado pela fonte quando ela o `
-          +'publica, e da soma dos seus municípios quando não. A posição entre '
-          +'as 27 unidades da federação aparece em cada indicador comparável.'}
+          +'publica, e da soma dos seus municípios quando não. Índices como o '
+          +'IDHM não se somam: são os que a própria fonte calcula para o estado.'}
     </div>
 
     <div class="mun-ferramentas">
@@ -3033,7 +2972,7 @@ async function montaMunicipio(){
   }
   await garanteUF(META.uf[i]);
   await garanteCLP();
-  const uf=META.uf[i], sig=META.ufSiglas[uf], tmD=TEMAS.demografia;
+  const uf=META.uf[i], sig=META.ufSiglas[uf];
 
   if(st.edu){
     const monta = (st.edu==='escolas'&&!st.eduEsc) ? montaEduEscolas : montaEduDetalhe;
@@ -3090,12 +3029,6 @@ async function montaMunicipio(){
       ${kpi('idhm',i,'IDHM')}
     </div>
 
-    <div class="pares">
-      ${parVisual('Onde a população vive','pop_urbana','pop_rural',i,'predios','mato',
-                  tmD.ramp[5],'#5F8C4A')}
-      ${parVisual('Distribuição por sexo','pct_homens','pct_mulheres',i,'homem','mulher',
-                  tmD.ramp[3],tmD.ramp[5])}
-    </div>
 
     ${cartaoCLP(i)}
 
