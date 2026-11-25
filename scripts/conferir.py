@@ -64,7 +64,7 @@ COMO_AGREGA = {
 # do Brasil é calculado pelo PNUD com os microdados, não com os 5.570 IDHMs.
 # Conferi-los contra uma conta nossa só produziria alarme falso.
 NAO_AGREGAVEIS = {'idhm', 'gini', 'ifdm', 'salario_medio', 'caged_var',
-                  'tx_homicidios', 'tx_roubos', 'prop_area_urb', 'pct_ocupada',
+                  'tx_homicidios', 'tx_roubos', 'tx_cvli', 'prop_area_urb', 'pct_ocupada',
                   'res_massa_pc', 'consumo', 'perdas'}
 
 
@@ -132,6 +132,14 @@ def agregados_fecham(meta, series):
                                   'oficial porque a Lagoa dos Patos e a Lagoa '
                                   'Mirim entram na área do estado e não '
                                   'pertencem a município nenhum' % ind)
+                    continue
+                # CVLI: o total do estado inclui as vítimas que o SINESP lança
+                # com município "NÃO INFORMADO". Elas existem e estão no estado,
+                # mas não em município nenhum — o oficial é que está certo.
+                if ind == 'cvli' and publicado > calc:
+                    conta('NOTA', '%s/cvli: %s vítimas sem município informado no '
+                                  'SINESP entram só no total do estado'
+                                  % (chave, fmt(publicado - calc)))
                     continue
                 conta('ERRO' if ind in oficiais else 'AVISO',
                       '%s/%s: publicado %s, municípios dão %s (%.1f%% de '

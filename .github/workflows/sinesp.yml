@@ -1,0 +1,91 @@
+name: Vigiar o SINESP (CVLI por município)
+
+# O SINESP VDE é atualizado ao longo do ano — os estados lançam mês a mês e
+# revisam números antigos. O painel só usa ano fechado (12 meses dos 27
+# estados), então a novidade de verdade é rara; mas uma revisão do ano já
+# usado também muda o arquivo, e por isso a checagem é semanal.
+#
+# Segunda-feira: os outros dias já têm vigia (CLP terça, Censo Escolar quarta,
+# SINISA quinta, CEMPRE sexta, PIB sábado; CAGED diário). Dois que rodem junto
+# conflitam no fonte/auto.
+on:
+  schedule:
+    - cron: "0 13 * * 1"      # segunda-feira, 10:00 em Brasília
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Reprocessar mesmo sem mudança no arquivo"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vigiar-sinesp
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tem arquivo novo ou revisado?
+        id: checar
+        timeout-minutes: 6
+        run: python scripts/monitor_sinesp.py --so-checar
+
+      - name: Baixar a base e calcular o CVLI
+        if: ${{ steps.checar.outputs.novidade == 'true' || inputs.forcar }}
+        timeout-minutes: 30
+        run: |
+          pip install --quiet openpyxl
+          python scripts/monitor_sinesp.py ${{ inputs.forcar && '--forcar' || '' }}
+
+      - name: Abrir Pull Request
+        if: ${{ steps.checar.outputs.novidade == 'true' || inputs.forcar }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANO: ${{ steps.checar.outputs.ano }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonte/auto
+          if git diff --staged --quiet; then
+            echo "Edição nova anunciada, mas os números não mudaram. Nada a fazer."
+            exit 0
+          fi
+          ramo="sinesp/$ANO"
+          git checkout -b "$ramo"
+          git commit -m "SINESP $ANO: CVLI por município"
+          if [ -n "$(gh pr list --head "$ramo" --state open --json number --jq '.[0].number')" ]; then
+            git push --force origin "$ramo"
+          else
+            git push origin --delete "$ramo" 2>/dev/null || true
+            git push origin "$ramo"
+          fi
+          python - <<'PY' > /tmp/corpo.md
+          import json
+          e = json.load(open('fonte/auto/auto_sinesp.estado.json', encoding='utf-8'))
+          t = e.get('totais', {})
+          print('# SINESP %s — CVLI por município\n' % e['ano'])
+          print('Soma de vítimas de: %s.\n' % ', '.join(e['eventos']))
+          print('%d municípios · Brasil: %s vítimas, %s por 100 mil habitantes.\n'
+                % (t.get('municipios', 0), t.get('vitimas_brasil'), t.get('taxa_brasil')))
+          if t.get('sem_par'):
+              print('Nomes sem par na malha (contados só no estado): %s\n'
+                    % ', '.join(t['sem_par']))
+          print('Os estados revisam meses passados; uma revisão do mesmo ano '
+                'também abre este PR.\n')
+          print('Fonte: %s' % e['origem'])
+          PY
+          gh pr create --base main --head "$ramo" \
+            --title "SINESP $ANO: CVLI por município" \
+            --body-file /tmp/corpo.md \
+            || gh pr edit "$ramo" --body-file /tmp/corpo.md

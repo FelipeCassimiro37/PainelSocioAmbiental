@@ -1450,6 +1450,9 @@ const FONTES_URL=[
   [/censo escolar|qedu|inep/i,'https://www.gov.br/inep/pt-br/areas-de-atuacao/'+
     'pesquisas-estatisticas-e-indicadores/censo-escolar'],
   [/firjan/i,'https://www.firjan.com.br/ifdm/'],
+  [/sinesp/i,'https://www.gov.br/mj/pt-br/assuntos/sua-seguranca/seguranca-publica/'+
+    'estatistica/dados-nacionais-1/base-de-dados-e-notas-metodologicas-dos-'+
+    'gestores-estaduais-sinesp-vde-2022-e-2023'],
   [/secretarias? estaduais/i,null],
   [/\bclp\b|competitividade/i,'https://www.clp.org.br/ranking-de-competitividade/'],
   [/ipea|pesquisa econ[oô]mica aplicada/i,'https://www.ipea.gov.br/atlasviolencia/'],
@@ -3976,11 +3979,16 @@ function montaSobre(){
         <p><strong>Sem dado não é zero.</strong> Onde a fonte não publica, o painel mostra
           “sem dado” e pinta o município em cinza. Ler essas áreas como ausência do
           fenômeno é o erro mais comum ao usar dados municipais.</p>
-        ${semSeg.length ? `<p>Os indicadores de <strong>segurança</strong> vêm das
-          secretarias estaduais, que publicam em calendários e formatos próprios.
-          ${semSeg.length} estados não têm nenhuma série no painel:
-          <strong>${semSeg.join(', ')}</strong>. Entre os que publicam, o conjunto de
-          crimes divulgado varia.</p>` : ''}
+        <p>Em <strong>segurança</strong>, o indicador comum aos 27 estados é o
+          <strong>CVLI</strong> — vítimas de homicídio doloso, feminicídio, latrocínio
+          e lesão corporal seguida de morte —, do SINESP, a base nacional do
+          Ministério da Justiça. A taxa usa a estimativa de população do IBGE do
+          mesmo ano. Em município pequeno ela oscila muito: duas mortes numa cidade
+          de 4 mil habitantes já dão 50 por 100 mil. Roubos e furtos o SINESP só
+          publica por estado; por município, só existem nas secretarias que os
+          divulgam.</p>
+        ${semSeg.length ? `<p>As séries de roubo e furto das secretarias estaduais
+          faltam em ${semSeg.length} estados: <strong>${semSeg.join(', ')}</strong>.</p>` : ''}
         <p>Quando um indicador aparece zerado em <em>todos</em> os municípios de um estado,
           o painel converte para “sem dado”: uma série real de ocorrências varia entre
           municípios, e a coluna zerada indica ausência de publicação.</p>
