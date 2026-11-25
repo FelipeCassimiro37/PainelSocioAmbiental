@@ -382,12 +382,12 @@ tbody td.na{color:#C2C8CB}
    iam parar longe demais um do outro para serem comparados de relance, que é
    a única razão de a tabela existir. */
 tbody td.txt{white-space:normal;font-family:var(--f-ui);font-size:12.5px;
-  line-height:1.45;text-align:left;color:var(--ink-2)}
-/* O bloco encosta na direita, como os números da coluna; o texto dentro dele
-   continua alinhado à esquerda, que é como se lê um nome. Alinhar só o texto
-   deixaria o parágrafo solto no meio da coluna, longe da régua dos valores. */
+  line-height:1.45;text-align:right;color:var(--ink-2)}
+/* O bloco e o texto encostam na direita, na mesma régua dos números da
+   coluna. Com o texto alinhado à esquerda dentro do bloco, o início de cada
+   linha ficava solto no meio da coluna e o nome parecia pertencer a outra. */
 tbody td.txt span{display:block;max-width:260px;margin-left:auto;
-  text-align:left;overflow-wrap:anywhere}
+  text-align:right;overflow-wrap:anywhere}
 tbody tr:hover td,tbody tr:hover td:first-child{background:#FAFBFA}
 tr.temaLinha td,tr.temaLinha:hover td{background:#F4F6F4;font-family:var(--f-ui);font-size:11px;
   font-weight:600;letter-spacing:.01em;color:var(--ink-2);padding:7px 12px}
