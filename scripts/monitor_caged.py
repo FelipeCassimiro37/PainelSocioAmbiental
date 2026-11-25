@@ -110,7 +110,51 @@ def busca(url, binario=False, limite=None):
 
 
 # ------------------------------------------------------- descobrir o mês novo
+# Pasta raiz do Google Drive onde o MTE publica os anexos do Novo CAGED desde
+# agosto/2026: dentro dela, uma subpasta por ano ("2026") e, dentro, uma por
+# competência ("202609"). É a mesma pasta para todos os meses — conferido em
+# nov/2026 nas páginas de agosto e setembro.
+PASTA_DRIVE = '1F89h6odTPGIGMb9eDiJKCute9W89QmqN'
+
+
 def mes_publicado():
+    """
+    Mês de referência da divulgação mais recente.
+
+    Primeiro pela página do MTE no gov.br, que é a fonte "oficial" do anúncio.
+    Se o gov.br recusar a conexão, pela pasta do Drive.
+
+    Por que existe o plano B: de 21/11/2026 em diante o gov.br do MTE passou a
+    derrubar, na negociação TLS, toda conexão vinda dos servidores do GitHub
+    Actions ("connection reset by peer"), enquanto continuava respondendo para
+    outras redes. Quatro dias seguidos de vigia vermelho por um bloqueio de
+    rede, não por falta de dado. O Drive, onde estão os arquivos de verdade,
+    continuou acessível. Quando a descoberta vem do Drive, só o link do
+    sumário executivo (usado apenas na descrição do PR) fica de fora.
+    """
+    try:
+        return mes_pela_pagina()
+    except (SystemExit, KeyboardInterrupt):
+        raise
+    except Exception as erro:
+        print('  aviso: o gov.br do MTE não respondeu (%s: %s); procurando o mês '
+              'na pasta do Drive' % (type(erro).__name__, erro))
+        return mes_pelo_drive()
+
+
+def mes_pelo_drive():
+    """(ano, mês, None, id da pasta da competência) pela pasta raiz do Drive."""
+    anos = [(n, f) for f, n in itens_do_drive(PASTA_DRIVE) if re.fullmatch(r'\d{4}', n)]
+    for nome_ano, fid_ano in sorted(anos, reverse=True):
+        comps = [(n, f) for f, n in itens_do_drive(fid_ano) if re.fullmatch(r'\d{6}', n)]
+        if comps:
+            comp, fid = max(comps)
+            return int(comp[:4]), int(comp[4:]), None, fid
+    raise SystemExit('A pasta do Drive do CAGED (%s) não tem subpastas AAAA/AAAAMM. '
+                     'O MTE mudou a organização dos anexos.' % PASTA_DRIVE)
+
+
+def mes_pela_pagina():
     """Mês de referência da divulgação mais recente, via redirecionamento."""
     html, final = busca(PAGINA)
     m = re.search(r'/novo-caged/(\d{4})/([a-zç]+)', final, re.I)
@@ -122,7 +166,7 @@ def mes_publicado():
     ano, nome = int(m.group(1)), chave(m.group(2))
     if nome not in MESES:
         raise SystemExit("Mês '%s' não reconhecido na URL %s" % (nome, final))
-    return ano, MESES[nome], final
+    return ano, MESES[nome], final, None
 
 
 def link_sumario(html, url_mes):
@@ -177,7 +221,7 @@ def itens_do_drive(pasta_id):
     return unicos
 
 
-def link_planilha(url_mes, html=None):
+def link_planilha(url_mes, html=None, pasta_mes=None):
     """
     Endereço direto da planilha de tabelas, achada pela pasta do Drive.
 
@@ -187,6 +231,10 @@ def link_planilha(url_mes, html=None):
     novo. O que se exige é: ser .xlsx, ter 'tabela' no nome e ser o maior
     candidato — as tabelas são de longe o maior anexo da divulgação.
     """
+    if pasta_mes:
+        # Descoberta pelo Drive: a pasta da competência já é a dos arquivos.
+        achados = itens_do_drive(pasta_mes)
+        return escolhe_planilha(achados, 'a pasta %s do Drive' % pasta_mes)
     if html is None:
         html, _ = busca(url_mes)
     # O caminho do Drive varia: a divulgação de agosto/2026 passou a sair como
@@ -219,16 +267,21 @@ def link_planilha(url_mes, html=None):
             if any(n.lower().endswith('.xlsx') for _, n in achados):
                 break
 
+    return escolhe_planilha(achados, url_mes)
+
+
+def escolhe_planilha(achados, onde):
+    """Entre os arquivos de uma pasta, a planilha de tabelas (ver link_planilha)."""
     vistos, candidatos = set(), []
     for fid, nome in achados:
         if fid in vistos:
             continue
         vistos.add(fid)
-        if 'tabela' in chave(nome):
+        if 'tabela' in chave(nome) and nome.lower().endswith('.xlsx'):
             candidatos.append((fid, nome))
     if not candidatos:
         raise SystemExit('A pasta do Drive não trouxe nenhum .xlsx com "tabela" no '
-                         'nome. Confira ' + url_mes + ' antes de mexer no script.')
+                         'nome. Confira ' + onde + ' antes de mexer no script.')
     if len(candidatos) > 1:
         # entre vários, fica o que começa com "3" (é assim que o MTE numera as
         # tabelas desde 2020); se nem isso resolver, o primeiro da lista
@@ -729,7 +782,7 @@ def main():
         print(resumo_markdown())
         return
 
-    ano_p, mes_p, url_mes = mes_publicado()
+    ano_p, mes_p, url_mes, pasta_mes = mes_publicado()
     atual = '%04d-%02d' % (ano_p, mes_p)
     antes = estado_atual().get('divulgacao')
     print('Divulgação mais recente do MTE: %s' % atual)
@@ -748,9 +801,13 @@ def main():
         print('Nada a fazer.')
         return
 
-    html_mes, _ = busca(url_mes)
-    sumario = link_sumario(html_mes, url_mes)
-    url_xlsx, nome = link_planilha(url_mes, html_mes)
+    if pasta_mes:
+        sumario = None
+        url_xlsx, nome = link_planilha(None, pasta_mes=pasta_mes)
+    else:
+        html_mes, _ = busca(url_mes)
+        sumario = link_sumario(html_mes, url_mes)
+        url_xlsx, nome = link_planilha(url_mes, html_mes)
     print('Baixando %s' % nome)
     conteudo, _ = busca(url_xlsx, binario=True)
     print('  %.1f MB' % (len(conteudo) / 1e6))
