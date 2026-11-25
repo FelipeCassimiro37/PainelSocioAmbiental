@@ -114,7 +114,7 @@ select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid 
 .vazio{font-size:13px;color:var(--muted)}
 /* subgrupo: indicadores que só diferem por um recorte (faixa etária, sexo,
    cor) viram um item só, com um seletor para a dimensão */
-.sg{margin:2px 0 8px;padding:7px 8px 4px;background:#FAFBFA;border:1px solid var(--line-2);
+.sg{margin:2px 0 8px;padding:7px 8px 4px;background:#F8FAFC;border:1px solid var(--line-2);
   border-radius:var(--r)}
 .sg-cab{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .sg-cab b{font-size:13.5px;font-weight:600;color:var(--ink-2);flex:none}
@@ -156,7 +156,8 @@ details.grp .sg{margin:6px 16px 10px}
   margin-top:2px;font-family:var(--f-num);font-size:11px;color:var(--muted)}
 .escala .meio{font-family:var(--f-ui);font-size:11.5px;color:#98A0A4;font-style:italic}
 .legend .nd{margin-top:9px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
-.legend .nd i{width:12px;height:11px;background:#E3E6E4;border-radius:2px;display:block}
+.legend .nd i{width:14px;height:12px;background:repeating-linear-gradient(135deg,#E6E9EE 0 3px,#C8D0DA 3px 4.2px);
+  border-radius:2px;display:block;border:1px solid #D5DBE3}
 @media (max-width:900px){ .escala .meio{display:none} .rots .rot{font-size:9.5px} }
 
 .zoom{position:absolute;right:14px;top:14px;display:flex;flex-direction:column;gap:5px}
@@ -174,7 +175,7 @@ details.grp .sg{margin:6px 16px 10px}
    lado dos indicadores e espremia a coluna. */
 details.grp{display:block;border-top:1px solid var(--line-2)}
 .row{padding:9px 16px;border-bottom:1px solid var(--line-2)}
-.row:hover{background:#FAFBFA}
+.row:hover{background:#F8FAFC}
 .row .l{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .row .n{font-size:13.5px;color:var(--ink-2)}
 .row .v{font-family:var(--f-num);font-size:14.5px;font-weight:600;white-space:nowrap}
@@ -200,6 +201,11 @@ a.fnt:focus-visible{outline:2px solid var(--ink);outline-offset:2px;
   border-radius:2px}
 @media print{ a.fnt{border-bottom:none} a.fnt svg{display:none} }
 .row .pos{font-family:var(--f-num);font-size:11px;color:var(--muted);margin-top:4px}
+.row .n a.fnt.ic{font-size:0;border:0;margin-left:5px;vertical-align:1px}
+.row .n a.fnt.ic svg{width:11px;height:11px;margin:0;opacity:0}
+.row:hover .n a.fnt.ic svg,.row .n a.fnt.ic:focus-visible svg{opacity:.7}
+.src-seq{padding:8px 16px 11px;font-size:11.5px;color:#98A0A4;font-style:italic;
+  border-bottom:1px solid var(--line-2);line-height:1.4}
 /* Ressalva de um valor específico: o número é o que a fonte publicou, mas há
    algo sobre ele que quem lê precisa saber. Só aparece onde existe nota. */
 .ressalva{font-size:11.5px;line-height:1.45;color:#7A5B12;background:#FDF9F0;
@@ -230,7 +236,7 @@ a.fnt:focus-visible{outline:2px solid var(--ink);outline-offset:2px;
 .capa-meio h2{margin:0 0 8px;font-size:40px;font-weight:700;letter-spacing:-.03em;
   color:var(--ink);font-family:var(--f-ui)}
 .capa-marca{display:block;height:40px;width:auto;margin:0 auto 26px}
-.capa-meio .lead{margin:0 0 30px;font-size:16px;line-height:1.5;color:var(--muted)}
+.capa-meio .lead{text-wrap:balance;margin:0 0 30px;font-size:16px;line-height:1.5;color:var(--muted)}
 .capa-ir{position:relative;text-align:left}
 .capa-ir>svg{position:absolute;left:19px;top:50%;transform:translateY(-50%);
   width:19px;height:19px;fill:none;stroke:var(--muted);stroke-width:1.7;
@@ -262,6 +268,13 @@ a.fnt:focus-visible{outline:2px solid var(--ink);outline-offset:2px;
 .capa-dica{margin:14px 0 0;font-size:12.5px;color:var(--muted)}
 .capa-dica kbd{font-family:var(--f-num);font-size:11px;background:var(--line-2);
   border:1px solid var(--line);border-radius:var(--r-p);padding:1px 5px}
+.capa-recentes{margin:22px auto 0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+  align-items:center}
+.capa-recentes .rot{font-size:12.5px;color:var(--muted);margin-right:2px}
+.capa-recentes button{background:var(--card);border:1px solid var(--line);border-radius:99px;
+  padding:6px 13px;font-size:13px;color:var(--ink-2);cursor:pointer;box-shadow:var(--sombra)}
+.capa-recentes button:hover{border-color:var(--navy);color:var(--navy)}
+.capa-recentes button small{color:var(--muted);font-size:11.5px;margin-left:4px}
 .capa-nums{margin:36px auto 0;display:flex;gap:34px;justify-content:center;flex-wrap:wrap}
 .capa-nums div{text-align:center}
 .capa-nums .n{font-family:var(--f-num);font-size:24px;font-weight:600;
@@ -309,7 +322,7 @@ summary .seta{margin-left:auto;transition:transform .15s;color:var(--muted);font
 details[open] > summary .seta{transform:rotate(90deg)}
 summary .cont{font-family:var(--f-num);font-size:10.5px;color:#A6AEB2;font-weight:400}
 summary:hover{color:var(--ink)}
-details.grp > summary{padding:11px 16px;background:#FAFBFA;
+details.grp > summary{padding:11px 16px;background:#F8FAFC;
   border-bottom:1px solid var(--line-2);position:sticky;top:0;z-index:1}
 details.grp{border-bottom:1px solid var(--line-2)}
 .mini{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;
@@ -383,11 +396,13 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{padding:8px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line-2)}
 th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card);
   min-width:230px;max-width:290px;white-space:normal}
-thead th{background:#FAFBFA;font-size:12.5px;font-weight:600;color:var(--ink-2);
+thead th{background:#F8FAFC;font-size:12.5px;font-weight:600;color:var(--ink-2);
   border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
-thead th:first-child{z-index:3;background:#FAFBFA}
+thead th:first-child{z-index:3;background:#F8FAFC}
 thead th small{display:block;font-family:var(--f-num);font-size:10.5px;color:var(--muted);font-weight:400}
 tbody td{font-family:var(--f-num);font-size:13.5px;white-space:nowrap}
+/* A primeira coluna é o nome do indicador: texto, não número. */
+tbody td:first-child{font-family:var(--f-ui);font-size:13.5px}
 tbody td.na{color:#C2C8CB}
 /* Célula de texto, não de número. O nome do prestador de água chega a 90
    caracteres ("COPASA Serviços de Saneamento Integrado do Norte e Nordeste de
@@ -402,8 +417,8 @@ tbody td.txt{white-space:normal;font-family:var(--f-ui);font-size:12.5px;
    linha ficava solto no meio da coluna e o nome parecia pertencer a outra. */
 tbody td.txt span{display:block;max-width:260px;margin-left:auto;
   text-align:right;overflow-wrap:anywhere}
-tbody tr:hover td,tbody tr:hover td:first-child{background:#FAFBFA}
-tr.temaLinha td,tr.temaLinha:hover td{background:#F4F6F4;font-family:var(--f-ui);font-size:11px;
+tbody tr:hover td,tbody tr:hover td:first-child{background:#F8FAFC}
+tr.temaLinha td,tr.temaLinha:hover td{background:#F1F4F8;font-family:var(--f-ui);font-size:11px;
   font-weight:600;letter-spacing:.01em;color:var(--ink-2);padding:7px 12px}
 .melhor{font-weight:700}
 .aviso{background:#F7F9F7;border:1px solid var(--line);color:var(--muted);padding:12px 14px;
@@ -521,7 +536,7 @@ summary .rot{flex:1}
    alguém o some à mão e estranhe a diferença. Discreta de propósito — é
    contexto, não aviso. */
 .nota-agregado{margin:0 0 18px;padding:11px 14px;border-left:3px solid var(--line);
-  background:#FAFBFA;color:var(--muted);font-size:12.5px;line-height:1.55;
+  background:#F8FAFC;color:var(--muted);font-size:12.5px;line-height:1.55;
   border-radius:0 var(--r) var(--r) 0}
 .mun{max-width:1180px;margin:0 auto;padding:22px 26px 60px}
 
@@ -549,24 +564,6 @@ summary .rot{flex:1}
   white-space:nowrap;
   line-height:1.1;color:var(--ink)}
 .kpi .vl small{font-family:var(--f-ui);font-size:12px;font-weight:400;color:var(--muted)}
-.kpi .cmp{margin-top:7px;font-size:12px;color:var(--muted);line-height:1.4}
-.kpi .cmp b{font-weight:600;color:var(--ink-2)}
-
-.pares{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:28px}
-.par{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-g);
-  padding:17px 19px;box-shadow:var(--sombra)}
-.par h4{margin:0 0 14px;font-family:var(--f-ui);font-size:11px;font-weight:600;
-  letter-spacing:.01em;color:var(--muted)}
-.par .lados{display:flex;gap:16px;margin-bottom:12px}
-.par .lado{flex:1;display:flex;gap:10px;align-items:flex-start}
-.par .lado svg{width:30px;height:30px;flex:none;margin-top:1px}
-.par .lado .tx{min-width:0}
-.par .lado .n{font-size:13px;color:var(--muted);line-height:1.3}
-.par .lado .v{font-family:var(--f-num);font-size:18.5px;font-weight:600;letter-spacing:-.02em}
-.par .lado .p{font-family:var(--f-num);font-size:12px;color:var(--muted)}
-.par .barra{height:7px;border-radius:99px;overflow:hidden;display:flex}
-.par .barra i{display:block;height:100%}
-.par .ref{margin-top:8px;font-size:12px;color:var(--muted)}
 
 .tema-bloco{margin-bottom:26px}
 .tema-cab{display:flex;align-items:center;gap:9px;margin-bottom:12px;
@@ -621,8 +618,11 @@ summary.tema-cab .qt{margin-left:auto}
    valores da mesma linha perdem a linha de base comum — que é justamente o que
    o olho usa para varrer uma coluna de números. */
 .card .n{font-size:14.5px;color:var(--ink-2);line-height:1.35;margin-bottom:7px;
-  display:flex;align-items:baseline;gap:6px;min-height:2.7em}
-.card .n svg{width:14px;height:14px;flex:none;align-self:center}
+  display:flex;align-items:center;gap:7px;min-height:2.7em}
+/* Ícone e título centrados juntos na faixa de duas linhas. Antes o texto
+   ficava na linha de cima e o ícone no meio da faixa: em título de uma linha
+   só, o ícone caía abaixo do texto e parecia solto. */
+.card .n svg{width:14px;height:14px;flex:none}
 .card .v{font-family:var(--f-num);font-size:19px;font-weight:600;letter-spacing:-.025em}
 .card .v.na{font-size:13.5px;font-weight:400;color:#A6AEB2;font-family:var(--f-ui)}
 .card .v.txt{font-family:var(--f-ui);font-size:13.5px;font-weight:500;line-height:1.35}
@@ -633,7 +633,7 @@ summary.tema-cab .qt{margin-left:auto}
 .card .ref{margin-top:3px;font-size:11.5px;color:#98A0A4}
 .card .fonte{margin-top:9px;font-size:11px;color:#A9B0B4;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mun .aviso-sem{background:#FAFBFA;border:1px dashed var(--line);border-radius:var(--r);
+.mun .aviso-sem{background:#F8FAFC;border:1px dashed var(--line);border-radius:var(--r);
   padding:11px 13px;font-size:13px;color:var(--muted)}
 @media (max-width:700px){
   .mun{padding:18px 16px 50px}
@@ -669,7 +669,7 @@ summary.tema-cab .qt{margin-left:auto}
 .edu-bloco>summary,.esc-item>summary{font-family:var(--f-ui);font-size:14px;font-weight:400;
   letter-spacing:0;text-transform:none;color:var(--ink)}
 .edu-bloco>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;
-  padding:11px 15px;background:#FAFBFA;border-bottom:1px solid var(--line);user-select:none}
+  padding:11px 15px;background:#F8FAFC;border-bottom:1px solid var(--line);user-select:none}
 .edu-bloco>summary::-webkit-details-marker{display:none}
 .edu-bloco>summary .seta{margin-left:0;font-size:10px;color:var(--muted);transition:transform .15s}
 .edu-bloco[open]>summary .seta{transform:rotate(90deg)}
@@ -743,7 +743,7 @@ summary.tema-cab .qt{margin-left:auto}
 .edu-tab td{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .edu-tab td:first-child{font-family:var(--f-ui);color:var(--ink-2)}
 .edu-tab tbody tr:last-child td{border-bottom:0}
-.edu-tab tbody tr:hover td{background:#FAFBFA}
+.edu-tab tbody tr:hover td{background:#F8FAFC}
 .edu-tab .tot td{font-weight:600;background:#F7F9F9}
 .edu-tab .zero{color:#B9C0C4}
 /* linhas que não somam o total: existem para localizar a sobreposição */
@@ -754,7 +754,7 @@ summary.tema-cab .qt{margin-left:auto}
   text-align:left;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
 .expl-bt:hover{color:var(--navy);text-decoration-color:var(--navy)}
 .expl-bt[aria-expanded=true]{color:var(--navy);font-weight:600}
-.edu-tab tr.expl td{background:#F7F9FA;text-align:left;white-space:normal;
+.edu-tab tr.expl td{background:#F5F8FC;text-align:left;white-space:normal;
   font-family:var(--f-ui);font-size:13.5px;line-height:1.6;color:var(--ink-2);
   padding:11px 15px 12px}
 .edu-tab tr.expl p{margin:0}
@@ -817,7 +817,7 @@ summary.tema-cab .qt{margin-left:auto}
 .esc-item>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;
   padding:10px 15px;user-select:none}
 .esc-item>summary::-webkit-details-marker{display:none}
-.esc-item>summary:hover{background:#FAFBFA}
+.esc-item>summary:hover{background:#F8FAFC}
 .esc-item .nm{flex:1;min-width:0;font-size:14px;line-height:1.3}
 .esc-item .tag{font-family:var(--f-ui);font-weight:600;font-size:10.5px;letter-spacing:.01em;
   padding:2px 7px;border-radius:10px;background:var(--line-2);color:var(--ink-2);flex:none}
@@ -825,14 +825,14 @@ summary.tema-cab .qt{margin-left:auto}
 .esc-item .qt{font-family:var(--f-num);font-size:15.5px;font-weight:600;flex:none;
   min-width:70px;text-align:right;font-variant-numeric:tabular-nums}
 .esc-item .qt small{font-family:var(--f-ui);font-size:11px;font-weight:400;color:var(--muted)}
-.esc-det{padding:2px 15px 14px;background:#FAFBFA;border-top:1px solid var(--line-2)}
+.esc-det{padding:2px 15px 14px;background:#F8FAFC;border-top:1px solid var(--line-2)}
 .esc-det .cod{font-family:var(--f-num);font-size:11.5px;color:var(--muted);padding:8px 0 6px}
 .esc-det .grade-et{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
 .esc-det .et{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:9px 11px}
 .esc-det .et h5{margin:0 0 6px;font-family:var(--f-ui);font-size:10.5px;letter-spacing:.01em;color:var(--muted);font-weight:600}
 .esc-det .et .l{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:1px 0}
 .esc-det .et .l b{font-family:var(--f-num);font-weight:600;font-variant-numeric:tabular-nums}
-.esc-mais{display:block;width:100%;background:#FAFBFA;border:0;border-top:1px solid var(--line);
+.esc-mais{display:block;width:100%;background:#F8FAFC;border:0;border-top:1px solid var(--line);
   padding:11px;font-family:var(--f-ui);font-size:13.5px;color:var(--navy);cursor:pointer;font-weight:600}
 .esc-mais:hover{background:var(--line-2)}
 @media (max-width:700px){
@@ -843,12 +843,20 @@ summary.tema-cab .qt{margin-left:auto}
 /* ---------- página Sobre ---------- */
 #vistaSobre{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
 .sobre{max-width:860px;margin:0 auto;padding:26px 28px 60px}
+/* Em tela larga, o texto fica à esquerda e as tabelas de consulta (temas e
+   fontes) à direita. Numa coluna só de 860px, uma tela de 2560px deixava
+   850px vazios de cada lado. O texto continua limitado a ~70 caracteres por
+   linha: o que cresce é a página, não a linha. */
+@media (min-width:1200px){
+  .sobre{max-width:1360px;padding:30px 40px 64px}
+  .sobre-colunas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:48px;align-items:start}
+}
 .sobre h2{margin:0 0 4px;font-size:24px;font-weight:700;letter-spacing:-.02em}
 .sobre .lead{margin:0 0 26px;color:var(--ink-2);font-size:15.5px;line-height:1.6;max-width:68ch}
 .sobre section{margin-bottom:30px}
-.sobre h3{margin:0 0 10px;font-family:var(--f-ui);font-size:12px;font-weight:600;
-  letter-spacing:.01em;color:var(--navy);
-  border-bottom:1px solid var(--line);padding-bottom:6px}
+.sobre h3{margin:0 0 10px;font-size:16.5px;font-weight:700;letter-spacing:-.01em;color:var(--ink);
+  border-bottom:1px solid var(--line);padding-bottom:8px}
 .sobre p{margin:0 0 11px;font-size:14.5px;line-height:1.65;max-width:70ch;color:var(--ink-2)}
 .sobre p strong{color:var(--ink);font-weight:600}
 .sobre ul{margin:0 0 11px;padding-left:20px;font-size:14.5px;line-height:1.65;
@@ -857,16 +865,24 @@ summary.tema-cab .qt{margin-left:auto}
 .sobre code{font-family:var(--f-num);font-size:13px;background:var(--line-2);
   padding:1px 5px;border-radius:2px}
 .sobre table{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  font-size:13.5px;margin:0 0 12px;width:100%}
-.sobre thead th{background:#FAFBFA;font-size:11.5px;letter-spacing:.01em;
+  font-size:13.5px;margin:0 0 12px;width:100%;border-collapse:separate;border-spacing:0;
+  overflow:hidden;box-shadow:var(--sombra)}
+.sobre thead th{background:#F8FAFC;border-bottom:1px solid var(--line);font-size:11.5px;letter-spacing:.01em;
   color:var(--muted);font-weight:600;text-align:left;padding:8px 12px;position:static}
 .sobre thead th.n{text-align:right}
 .sobre td{padding:7px 12px;border-bottom:1px solid var(--line-2);text-align:left;
   white-space:normal;position:static;min-width:0;max-width:none;background:none}
+/* A tabela genérica da Comparar (sem escopo) põe fonte mono e largura
+   máxima na primeira coluna; aqui a primeira coluna é texto corrido. */
+.sobre td{font-family:var(--f-ui)}
+.sobre td:first-child{max-width:none;min-width:0;position:static}
 .sobre td.n{text-align:right;font-family:var(--f-num);white-space:nowrap}
+/* O ano do CAGED é um intervalo longo; quebra em vez de espremer o nome da fonte. */
+.sobre td.n:nth-child(2):not(:last-child){white-space:normal;max-width:150px}
 .sobre tbody tr:last-child td{border-bottom:0}
-.sobre .cartoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
-.sobre .cartao{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
+.sobre .cartoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:30px}
+.sobre .cartao{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-g);padding:15px 17px;
+  box-shadow:var(--sombra)}
 .sobre .cartao b{display:block;font-family:var(--f-num);font-size:23px;font-weight:600;
   color:var(--navy);letter-spacing:-.02em}
 .sobre .cartao span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px}
@@ -978,10 +994,11 @@ summary.tema-cab .qt{margin-left:auto}
       <ul id="capaLista" role="listbox" hidden></ul>
     </div>
     <p class="capa-dica">Ou aperte <kbd>/</kbd> em qualquer tela para buscar.</p>
+    <div class="capa-recentes" id="capaRecentes" hidden></div>
     <div class="capa-nums">
       <div><span class="n" id="capaMun">—</span><div class="r">municípios</div></div>
       <div><span class="n" id="capaInd">—</span><div class="r">indicadores</div></div>
-      <div><span class="n" id="capaFontes">—</span><div class="r">fontes oficiais</div></div>
+      <div><span class="n" id="capaFontes">—</span><div class="r">instituições de origem</div></div>
     </div>
   </div>
 </section>
@@ -1051,8 +1068,8 @@ summary.tema-cab .qt{margin-left:auto}
   <div class="cmp-wrap">
     <h2>Comparar lugares</h2>
     <p class="lead">Escolha até cinco municípios, estados ou o Brasil. A tabela põe os
-      indicadores lado a lado, e a barra em cada célula mostra o valor em relação ao
-      maior da linha. Somar o estado e o Brasil à seleção dá a referência para leitura.</p>
+      indicadores lado a lado, com o maior valor de cada linha em negrito. Incluir o
+      estado e o Brasil na seleção dá a referência para leitura.</p>
 
     <div class="picker">
       <div class="linha">
@@ -1142,7 +1159,30 @@ summary.tema-cab .qt{margin-left:auto}
 "use strict";
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const NODATA='#E3E6E4', FORA='#EFF1EF';
+const NODATA='#E6E9EE', FORA='#F0F2F5';
+/* "Sem dado" vai hachurado, não num cinza liso. Liso, ele se confundia com a
+   classe mais clara da escala — e ler ausência de dado como "valor baixo" é
+   exatamente o erro que o Sobre avisa para não cometer. Hachura é a convenção
+   de cartografia para "não informado", e não depende de distinguir dois tons
+   quase iguais. A mesma hachura está na legenda (HACHURA_CSS). */
+const HACHURA_CSS='repeating-linear-gradient(135deg,#E6E9EE 0 3px,#C8D0DA 3px 4.2px)';
+let hachura=null;
+function padraoSemDado(){
+  if(!hachura){
+    const t=8, c=document.createElement('canvas'); c.width=c.height=t*2;
+    const g=c.getContext('2d'); g.scale(2,2);
+    g.fillStyle=NODATA; g.fillRect(0,0,t,t);
+    g.strokeStyle='#C3CBD6'; g.lineWidth=1.1;
+    g.beginPath();
+    for(const d of [-t,0,t]){ g.moveTo(d,t); g.lineTo(d+t,0); }
+    g.stroke();
+    hachura=ctx.createPattern(c,'repeat');
+  }
+  // O padrão fica com o mesmo tamanho na tela em qualquer zoom: sem isso, as
+  // listras engrossavam até virar faixas ao aproximar um município.
+  hachura.setTransform(new DOMMatrix().scale(1/(2*tr.k)));
+  return hachura;
+}
 
 /* ================= carregamento ================= */
 const boot=$('#boot'), bootBar=$('#bootBar'), bootMsg=$('#bootMsg');
@@ -1537,9 +1577,11 @@ function desenhar(){
   ctx.clearRect(0,0,cv.width,cv.height);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.translate(tr.x,tr.y); ctx.scale(tr.k,tr.k);
+  const semDado=padraoSemDado();
   for(let i=0;i<paths.length;i++){
     if(!paths[i]) continue;
-    ctx.fillStyle=cores[i]||NODATA;
+    const c=cores[i]||NODATA;
+    ctx.fillStyle = c===NODATA ? semDado : c;
     ctx.fill(paths[i]);
   }
   if(tr.k>2.5){
@@ -1645,7 +1687,7 @@ function recalcCor(){
   const leg=$('#legenda');
   if(!vals.length){
     corDe=()=>null; quebras=[];
-    leg.innerHTML='<div class="ramp" style="background:'+NODATA+'"></div>'+
+    leg.innerHTML='<div class="ramp" style="background:'+HACHURA_CSS+'"></div>'+
       '<div class="escala"><span>sem série neste recorte</span></div>';
   }else{
     const cl=classifica(vals,ramp);
@@ -1780,6 +1822,7 @@ function linhaFicha(id,bloco,pl,chave,tm,curto){
   if(!nulo&&!txt&&st.nivel!=='mun'&&!ehOficial(chave,id))
     origem=' \u00b7 agregado dos municípios';
   const row=document.createElement('div'); row.className='row';
+  row.dataset.fonte=fonteAno(m)+origem;
   row.innerHTML='<div class="l"><span class="n">'+(curto?m.nome:nomeLongo(id))+'</span>'+
     '<span class="v'+(nulo?' na':'')+(txt&&!nulo?' txt':'')+'">'+fmt(v,id,false)+
     ((m.unidade&&m.formato!=='pct'&&!nulo&&!txt)
@@ -1833,7 +1876,53 @@ function ficha(){
         cx.appendChild(linhaFicha(id,bloco,pl,chave,tm,true));
       det.appendChild(cx);
     }
+    juntaFontes(det);
     box.appendChild(det);
+  }
+}
+/* Fonte uma vez por sequência, não uma vez por linha. No setor População do
+   Brasil, "IBGE — Censo Demográfico 2022" aparecia nove vezes seguidas, e a
+   repetição empurrava os números para fora da tela. Linhas vizinhas com a
+   mesma fonte (e o mesmo ano) perdem a citação própria e ganham uma só, no
+   fim da sequência. O link de cada linha não se perde: ele vira a setinha ao
+   lado do nome, que aparece no hover — é ela que leva ao número daquele
+   indicador na fonte, quando a fonte tem endereço por indicador. */
+function juntaFontes(raiz){
+  const conts=new Set([...raiz.querySelectorAll('.row')].map(r=>r.parentNode));
+  for(const pai of conts){
+    const linhas=[...pai.children].filter(x=>x.classList.contains('row'));
+    let i=0;
+    while(i<linhas.length){
+      let j=i+1;
+      while(j<linhas.length&&linhas[j].dataset.fonte===linhas[i].dataset.fonte) j++;
+      if(j-i>1){
+        const seq=linhas.slice(i,j), urls=new Set();
+        let modelo=null;
+        for(const r of seq){
+          const src=r.querySelector(':scope > .src'); if(!src) continue;
+          const a=src.querySelector('a.fnt');
+          if(a){
+            urls.add(a.getAttribute('href'));
+            if(!modelo) modelo=src.cloneNode(true);
+            const ic=a.cloneNode(true); ic.classList.add('ic');
+            ic.setAttribute('aria-label',a.title||'Abrir a fonte');
+            r.querySelector('.l .n').appendChild(ic);
+          }else if(!modelo) modelo=src.cloneNode(true);
+          src.remove();
+        }
+        if(modelo){
+          // Se todas as linhas apontam para o mesmo endereço, o rodapé leva o
+          // link; se apontam para endereços diferentes, ele fica só texto, e
+          // cada link vive na setinha da sua linha.
+          if(urls.size>1){ const a=modelo.querySelector('a.fnt');
+            if(a) a.replaceWith(document.createTextNode(a.textContent)); }
+          modelo.className='src-seq';
+          modelo.insertAdjacentText('afterbegin','Fonte dos '+seq.length+' indicadores acima: ');
+          seq[seq.length-1].after(modelo);
+        }
+      }
+      i=j;
+    }
   }
 }
 function ranking(){
@@ -2683,28 +2772,6 @@ function valorMun(id,i){
   const v=p>=0?bloco[id][p]:null;
   return v===undefined?null:v;
 }
-/* Posição e percentil: do município dentro do estado, ou do estado entre as
-   27 UFs. O Brasil não se compara com ninguém e fica sem posição. */
-function posicaoNoEstado(id,i){
-  if(ehAgregado(i)){
-    if(i==='BR') return null;
-    const v=valorMun(id,i);
-    if(v===null||typeof v!=='number') return null;
-    const lim=UFCODES.map(u=>(META.agregados[u]||{})[id])
-                     .filter(x=>typeof x==='number').sort(d3.ascending);
-    if(lim.length<2) return null;
-    return {pos:lim.length-d3.bisect(lim,v)+1, tot:lim.length,
-            pct:d3.bisect(lim,v)/lim.length, entre:'entre as UFs'};
-  }
-  const bloco=cacheUF.get(META.ufSiglas[META.uf[i]]);
-  if(!bloco||!bloco[id]) return null;
-  const v=valorMun(id,i);
-  if(v===null||typeof v!=='number') return null;
-  const lim=bloco[id].filter(x=>x!==null&&x!==undefined).sort(d3.ascending);
-  if(lim.length<2) return null;
-  return {pos:lim.length-d3.bisect(lim,v)+1, tot:lim.length,
-          pct:d3.bisect(lim,v)/lim.length, entre:'no estado'};
-}
 function cartaoIndicador(id,i,tm){
   const m=DIC[id], v=valorMun(id,i), txt=m.formato==='texto';
   const nulo=(v===null||v===undefined||v==='');
@@ -2726,26 +2793,12 @@ function cartaoIndicador(id,i,tm){
 function kpi(id,i,rot){
   const m=DIC[id], v=valorMun(id,i);
   const nulo=(v===null||v===undefined);
-  const P=nulo?null:posicaoNoEstado(id,i);
   const tm=TEMAS[m.tema];
+  // Sem a posição no estado: mesma decisão dos cartões (etapa 2). "464º em
+  // área" não ajuda ninguém a entender o município.
   return `<div class="kpi">
     <div class="ic">${icone(ICONE_IND[id]||'mapa',tm.ramp[4])}<span>${rot||m.nome}</span></div>
     <div class="vl">${fmt(v,id,true)}${(m.unidade&&m.formato!=='pct'&&!nulo)?` <small>${m.unidade}</small>`:''}</div>
-    ${P?`<div class="cmp"><b>${P.pos}º</b> de ${P.tot} ${P.entre}</div>`:'<div class="cmp">&nbsp;</div>'}
-  </div>`;
-}
-function parVisual(titulo,a,b,i,icA,icB,corA,corB){
-  const va=valorMun(a,i), vb=valorMun(b,i);
-  if(va===null&&vb===null) return '';
-  const ta=(va||0)+(vb||0);
-  const pa=ta?(va||0)/ta*100:50, pb=100-pa;
-  const linha=(id,ic,cor,val,perc)=>`<div class="lado">${icone(ic,cor)}
-    <div class="tx"><div class="n">${DIC[id].nome}</div>
-    <div class="v">${fmt(val,id,true)}</div>
-    <div class="p">${ta?perc.toFixed(1).replace('.',',')+'%':'—'}</div></div></div>`;
-  return `<div class="par"><h4>${titulo}</h4>
-    <div class="lados">${linha(a,icA,corA,va,pa)}${linha(b,icB,corB,vb,pb)}</div>
-    <div class="barra"><i style="width:${pa}%;background:${corA}"></i><i style="width:${pb}%;background:${corB}"></i></div>
   </div>`;
 }
 
@@ -2898,14 +2951,13 @@ function ligaZoomSetor(alvo,i){
    ficha lateral, um indicador por vez.
 
    Reaproveita os mesmos cartões do município — toda a diferença está em
-   `valorMun` e `posicaoNoEstado` entenderem uma chave ('BR' ou o código da
+   `valorMun` e `alvoSidra` entenderem uma chave ('BR' ou o código da
    UF) além do índice. O que não existe aqui é o mapa localizador (o recorte
    JÁ é a área inteira) e o cartão do CLP (o ranking é municipal). */
 async function montaAgregado(chave){
   const alvo=$('#vistaMunicipio');
   const ehBR = chave==='BR';
   const nome = ehBR ? 'Brasil' : (META.ufNomes[chave]||chave);
-  const tmD=TEMAS.demografia;
 
   if(st.setor && TEMAS[st.setor]){
     alvo.innerHTML=montaSetor(chave,st.setor);
@@ -2952,12 +3004,6 @@ async function montaAgregado(chave){
       ${kpi('idhm',chave,'IDHM')}
     </div>
 
-    <div class="pares">
-      ${parVisual('Onde a população vive','pop_urbana','pop_rural',chave,'predios','mato',
-                  tmD.ramp[5],'#5F8C4A')}
-      ${parVisual('Distribuição por sexo','pct_homens','pct_mulheres',chave,'homem','mulher',
-                  tmD.ramp[3],tmD.ramp[5])}
-    </div>
 
     <div class="nota-agregado">
       ${ehBR
@@ -2965,8 +3011,8 @@ async function montaAgregado(chave){
           +'publica, e da soma dos municípios quando não. Índices como o IDHM '
           +'não se somam: são os que a própria fonte calcula para o país.'
         : `Os números de ${nome} vêm do total publicado pela fonte quando ela o `
-          +'publica, e da soma dos seus municípios quando não. A posição entre '
-          +'as 27 unidades da federação aparece em cada indicador comparável.'}
+          +'publica, e da soma dos seus municípios quando não. Índices como o '
+          +'IDHM não se somam: são os que a própria fonte calcula para o estado.'}
     </div>
 
     <div class="mun-ferramentas">
@@ -3033,7 +3079,7 @@ async function montaMunicipio(){
   }
   await garanteUF(META.uf[i]);
   await garanteCLP();
-  const uf=META.uf[i], sig=META.ufSiglas[uf], tmD=TEMAS.demografia;
+  const uf=META.uf[i], sig=META.ufSiglas[uf];
 
   if(st.edu){
     const monta = (st.edu==='escolas'&&!st.eduEsc) ? montaEduEscolas : montaEduDetalhe;
@@ -3090,12 +3136,6 @@ async function montaMunicipio(){
       ${kpi('idhm',i,'IDHM')}
     </div>
 
-    <div class="pares">
-      ${parVisual('Onde a população vive','pop_urbana','pop_rural',i,'predios','mato',
-                  tmD.ramp[5],'#5F8C4A')}
-      ${parVisual('Distribuição por sexo','pct_homens','pct_mulheres',i,'homem','mulher',
-                  tmD.ramp[3],tmD.ramp[5])}
-    </div>
 
     ${cartaoCLP(i)}
 
@@ -3910,96 +3950,96 @@ function montaSobre(){
     <div class="cartoes">
       <div class="cartao"><b>${N.toLocaleString('pt-BR')}</b><span>municípios</span></div>
       <div class="cartao"><b>${nInd}</b><span>indicadores</span></div>
-      <div class="cartao"><b>${Object.keys(D.porFonte).length}</b><span>fontes</span></div>
+      <div class="cartao"><b>${Object.keys(D.porFonte).length}</b><span>publicações de origem</span></div>
       <div class="cartao"><b>${META.atualizado||'—'}</b><span>última atualização</span></div>
     </div>
 
-    <section>
-      <h3>Como os valores de estado e país são calculados</h3>
-      <p>Quando a fonte publica o valor do estado ou do Brasil, o painel usa <strong>esse
-        número</strong>, e a ficha indica <em>“valor da fonte”</em>. Quando não publica,
-        o valor é calculado a partir dos municípios e a ficha indica
-        <em>“agregado dos municípios”</em>:</p>
-      <ul>
-        <li><strong>Soma</strong> para o que pode ser somado — população, PIB, número de
-          escolas, ocorrências.</li>
-        <li><strong>Média ponderada pela população</strong> para índices, taxas e
-          percentuais. O IDHM de um estado não é a média simples dos municipais.</li>
-      </ul>
-      <p>Municípios sem dado ficam fora da conta, em vez de entrarem como zero. Por isso
-        um agregado pode cobrir menos municípios do que o estado tem.</p>
-    </section>
-
-    <section>
-      <h3>Cobertura e lacunas</h3>
-      <p><strong>Sem dado não é zero.</strong> Onde a fonte não publica, o painel mostra
-        “sem dado” e pinta o município em cinza. Ler essas áreas como ausência do
-        fenômeno é o erro mais comum ao usar dados municipais.</p>
-      ${semSeg.length ? `<p>Os indicadores de <strong>segurança</strong> vêm das
-        secretarias estaduais, que publicam em calendários e formatos próprios.
-        ${semSeg.length} estados não têm nenhuma série no painel:
-        <strong>${semSeg.join(', ')}</strong>. Entre os que publicam, o conjunto de
-        crimes divulgado varia.</p>` : ''}
-      <p>Quando um indicador aparece zerado em <em>todos</em> os municípios de um estado,
-        o painel converte para “sem dado”: uma série real de ocorrências varia entre
-        municípios, e a coluna zerada indica ausência de publicação.</p>
-      ${defas}
-    </section>
-
-    <section>
-      <h3>Indicadores por tema</h3>
-      <table><thead><tr><th>Tema</th><th class="n">Indicadores</th></tr></thead>
-      <tbody>${temas}</tbody></table>
-    </section>
-
-    <section>
-      <h3>Fontes</h3>
-      <table><thead><tr><th>Fonte</th><th class="n">Ano de referência</th><th class="n">Indicadores</th></tr></thead>
-      <tbody>${fontes}</tbody></table>
-      <p>Cada linha da ficha lateral traz a fonte e o ano do seu próprio indicador. Os
-        anos diferem entre fontes: comparar dois indicadores de anos distintos exige
-        atenção.</p>
-    </section>
-
-    <section>
-      <h3>Base cartográfica</h3>
-      <p>Malha Municipal Digital do IBGE, com <strong>${N.toLocaleString('pt-BR')}
-        municípios</strong>. As duas áreas estaduais operacionais do Rio Grande do Sul
-        — Lagoa Mirim e Lagoa dos Patos — foram removidas por não serem municípios.</p>
-      <p>A geometria é <strong>simplificada</strong> para o mapa abrir rápido no
-        navegador: os contornos são fiéis na escala nacional e estadual, mas não devem
-        ser usados para medição, cálculo de área ou verificação de limites. Para isso,
-        use a malha original do IBGE em software de geoprocessamento.</p>
-      <p>Municípios instalados recentemente aparecem no mapa assim que entram na malha,
-        mas ficam sem dado até que as fontes passem a publicá-los separadamente.</p>
-    </section>
-
-    <section>
-      <h3>Como o mapa é colorido</h3>
-      <p>As cores dividem os municípios em classes com <strong>aproximadamente o mesmo
-        número de municípios em cada uma</strong> (quantis), e não em faixas de valor de
-        largura igual. É o que permite enxergar diferença em distribuições muito
-        desiguais: numa escala linear de área territorial, mais de 99% dos municípios
-        cairiam na primeira faixa e o mapa ficaria de uma cor só.</p>
-      <p>Os valores de cada divisão aparecem sob a barra de cores. Passando o mouse
-        sobre uma cor, o painel informa o intervalo e quantos municípios estão nele.
-        Quando o indicador tem poucos valores distintos, cada valor vira uma classe.</p>
-      <p><strong>Cuidado ao ler o mapa:</strong> municípios grandes ocupam mais espaço
-        na tela do que pequenos, então uma cor pode parecer dominante mesmo
-        representando poucos municípios. O ranking ao lado e a contagem na legenda
-        ajudam a corrigir essa impressão.</p>
-    </section>
-
-    <section>
-      <h3>Atualização</h3>
-      <p>Os dados vêm de uma planilha mantida pela equipe. Uma rotina automática lê a
-        planilha periodicamente e republica o painel; a data no topo desta página indica
-        a última publicação com alteração de conteúdo.</p>
-      <p>Para levantar dados, use <strong>Gerar relatório</strong>: sai um CSV que abre
-        no Excel, com as fontes no cabeçalho, ou um PDF por município. O botão
-        <strong>Copiar link</strong> gera um endereço que reabre o painel no mesmo
-        recorte.</p>
-    </section>
+    <div class="sobre-colunas">
+    <div class="sobre-texto">
+      <section>
+        <h3>Como os valores de estado e país são calculados</h3>
+        <p>Quando a fonte publica o valor do estado ou do Brasil, o painel usa <strong>esse
+          número</strong>, e a ficha indica <em>“valor da fonte”</em>. Quando não publica,
+          o valor é calculado a partir dos municípios e a ficha indica
+          <em>“agregado dos municípios”</em>:</p>
+        <ul>
+          <li><strong>Soma</strong> para o que pode ser somado — população, PIB, número de
+            escolas, ocorrências.</li>
+          <li><strong>Média ponderada pela população</strong> para índices, taxas e
+            percentuais. O IDHM de um estado não é a média simples dos municipais.</li>
+        </ul>
+        <p>Municípios sem dado ficam fora da conta, em vez de entrarem como zero. Por isso
+          um agregado pode cobrir menos municípios do que o estado tem.</p>
+      </section>
+        <section>
+        <h3>Cobertura e lacunas</h3>
+        <p><strong>Sem dado não é zero.</strong> Onde a fonte não publica, o painel mostra
+          “sem dado” e pinta o município em cinza. Ler essas áreas como ausência do
+          fenômeno é o erro mais comum ao usar dados municipais.</p>
+        ${semSeg.length ? `<p>Os indicadores de <strong>segurança</strong> vêm das
+          secretarias estaduais, que publicam em calendários e formatos próprios.
+          ${semSeg.length} estados não têm nenhuma série no painel:
+          <strong>${semSeg.join(', ')}</strong>. Entre os que publicam, o conjunto de
+          crimes divulgado varia.</p>` : ''}
+        <p>Quando um indicador aparece zerado em <em>todos</em> os municípios de um estado,
+          o painel converte para “sem dado”: uma série real de ocorrências varia entre
+          municípios, e a coluna zerada indica ausência de publicação.</p>
+        ${defas}
+      </section>
+        <section>
+        <h3>Como o mapa é colorido</h3>
+        <p>As cores dividem os municípios em classes com <strong>aproximadamente o mesmo
+          número de municípios em cada uma</strong> (quantis), e não em faixas de valor de
+          largura igual. É o que permite enxergar diferença em distribuições muito
+          desiguais: numa escala linear de área territorial, mais de 99% dos municípios
+          cairiam na primeira faixa e o mapa ficaria de uma cor só.</p>
+        <p>Os valores de cada divisão aparecem sob a barra de cores. Passando o mouse
+          sobre uma cor, o painel informa o intervalo e quantos municípios estão nele.
+          Quando o indicador tem poucos valores distintos, cada valor vira uma classe.</p>
+        <p><strong>Cuidado ao ler o mapa:</strong> municípios grandes ocupam mais espaço
+          na tela do que pequenos, então uma cor pode parecer dominante mesmo
+          representando poucos municípios. O ranking ao lado e a contagem na legenda
+          ajudam a corrigir essa impressão.</p>
+      </section>
+        <section>
+        <h3>Base cartográfica</h3>
+        <p>Malha Municipal Digital do IBGE, com <strong>${N.toLocaleString('pt-BR')}
+          municípios</strong>. As duas áreas estaduais operacionais do Rio Grande do Sul
+          — Lagoa Mirim e Lagoa dos Patos — foram removidas por não serem municípios.</p>
+        <p>A geometria é <strong>simplificada</strong> para o mapa abrir rápido no
+          navegador: os contornos são fiéis na escala nacional e estadual, mas não devem
+          ser usados para medição, cálculo de área ou verificação de limites. Para isso,
+          use a malha original do IBGE em software de geoprocessamento.</p>
+        <p>Municípios instalados recentemente aparecem no mapa assim que entram na malha,
+          mas ficam sem dado até que as fontes passem a publicá-los separadamente.</p>
+      </section>
+        <section>
+        <h3>Atualização</h3>
+        <p>Os dados vêm de uma planilha mantida pela equipe. Uma rotina automática lê a
+          planilha periodicamente e republica o painel; a data no topo desta página indica
+          a última publicação com alteração de conteúdo.</p>
+        <p>Para levantar dados, use <strong>Gerar relatório</strong>: sai um CSV que abre
+          no Excel, com as fontes no cabeçalho, ou um PDF por município. O botão
+          <strong>Copiar link</strong> gera um endereço que reabre o painel no mesmo
+          recorte.</p>
+      </section>
+      </div>
+    <div class="sobre-ref">
+      <section>
+        <h3>Indicadores por tema</h3>
+        <table><thead><tr><th>Tema</th><th class="n">Indicadores</th></tr></thead>
+        <tbody>${temas}</tbody></table>
+      </section>
+        <section>
+        <h3>Fontes</h3>
+        <table><thead><tr><th>Fonte</th><th class="n">Ano de referência</th><th class="n">Indicadores</th></tr></thead>
+        <tbody>${fontes}</tbody></table>
+        <p>Cada linha da ficha lateral traz a fonte e o ano do seu próprio indicador. Os
+          anos diferem entre fontes: comparar dois indicadores de anos distintos exige
+          atenção.</p>
+      </section>
+      </div>
+    </div>
 
     <div class="rodape">
       Os dados são de fontes públicas e mantêm a autoria de seus produtores; este painel
@@ -4059,7 +4099,35 @@ function desenhaCapa(){
   cx.globalAlpha=1;
   capaDesenhada=cai.width;
 }
+/* Lugares abertos por último, para voltar com um clique. Quem usa o painel
+   em projeto volta aos mesmos municípios várias vezes por semana; digitar o
+   nome de novo a cada vez é atrito à toa. Fica só neste navegador (não é
+   dado de ninguém, e não precisa ir para lugar nenhum). */
+const RECENTES_CHAVE='painel.recentes', RECENTES_MAX=5;
+function lerRecentes(){
+  try{ const v=JSON.parse(localStorage.getItem(RECENTES_CHAVE)||'[]');
+       return Array.isArray(v)?v.filter(x=>typeof x==='string'):[]; }
+  catch(e){ return []; }
+}
+function guardaRecente(it){
+  if(!it) return;
+  const cod=itemParaTexto(it);
+  const lista=[cod,...lerRecentes().filter(x=>x!==cod)].slice(0,RECENTES_MAX);
+  try{ localStorage.setItem(RECENTES_CHAVE,JSON.stringify(lista)); }catch(e){}
+}
+function montaRecentes(){
+  const box=$('#capaRecentes'); if(!box) return;
+  const itens=lerRecentes().map(textoParaItem).filter(Boolean);
+  box.hidden=!itens.length;
+  if(!itens.length){ box.innerHTML=''; return; }
+  box.innerHTML='<span class="rot">Abertos por último:</span>'+itens.map(it=>{
+    const uf = it.t==='mun' ? ' <small>'+META.ufSiglas[META.uf[it.i]]+'</small>' : '';
+    return '<button type="button" data-cod="'+itemParaTexto(it)+'">'+escHtml(rotulo(it))+uf+'</button>';
+  }).join('');
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>vaiPara(textoParaItem(b.dataset.cod)));
+}
 function montaCapa(){
+  montaRecentes();
   $('#capaMun').textContent=N.toLocaleString('pt-BR');
   $('#capaInd').textContent=IDS.length.toLocaleString('pt-BR');
   const fontes=new Set();
@@ -4080,9 +4148,11 @@ function trocaVista(v){
   // ao voltar para o mapa, remedir e redesenhar: enquanto ele estava escondido
   // a caixa media zero, e a medida pode ter mudado nesse meio-tempo
   if(v==='mapa'){ setTimeout(()=>{ dimensiona(); desenhar(); },30); gravarHash(); }
-  else if(v==='inicio'){ setTimeout(desenhaCapa,30); gravarHash(); }
+  else if(v==='inicio'){ montaRecentes(); setTimeout(desenhaCapa,30); gravarHash(); }
   else if(v==='comparar') comparar();
   else if(v==='municipio'){
+    guardaRecente(st.nivel==='mun'&&st.mun!==null ? {t:'mun',i:st.mun}
+                : (st.nivel==='uf'&&st.uf ? {t:'uf',cod:st.uf} : {t:'br'}));
     montaMunicipio().catch(e=>{
       console.error(e);
       $('#vistaMunicipio').innerHTML='<div class="mun"><div class="aviso-sem">'+

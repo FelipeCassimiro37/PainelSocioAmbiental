@@ -45,12 +45,15 @@ UF_NOME = {
  '41':'Paraná','42':'Santa Catarina','43':'Rio Grande do Sul','50':'Mato Grosso do Sul',
  '51':'Mato Grosso','52':'Goiás','53':'Distrito Federal',
 }
+# A primeira cor de cada escala é um degrau mais forte do que era: quase
+# branca, ela sumia contra o fundo do mapa. O "sem dado" não compete com ela
+# porque é desenhado hachurado (ver padraoSemDado no index.html).
 TEMAS = {
- "demografia": dict(nome="População",  ramp=["#EFEDF8","#CFCAEB","#AAA3DA","#867CC4","#6459A4","#443B77"]),
- "economia":   dict(nome="Economia",   ramp=["#EAF3F4","#B7DCDC","#78C0C0","#3F9C9F","#1C7178","#0A4A52"]),
- "educacao":   dict(nome="Educação",   ramp=["#FBF1E3","#F3DBB0","#E8BE75","#D69C42","#B4762A","#7E4E17"]),
- "saneamento": dict(nome="Saneamento", ramp=["#EAF1FA","#C0D8F0","#8DB9E2","#5A96CE","#2E71AE","#154C7D"]),
- "seguranca":  dict(nome="Segurança",  ramp=["#F7ECF1","#E5C4D5","#CE95B6","#B06693","#8A4270","#5C2549"]),
+ "demografia": dict(nome="População",  ramp=["#E3E0F3","#CFCAEB","#AAA3DA","#867CC4","#6459A4","#443B77"]),
+ "economia":   dict(nome="Economia",   ramp=["#DAECEC","#B7DCDC","#78C0C0","#3F9C9F","#1C7178","#0A4A52"]),
+ "educacao":   dict(nome="Educação",   ramp=["#F8E8CC","#F3DBB0","#E8BE75","#D69C42","#B4762A","#7E4E17"]),
+ "saneamento": dict(nome="Saneamento", ramp=["#DCE8F6","#C0D8F0","#8DB9E2","#5A96CE","#2E71AE","#154C7D"]),
+ "seguranca":  dict(nome="Segurança",  ramp=["#F0DCE7","#E5C4D5","#CE95B6","#B06693","#8A4270","#5C2549"]),
 }
 # Casas guardadas no arquivo de dados. Guardamos no mínimo 2 para taxas e
 # decimais: o valor da fonte não deve ser perdido na gravação, e a exibição
