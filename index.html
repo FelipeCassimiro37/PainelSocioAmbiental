@@ -397,6 +397,22 @@ details.grp{border-bottom:1px solid var(--line-2)}
 .chip button{background:none;border:0;cursor:pointer;color:var(--muted);font-size:15.5px;
   line-height:1;padding:0 3px}
 .chip button:hover{color:var(--sel)}
+.chip small{font-size:11px;color:var(--muted);background:var(--card);border-radius:8px;padding:0 5px}
+.chip button.ren{font-size:12px}
+.chip button.ren:hover{color:var(--navy)}
+.cmp-somar{margin-top:10px}
+.cmp-lista{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2)}
+.cmp-lista>label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;line-height:1.5}
+.cmp-lista textarea{width:100%;border:1px solid var(--line);border-radius:var(--r-p);padding:8px 10px;
+  font-family:var(--f-ui);font-size:13.5px;resize:vertical;background:#fff}
+.cmp-lista-op{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.cmp-lista-op .ck{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink-2)}
+.cmp-lista-op input[type=text]{flex:1;min-width:200px;border:1px solid var(--line);border-radius:var(--r-p);
+  padding:8px 10px;font-size:13.5px}
+.cmp-lista-op input[type=text]:disabled{background:var(--line-2)}
+.cmp-lista-res{margin:8px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.5}
+.cmp-lista-res b{color:var(--desce)}
+thead th.grp{background:#FBF4E6}
 .tabela{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
   margin-top:18px;overflow-x:auto;max-height:70vh}
 table{border-collapse:collapse;width:100%;font-size:14px}
@@ -1088,9 +1104,10 @@ summary.tema-cab .qt{margin-left:auto}
 <div id="vistaComparar">
   <div class="cmp-wrap">
     <h2>Comparar lugares</h2>
-    <p class="lead">Escolha até cinco municípios, estados ou o Brasil. A tabela põe os
-      indicadores lado a lado, com o maior valor de cada linha em negrito. Incluir o
-      estado e o Brasil na seleção dá a referência para leitura.</p>
+    <p class="lead">Escolha municípios, estados ou o Brasil — até 30 colunas. A tabela põe
+      os indicadores lado a lado, com o maior valor de cada linha em negrito. Vários
+      municípios também podem ser somados num conjunto, como a área de um projeto ou um
+      consórcio.</p>
 
     <div class="picker">
       <div class="linha">
@@ -1105,8 +1122,23 @@ summary.tema-cab .qt{margin-left:auto}
         <button class="btn" id="cmpAdd" disabled>Adicionar município</button>
         <button class="btn sec" id="cmpAddUF" disabled>Adicionar o estado</button>
         <button class="btn sec" id="cmpAddBR">Adicionar o Brasil</button>
+        <button class="btn sec" id="cmpListaAbre" aria-expanded="false">Colar uma lista</button>
+      </div>
+      <div class="cmp-lista" id="cmpLista" hidden>
+        <label for="cmpListaTxt">Um município por linha — nome com a UF ("Itabira - MG",
+          "Itabira/MG", ou nome e UF em duas colunas copiadas do Excel) ou o código do IBGE.
+          Sem UF, vale o estado escolhido acima.</label>
+        <textarea id="cmpListaTxt" rows="6" spellcheck="false"
+          placeholder="Itabira - MG&#10;João Monlevade - MG&#10;3133808"></textarea>
+        <div class="cmp-lista-op">
+          <label class="ck"><input type="checkbox" id="cmpListaGrupo"> Somar como um conjunto</label>
+          <input type="text" id="cmpListaNome" placeholder="Nome do conjunto (opcional)" maxlength="60" disabled>
+          <button class="btn" id="cmpListaAdd">Adicionar</button>
+        </div>
+        <p class="cmp-lista-res" id="cmpListaRes" aria-live="polite"></p>
       </div>
       <div class="chips" id="cmpChips"></div>
+      <button class="btn-mini cmp-somar" id="cmpSomar" style="display:none"></button>
     </div>
 
     <div id="cmpVazio" class="aviso">
@@ -2213,15 +2245,92 @@ function sincronizaControles(){
 }
 
 /* ================= comparação ================= */
+/* Até 30 colunas. O limite antigo, cinco, cabia numa tela mas não num
+   consórcio de municípios; acima de 30 a tabela deixa de ser lida e vira
+   planilha — para isso existe o CSV do relatório. */
+const MAX_SEL=30;
+const ufsDoGrupo = it => [...new Set(it.membros.map(i=>META.ufSiglas[META.uf[i]]))].sort();
 const rotulo = it => it.t==='br' ? 'Brasil'
-  : it.t==='uf' ? META.ufNomes[it.cod] : META.nomes[it.i];
+  : it.t==='uf' ? META.ufNomes[it.cod]
+  : it.t==='grp' ? it.nome : META.nomes[it.i];
 const subrotulo = it => it.t==='br' ? 'país'
-  : it.t==='uf' ? 'estado' : META.ufSiglas[META.uf[it.i]]+' · '+META.municipios[it.i];
-const corItem = it => it.t==='br' ? '#163E6C' : (it.t==='uf' ? '#3F9C9F' : '#C4452B');
+  : it.t==='uf' ? 'estado'
+  : it.t==='grp' ? it.membros.length+' municípios · '+ufsDoGrupo(it).join(', ')
+  : META.ufSiglas[META.uf[it.i]]+' · '+META.municipios[it.i];
+const corItem = it => it.t==='br' ? '#163E6C' : it.t==='uf' ? '#3F9C9F'
+  : it.t==='grp' ? '#B7791F' : '#C4452B';
+/* Carrega os blocos de UF que um item precisa (o do município, ou os de todos
+   os municípios de um conjunto). */
+async function garanteItem(it){
+  if(it.t==='mun') await garanteUF(META.uf[it.i]);
+  else if(it.t==='grp') for(const u of new Set(it.membros.map(i=>META.uf[i]))) await garanteUF(u);
+}
+
+/* ---------- conjunto de municípios somado ----------
+   O conjunto se agrega do mesmo jeito que o painel agrega um estado quando a
+   fonte não publica o total: soma o que se soma, e refaz a razão a partir das
+   partes quando o indicador é uma razão. O que não tem como ser refeito com
+   honestidade a partir dos municípios — IDHM, Gini, salário médio, taxas de
+   ocorrência — fica de fora, em vez de virar uma média que ninguém publica.
+
+   Duas regras que não estão no build:
+   · conjunto incompleto não tem total. Se um município não tem o dado, a soma
+     dos outros seria um número menor que o real com cara de total; a célula
+     diz quantos faltam;
+   · nenhuma conta mistura anos. A população usada como peso é a do Censo 2022,
+     e por isso só pondera indicadores do próprio Censo 2022. O PIB per capita
+     usa a população que o IBGE usou para cada município, recuperada de
+     PIB ÷ PIB per capita, que é do mesmo ano do PIB. */
+const GRUPO_RAZAO={            // numerador, denominador, escala
+  dens_dem:['pop_total','area_km2',1],
+  prop_pop_urb:['pop_urbana','pop_total',100],
+  part_vab_agro:['vab_agro','vab_total',100], part_vab_ind:['vab_ind','vab_total',100],
+  part_vab_adm:['vab_adm','vab_total',100], part_vab_serv:['vab_serv','vab_total',100],
+};
+const GRUPO_PONDERA={          // indicador do Censo 2022 -> peso do Censo 2022
+  pct_homens:'pop_total', pct_mulheres:'pop_total', prop_area_urb:'area_km2',
+  censo_agua_rede:'pop_total', censo_esgoto_rede:'pop_total',
+  censo_esgoto_fossa:'pop_total', censo_lixo_coleta:'pop_total',
+};
+function grupoComoAgrega(id){
+  const m=DIC[id];
+  if(m.formato==='texto') return null;
+  if(m.somavel) return 'soma';
+  if(GRUPO_RAZAO[id]) return 'razao';
+  if(GRUPO_PONDERA[id]) return 'pondera';
+  if(id==='pib_pc') return 'pibpc';
+  return null;
+}
+/* {v, faltam, como}: v é o valor do conjunto ou null; faltam, quantos
+   municípios estão sem algum dado necessário; como, a regra usada. */
+function valorGrupo(it,id){
+  const como=grupoComoAgrega(id);
+  if(!como) return {v:null,faltam:0,como:null};
+  const val=(i,k)=>{ const v=valorDe({t:'mun',i},k); return typeof v==='number'?v:null; };
+  let a=0,b=0,faltam=0;
+  for(const i of it.membros){
+    if(como==='soma'){ const x=val(i,id); if(x===null){faltam++;continue;} a+=x; }
+    else if(como==='razao'){ const [n,d]=GRUPO_RAZAO[id]; const x=val(i,n), y=val(i,d);
+      if(x===null||y===null){faltam++;continue;} a+=x; b+=y; }
+    else if(como==='pondera'){ const x=val(i,id), w=val(i,GRUPO_PONDERA[id]);
+      if(x===null||w===null){faltam++;continue;} a+=x*w; b+=w; }
+    else if(como==='pibpc'){ const p=val(i,'pib_total'), pc=val(i,'pib_pc');
+      if(p===null||!pc){faltam++;continue;} a+=p; b+=p/pc; }
+  }
+  if(faltam) return {v:null,faltam,como};
+  const v = como==='soma' ? a
+          : como==='razao' ? (b?a/b*GRUPO_RAZAO[id][2]:null)
+          : (b?a/b:null);
+  // Soma de números com casas decimais deixa resíduo de ponto flutuante
+  // (3000,4300000000003) que aparecia no CSV. Quatro casas bastam para tudo
+  // o que o painel publica.
+  return {v: v===null?null:Math.round(v*1e4)/1e4, faltam:0, como};
+}
 
 function valorDe(it,id){
   if(it.t==='br') return agregado('BR')[id];
   if(it.t==='uf') return agregado(it.cod)[id];
+  if(it.t==='grp') return valorGrupo(it,id).v;
   const bloco=cacheUF.get(META.ufSiglas[META.uf[it.i]]);
   if(!bloco||!bloco[id]) return undefined;
   const p=munsByUF.get(META.uf[it.i]).indexOf(it.i);
@@ -2231,11 +2340,22 @@ function chips(){
   const box=$('#cmpChips'); box.innerHTML='';
   selecao.forEach((it,k)=>{
     const c=document.createElement('span'); c.className='chip';
-    c.innerHTML=`<i style="background:${corItem(it)}"></i>${rotulo(it)}`+
-                `<button aria-label="Remover">&times;</button>`;
-    c.querySelector('button').onclick=()=>{ selecao.splice(k,1); comparar(); };
+    c.innerHTML=`<i style="background:${corItem(it)}"></i>${escHtml(rotulo(it))}`+
+      (it.t==='grp'?`<small>${it.membros.length}</small>`+
+        `<button class="ren" aria-label="Renomear o conjunto" title="Renomear">&#9998;</button>`:'')+
+      `<button class="rem" aria-label="Remover">&times;</button>`;
+    c.querySelector('.rem').onclick=()=>{ selecao.splice(k,1); comparar(); };
+    const ren=c.querySelector('.ren');
+    if(ren) ren.onclick=()=>{
+      const n=prompt('Nome do conjunto',it.nome);
+      if(n&&n.trim()){ it.nome=n.trim().slice(0,60); comparar(); }
+    };
+    if(it.t==='grp') c.title=it.membros.map(i=>META.nomes[i]+' ('+META.ufSiglas[META.uf[i]]+')').join(', ');
     box.appendChild(c);
   });
+  const muns=selecao.filter(x=>x.t==='mun').length;
+  $('#cmpSomar').style.display = muns>=2 ? 'inline-block' : 'none';
+  $('#cmpSomar').textContent = 'Somar os '+muns+' municípios como um conjunto';
   $('#cmpLimpar').style.display=selecao.length?'inline-block':'none';
   $('#cmpCsv').style.display=selecao.length?'inline-block':'none';
   $('#relSelInfo').textContent=selecao.length?selecao.map(rotulo).join(', '):'nenhum escolhido';
@@ -2245,9 +2365,9 @@ async function comparar(){
   const vazio=$('#cmpVazio'), tabela=$('#cmpTabela');
   if(!selecao.length){ vazio.style.display='block'; tabela.style.display='none'; return; }
   vazio.style.display='none'; tabela.style.display='block';
-  for(const it of selecao) if(it.t==='mun') await garanteUF(META.uf[it.i]);
+  for(const it of selecao) await garanteItem(it);
   let html='<thead><tr><th>Indicador</th>'+
-    selecao.map(it=>`<th>${rotulo(it)}<small>${subrotulo(it)}</small></th>`).join('')+
+    selecao.map(it=>`<th${it.t==='grp'?' class="grp"':''}>${escHtml(rotulo(it))}<small>${subrotulo(it)}</small></th>`).join('')+
     '</tr></thead><tbody>';
   for(const [tema,tm] of Object.entries(TEMAS)){
     const ids=IDS.filter(k=>DIC[k].tema===tema);
@@ -2255,6 +2375,7 @@ async function comparar(){
     html+=`<tr class="temaLinha"><td colspan="${selecao.length+1}">${tm.nome}</td></tr>`;
     for(const id of ids){
       const vals=selecao.map(it=>{ const v=valorDe(it,id); return v===undefined?null:v; });
+      const grp=selecao.map(it=>it.t==='grp'?valorGrupo(it,id):null);
       const nums=vals.filter(v=>typeof v==='number');
       const topo=nums.length>1?Math.max.apply(null,nums):null;
       html+=`<tr><td>${nomeLongo(id)}`+
@@ -2266,7 +2387,15 @@ async function comparar(){
          funcionaria — taxas por 100 mil, médias — ela some junto, mas o preço
          de manter era uma comparação visual que mente na maioria das linhas.
          O número fica, e o maior da linha segue destacado. */
-      for(const v of vals){
+      for(const [k,v] of vals.entries()){
+        const g=grp[k];
+        if(g&&v===null){
+          html+= !g.como
+            ? '<td class="na" title="Este indicador não se refaz a partir dos municípios: '+
+              'somar ou tirar média de índices e taxas daria um número que a fonte não publica.">não se soma</td>'
+            : `<td class="na" title="Sem o dado de ${g.faltam} município(s) do conjunto, o total ficaria menor que o real.">faltam ${g.faltam}</td>`;
+          continue;
+        }
         if(v===null||v===''){ html+='<td class="na">sem dado</td>'; continue; }
         // O limite de largura vai no elemento de dentro, não no <td>: em
         // tabela de layout automático o navegador ignora max-width na célula
@@ -2282,6 +2411,35 @@ async function comparar(){
   gravarHash();
 }
 
+/* Lê a lista colada: devolve os índices achados (sem repetição, na ordem) e
+   as linhas que não casaram. */
+function leLista(texto,ufPadrao){
+  const porNome=new Map();           // nome sem acento -> [índices]
+  for(let i=0;i<N;i++){ const k=semAcento(META.nomes[i]).replace(/[^a-z0-9]+/g,' ').trim();
+    (porNome.get(k)||porNome.set(k,[]).get(k)).push(i); }
+  const sigla2cod={}; for(const u of UFCODES) sigla2cod[META.ufSiglas[u]]=u;
+  const achados=[], falhas=[];
+  for(let linha of String(texto).split(/\r?\n|;/)){
+    linha=linha.trim(); if(!linha) continue;
+    let i;
+    const cod=linha.match(/^\d{7}$/);
+    if(cod) i=idxByCode.get(cod[0]);
+    else{
+      let nome=linha, uf=null;
+      const m=linha.match(/^(.*?)\s*(?:[-–—\/,(\t]|\s)\s*([A-Za-z]{2})\)?\s*$/);
+      if(m && sigla2cod[m[2].toUpperCase()]){ nome=m[1]; uf=sigla2cod[m[2].toUpperCase()]; }
+      const k=semAcento(nome).replace(/[^a-z0-9]+/g,' ').trim();
+      let c=(porNome.get(k)||[]);
+      const ufUsar=uf||ufPadrao;
+      if(ufUsar) c=c.filter(x=>META.uf[x]===ufUsar);
+      if(c.length===1) i=c[0];
+      else if(c.length>1){ falhas.push(linha+' (há mais de um; informe a UF)'); continue; }
+    }
+    if(i===undefined){ falhas.push(linha); continue; }
+    if(!achados.includes(i)) achados.push(i);
+  }
+  return {achados,falhas};
+}
 function montaComparar(){
   $('#cmpUF').onchange=e=>{
     const cod=e.target.value, sm=$('#cmpMun');
@@ -2294,7 +2452,8 @@ function montaComparar(){
   };
   $('#cmpMun').onchange=e=>{ $('#cmpAdd').disabled=!e.target.value; };
   const cabe=()=>{
-    if(selecao.length>=5){ alert('São no máximo cinco lugares por comparação.'); return false; }
+    if(selecao.length>=MAX_SEL){ alert('São no máximo '+MAX_SEL+' colunas por comparação. '+
+      'Para mais, some os municípios num conjunto ou use o CSV do relatório.'); return false; }
     return true;
   };
   $('#cmpAdd').onclick=()=>{
@@ -2314,7 +2473,59 @@ function montaComparar(){
     comparar();
   };
   $('#cmpLimpar').onclick=()=>{ selecao=[]; comparar(); };
-  $('#cmpCsv').onclick=()=>{
+
+  /* Colar uma lista. Quem trabalha numa região costuma ter os municípios numa
+     planilha, e escolher um por um em dois menus era o maior atrito da aba.
+     Aceita código do IBGE, "Nome - UF", "Nome/UF", "Nome (UF)" e as duas
+     colunas coladas do Excel (nome, tabulação, UF). Sem UF, vale o estado
+     escolhido no menu; sem estado, o nome tem de ser único no país. O que
+     não casa é listado de volta, nunca adivinhado. */
+  const abre=$('#cmpListaAbre'), painel=$('#cmpLista');
+  abre.onclick=()=>{ painel.hidden=!painel.hidden; abre.setAttribute('aria-expanded',String(!painel.hidden));
+    if(!painel.hidden) $('#cmpListaTxt').focus(); };
+  $('#cmpListaGrupo').onchange=e=>{ $('#cmpListaNome').disabled=!e.target.checked; };
+  $('#cmpListaAdd').onclick=()=>{
+    const {achados,falhas}=leLista($('#cmpListaTxt').value,$('#cmpUF').value||null);
+    const res=$('#cmpListaRes');
+    if(!achados.length){
+      res.innerHTML=falhas.length?'Nenhum município reconhecido. <b>Sem par:</b> '+
+        falhas.map(escHtml).join('; '):'Cole pelo menos um município.';
+      return;
+    }
+    let msg;
+    if($('#cmpListaGrupo').checked){
+      if(!cabe()) return;
+      const nome=($('#cmpListaNome').value||'').trim()||('Conjunto de '+achados.length+' municípios');
+      selecao.push({t:'grp',nome:nome.slice(0,60),membros:achados});
+      msg=`Conjunto “${escHtml(nome)}” com ${achados.length} municípios.`;
+    }else{
+      let n=0, cheio=false;
+      for(const i of achados){
+        if(selecao.some(x=>x.t==='mun'&&x.i===i)) continue;
+        if(selecao.length>=MAX_SEL){ cheio=true; break; }
+        selecao.push({t:'mun',i}); n++;
+      }
+      msg=`${n} município(s) adicionados.`+(cheio?` A tabela chegou a ${MAX_SEL} colunas; `+
+        `o resto pode entrar como conjunto.`:'');
+    }
+    res.innerHTML=msg+(falhas.length?' <b>Sem par:</b> '+falhas.map(escHtml).join('; '):'');
+    comparar();
+  };
+  $('#cmpSomar').onclick=()=>{
+    const muns=selecao.filter(x=>x.t==='mun').map(x=>x.i);
+    if(muns.length<2) return;
+    const nome=prompt('Nome do conjunto','Conjunto de '+muns.length+' municípios');
+    if(nome===null) return;
+    // Os municípios saem das colunas e entram no conjunto: a tabela fica com
+    // o total, e a lista de quem está dentro aparece ao passar o mouse no
+    // nome. Quem quiser os dois volta a adicionar um município avulso.
+    selecao=selecao.filter(x=>x.t!=='mun');
+    selecao.push({t:'grp',nome:(nome.trim()||'Conjunto de '+muns.length+' municípios').slice(0,60),
+                  membros:muns});
+    comparar();
+  };
+  $('#cmpCsv').onclick=async ()=>{
+    for(const it of selecao) await garanteItem(it);
     const linhas=[['Indicador','Unidade','Ano','Fonte'].concat(selecao.map(rotulo))];
     for(const id of IDS)
       linhas.push([nomeLongo(id),DIC[id].unidade,DIC[id].ano,DIC[id].fonte].concat(
@@ -2437,11 +2648,12 @@ async function gerarRelatorio(){
       linhas.push([META.municipios[st.mun],META.nomes[st.mun],META.ufSiglas[META.uf[st.mun]]]
         .concat(ids.map(i=>{ const v=valorDe(it,i); return csvNum(v===undefined?null:v,i); })));
     }else if(esc==='sel'){
-      for(const it of selecao) if(it.t==='mun') await garanteUF(META.uf[it.i]);
+      for(const it of selecao) await garanteItem(it);
       linhas.push(['codigo','nome','tipo'].concat(ids.map(i=>nomeLongo(i))));
       for(const it of selecao){
-        const tipo=it.t==='br'?'País':(it.t==='uf'?'UF':'Município');
-        const cod=it.t==='br'?'BR':(it.t==='uf'?it.cod:META.municipios[it.i]);
+        const tipo=it.t==='br'?'País':it.t==='uf'?'UF':it.t==='grp'?'Conjunto somado':'Município';
+        const cod=it.t==='br'?'BR':it.t==='uf'?it.cod
+          :it.t==='grp'?it.membros.map(i=>META.municipios[i]).join(' '):META.municipios[it.i];
         linhas.push([cod,rotulo(it),tipo].concat(ids.map(i=>{
           const v=valorDe(it,i); return csvNum(v===undefined?null:v,i); })));
       }
@@ -2471,10 +2683,18 @@ async function gerarRelatorio(){
 /* O endereço guarda o recorte usando código IBGE, não posição na lista:
    assim um link continua válido depois de uma troca de malha. */
 function itemParaTexto(it){
+  if(it.t==='grp')   // G<nome>~<código>.<código>… — o link reabre o conjunto inteiro
+    return 'G'+encodeURIComponent(it.nome)+'~'+it.membros.map(i=>META.municipios[i]).join('.');
   return it.t==='br' ? 'BR' : (it.t==='uf' ? 'UF'+it.cod : META.municipios[it.i]);
 }
 function textoParaItem(txt){
   txt=String(txt||'').trim();
+  if(txt[0]==='G'&&txt.includes('~')){
+    const [n,cods]=txt.slice(1).split('~');
+    const membros=[...new Set(cods.split('.').map(c=>idxByCode.get(c)).filter(i=>i!==undefined))];
+    let nome; try{ nome=decodeURIComponent(n); }catch(e){ nome='Conjunto'; }
+    return membros.length ? {t:'grp',nome:nome||'Conjunto',membros} : null;
+  }
   if(txt==='BR') return {t:'br'};
   if(txt.slice(0,2)==='UF'){
     const c=txt.slice(2).padStart(2,'0');
@@ -2508,7 +2728,7 @@ function lerHash(){
   const p=new URLSearchParams(h);
   const v=p.get('v');
   if(p.get('s')){
-    selecao=p.get('s').split(',').map(textoParaItem).filter(Boolean).slice(0,5);
+    selecao=p.get('s').split(',').map(textoParaItem).filter(Boolean).slice(0,MAX_SEL);
   }
   const ind=p.get('i');
   if(ind&&DIC[ind]&&DIC[ind].formato!=='texto') st.ind=ind;
@@ -2574,7 +2794,7 @@ async function gerarPDF(){
   const btn=$('#relPdf'), rot=btn.textContent;
   btn.disabled=true; btn.textContent='Preparando…';
   try{
-    for(const it of lugares) if(it.t==='mun') await garanteUF(META.uf[it.i]);
+    for(const it of lugares) await garanteItem(it);
     const esc2=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     let html='<div class="pdf-cab"><img src="marca/houer-assinatura.svg" alt="Houer">'+
       '<h1>Painel Socioambiental</h1>'+
@@ -2584,8 +2804,10 @@ async function gerarPDF(){
     for(const it of lugares){
       const sub = it.t==='mun'
         ? META.ufNomes[META.uf[it.i]]+' · código IBGE '+META.municipios[it.i]
-        : (it.t==='uf' ? 'Unidade da Federação · '+munsByUF.get(it.cod).length+' municípios'
-                       : 'País · '+N+' municípios');
+        : it.t==='uf' ? 'Unidade da Federação · '+munsByUF.get(it.cod).length+' municípios'
+        : it.t==='grp' ? 'Conjunto somado de '+it.membros.length+' municípios: '+
+            it.membros.map(i=>META.nomes[i]+' ('+META.ufSiglas[META.uf[i]]+')').join(', ')
+        : 'País · '+N+' municípios';
       html+='<section class="pdf-lugar"><h2>'+esc2(rotulo(it))+'</h2>'+
             '<div class="id">'+esc2(sub)+'</div>';
       for(const [tema,tm] of Object.entries(TEMAS)){
@@ -3147,7 +3369,7 @@ async function montaAgregado(chave){
   $('#munCmp').onclick=()=>{
     const it = ehBR ? {t:'br'} : {t:'uf',cod:chave};
     const igual = x => x.t===it.t && (it.t==='br'||x.cod===it.cod);
-    if(!selecao.some(igual) && selecao.length<5) selecao.push(it);
+    if(!selecao.some(igual) && selecao.length<MAX_SEL) selecao.push(it);
     trocaVista('comparar');
   };
   $('#munPdf').onclick=()=>{
@@ -3271,7 +3493,7 @@ async function montaMunicipio(){
   $('#munVolta').onclick=()=>trocaVista('mapa');
   $('#munMapaBtn').onclick=()=>trocaVista('mapa');
   $('#munCmp').onclick=()=>{
-    if(!selecao.some(x=>x.t==='mun'&&x.i===i) && selecao.length<5) selecao.push({t:'mun',i});
+    if(!selecao.some(x=>x.t==='mun'&&x.i===i) && selecao.length<MAX_SEL) selecao.push({t:'mun',i});
     trocaVista('comparar');
   };
   $('#munPdf').onclick=()=>{
