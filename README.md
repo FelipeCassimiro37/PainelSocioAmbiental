@@ -20,16 +20,25 @@ O site lê arquivos estáticos, então continua rápido para quem acessa.
 
 ```
 ├── index.html                  o painel (≈50 KB, só código)
+├── competitividade.html        o ranking do CLP, com o mesmo visual
 ├── dados/
 │   ├── meta.json               dicionário, lista de municípios, agregados
 │   ├── ind/<indicador>.json    o valor de um indicador nos 5.570 municípios
 │   └── uf/<SIGLA>.json         todos os indicadores dos municípios de uma UF
 ├── malha/                      contornos dos municípios e das UFs
+├── marca/                      símbolo e assinatura da Houer, em SVG
 ├── vendor/                     bibliotecas de mapa
 ├── scripts/build.py            lê a planilha e gera dados/
 ├── .github/workflows/          a automação
 └── ver-local.bat               servidor local para testar antes de publicar
 ```
+
+A marca entra no topo (símbolo em branco), na capa e no cabeçalho dos PDFs
+(assinatura colorida) e como ícone da aba. Os SVGs foram vetorizados a partir
+dos PNGs oficiais e conferidos contra eles (sobreposição acima de 99%); se a
+Houer mandar arquivos vetoriais próprios, basta substituir os quatro de
+`marca/` mantendo os nomes. As cores do painel saem do degradê do símbolo e
+estão em `:root`, no começo do `<style>` de cada página.
 
 O `index.html` carrega `meta.json` e a malha na abertura, e busca os demais
 arquivos só quando você seleciona um indicador ou entra num estado. Nada é
