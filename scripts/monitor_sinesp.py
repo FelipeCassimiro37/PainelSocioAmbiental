@@ -39,8 +39,8 @@ comparação.
 
 A taxa
 ------
-Por 100 mil habitantes, com a ESTIMATIVA de população do IBGE do mesmo ano
-(SIDRA 6579), e não com o Censo 2022 — três anos de diferença mudam a taxa de
+Por 100 mil habitantes, com a ESTIMATIVA de população do IBGE do MESMO ano
+(SIDRA 6579) — nunca de outro; se ela faltar, o script para —, e não com o Censo 2022 — três anos de diferença mudam a taxa de
 município que cresce rápido. Em município pequeno ela oscila muito de um ano
 para o outro: duas mortes numa cidade de 4 mil habitantes já dão 50 por 100
 mil. A contagem absoluta vai junto para quem lê poder pesar isso.
@@ -160,31 +160,34 @@ def le_ano(ano):
 
 
 def populacao(ano):
-    """Estimativa do IBGE por município, UF e Brasil (SIDRA 6579), no ano pedido
-    ou, se ainda não saiu, na mais recente."""
+    """Estimativa do IBGE por município, UF e Brasil (SIDRA 6579), SÓ do ano
+    pedido. Vítimas de um ano divididas pela população de outro dão uma taxa
+    que não descreve ano nenhum; se a estimativa do ano ainda não saiu, o
+    script para em vez de misturar. Na prática não deve acontecer: o IBGE
+    publica a estimativa de um ano em agosto desse mesmo ano, e o ano do
+    SINESP só fecha no começo do ano seguinte."""
     saida = {}
     for nivel, tam in (('n6', 7), ('n3', 2), ('n1', 1)):
-        for p in (str(ano), 'last%201'):
-            url = ('https://apisidra.ibge.gov.br/values/t/6579/%s/all/v/9324/p/%s'
-                   % (nivel, p))
-            try:
-                bruto = json.loads(rede.le(url, espera=300).decode('utf-8'))
-            except Exception as erro:
-                print('  aviso: população %s/%s não veio (%s)' % (nivel, p, erro))
-                continue
-            if len(bruto) > 1:
-                break
-        anop = None
+        url = ('https://apisidra.ibge.gov.br/values/t/6579/%s/all/v/9324/p/%d'
+               % (nivel, ano))
+        try:
+            bruto = json.loads(rede.le(url, espera=300).decode('utf-8'))
+        except Exception as erro:
+            raise SystemExit('A estimativa de população de %d (%s) não veio: %s. '
+                             'Sem ela a taxa misturaria anos; tente de novo mais '
+                             'tarde.' % (ano, nivel, erro))
         for l in bruto[1:]:
             cod = str(l.get('D1C', ''))
-            if len(cod) != tam:
+            if len(cod) != tam or str(l.get('D3C')) != str(ano):
                 continue
             try:
                 saida['BR' if nivel == 'n1' else cod] = float(l['V'])
-                anop = l.get('D3C') or anop
             except (ValueError, KeyError):
                 pass
-        print('  população %s: ano %s' % (nivel, anop))
+    if len(saida) < 5500:
+        raise SystemExit('A estimativa de população de %d trouxe só %d territórios. '
+                         'Sem ela a taxa misturaria anos.' % (ano, len(saida)))
+    print('  população: estimativa IBGE %d (%d territórios)' % (ano, len(saida)))
     return saida
 
 
@@ -279,7 +282,8 @@ def main():
                  'ano': str(ano), 'fonte': fonte},
         'tx_cvli': {'nome': 'Taxa de CVLI', 'tema': 'seguranca',
                     'unidade': '/100 mil hab', 'formato': 'dec1', 'somavel': '0',
-                    'ano': str(ano), 'fonte': fonte},
+                    'ano': str(ano),
+                    'fonte': '%s; população: IBGE, estimativa %d' % (fonte, ano)},
     }
     with open(os.path.join(AUTO, 'auto_sinesp.meta.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
