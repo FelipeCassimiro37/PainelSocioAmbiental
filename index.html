@@ -373,14 +373,24 @@ thead th{background:#FAFBFA;font-size:12.5px;font-weight:600;color:var(--ink-2);
   border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
 thead th:first-child{z-index:3;background:#FAFBFA}
 thead th small{display:block;font-family:var(--f-num);font-size:10.5px;color:var(--muted);font-weight:400}
-tbody td{font-family:var(--f-num);font-size:13.5px}
+tbody td{font-family:var(--f-num);font-size:13.5px;white-space:nowrap}
 tbody td.na{color:#C2C8CB}
+/* Célula de texto, não de número. O nome do prestador de água chega a 90
+   caracteres ("COPASA Serviços de Saneamento Integrado do Norte e Nordeste de
+   Minas Gerais S/A; Companhia de Saneamento de Minas Gerais"), e numa célula
+   que não quebra ele alargava a coluna inteira: os valores das outras colunas
+   iam parar longe demais um do outro para serem comparados de relance, que é
+   a única razão de a tabela existir. */
+tbody td.txt{white-space:normal;font-family:var(--f-ui);font-size:12.5px;
+  line-height:1.45;text-align:left;color:var(--ink-2)}
+/* O bloco encosta na direita, como os números da coluna; o texto dentro dele
+   continua alinhado à esquerda, que é como se lê um nome. Alinhar só o texto
+   deixaria o parágrafo solto no meio da coluna, longe da régua dos valores. */
+tbody td.txt span{display:block;max-width:260px;margin-left:auto;
+  text-align:left;overflow-wrap:anywhere}
 tbody tr:hover td,tbody tr:hover td:first-child{background:#FAFBFA}
 tr.temaLinha td,tr.temaLinha:hover td{background:#F4F6F4;font-family:var(--f-ui);font-size:11px;
   font-weight:600;letter-spacing:.01em;color:var(--ink-2);padding:7px 12px}
-td .cel{display:flex;align-items:center;justify-content:flex-end;gap:8px}
-td .mb{width:46px;height:4px;background:var(--line-2);border-radius:2px;overflow:hidden;flex:none}
-td .mb i{display:block;height:100%}
 .melhor{font-weight:700}
 .aviso{background:#F7F9F7;border:1px solid var(--line);color:var(--muted);padding:12px 14px;
   border-radius:var(--r);font-size:13.5px;margin-top:16px}
@@ -590,9 +600,9 @@ summary.tema-cab .qt{margin-left:auto}
 .mun.foco .card .n{font-size:15.5px}
 .mun.foco .card .v{font-size:20.5px}
 
-.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:10px}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:10px}
 .card{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);
-  padding:13px 15px;transition:box-shadow .16s,border-color .16s,transform .16s}
+  padding:12px 14px;transition:box-shadow .16s,border-color .16s,transform .16s}
 .card:hover{border-color:var(--line);box-shadow:var(--sombra-alta);transform:translateY(-1px)}
 /* As duas linhas de altura mínima são o que faz a fileira ler como fileira.
    Sem isso, um título que quebra em duas empurra o número para baixo e os
@@ -601,7 +611,7 @@ summary.tema-cab .qt{margin-left:auto}
 .card .n{font-size:14.5px;color:var(--ink-2);line-height:1.35;margin-bottom:7px;
   display:flex;align-items:baseline;gap:6px;min-height:2.7em}
 .card .n svg{width:14px;height:14px;flex:none;align-self:center}
-.card .v{font-family:var(--f-num);font-size:17.5px;font-weight:600;letter-spacing:-.02em}
+.card .v{font-family:var(--f-num);font-size:19px;font-weight:600;letter-spacing:-.025em}
 .card .v.na{font-size:13.5px;font-weight:400;color:#A6AEB2;font-family:var(--f-ui)}
 .card .v.txt{font-family:var(--f-ui);font-size:13.5px;font-weight:500;line-height:1.35}
 .card .v small{font-family:var(--f-ui);font-size:11.5px;font-weight:400;color:var(--muted)}
@@ -609,7 +619,7 @@ summary.tema-cab .qt{margin-left:auto}
 .card .tr i{display:block;height:100%}
 .card .pos{margin-top:6px;font-size:11.5px;color:var(--muted)}
 .card .ref{margin-top:3px;font-size:11.5px;color:#98A0A4}
-.card .fonte{margin-top:7px;font-size:11px;color:#A9B0B4;
+.card .fonte{margin-top:9px;font-size:11px;color:#A9B0B4;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mun .aviso-sem{background:#FAFBFA;border:1px dashed var(--line);border-radius:var(--r);
   padding:11px 13px;font-size:13px;color:var(--muted)}
@@ -2078,18 +2088,24 @@ async function comparar(){
     for(const id of ids){
       const vals=selecao.map(it=>{ const v=valorDe(it,id); return v===undefined?null:v; });
       const nums=vals.filter(v=>typeof v==='number');
-      const max=nums.length?Math.max.apply(null,nums.map(Math.abs)):0;
       const topo=nums.length>1?Math.max.apply(null,nums):null;
       html+=`<tr><td>${nomeLongo(id)}`+
         `${DIC[id].unidade?` <span style="color:var(--muted);font-size:11px">${DIC[id].unidade}</span>`:''}</td>`;
+      /* Sem barra proporcional. Ela comparava a largura contra o maior valor
+         da linha, e basta o Brasil entrar na seleção para esse maior ser ele
+         em quase tudo: a barra do país enche e as dos municípios viram três
+         tracinhos iguais, que não distinguem 2 mil de 200 mil. Onde a barra
+         funcionaria — taxas por 100 mil, médias — ela some junto, mas o preço
+         de manter era uma comparação visual que mente na maioria das linhas.
+         O número fica, e o maior da linha segue destacado. */
       for(const v of vals){
         if(v===null||v===''){ html+='<td class="na">sem dado</td>'; continue; }
-        if(typeof v!=='number'){ html+=`<td>${fmt(v,id,true)}</td>`; continue; }
-        const larg=max?Math.max(3,Math.abs(v)/max*100):0;
+        // O limite de largura vai no elemento de dentro, não no <td>: em
+        // tabela de layout automático o navegador ignora max-width na célula
+        // na hora de dimensionar a coluna, e a coluna cresce assim mesmo.
+        if(typeof v!=='number'){ html+=`<td class="txt"><span>${fmt(v,id,true)}</span></td>`; continue; }
         const forte=(topo!==null&&v===topo)?' class="melhor"':'';
-        html+=`<td><span class="cel"><span class="mb">`+
-              `<i style="width:${larg}%;background:${tm.ramp[4]}"></i></span>`+
-              `<span${forte}>${fmt(v,id,true)}</span></span></td>`;
+        html+=`<td><span${forte}>${fmt(v,id,true)}</span></td>`;
       }
       html+='</tr>';
     }
@@ -2668,41 +2684,17 @@ function posicaoNoEstado(id,i){
 function cartaoIndicador(id,i,tm){
   const m=DIC[id], v=valorMun(id,i), txt=m.formato==='texto';
   const nulo=(v===null||v===undefined||v==='');
-  const P=nulo||txt?null:posicaoNoEstado(id,i);
-  // Cada recorte se compara com o de cima: município com o seu estado, estado
-  // com o Brasil. O Brasil não tem com quem se comparar e fica sem a linha.
-  const agreg=ehAgregado(i);
-  const refChave = agreg ? (i==='BR'?null:'BR') : META.uf[i];
-  const refNome  = agreg ? 'do Brasil' : 'do estado';
-  const vRef=refChave?(META.agregados[refChave]||{})[id]:undefined;
-  const vBR=(META.agregados.BR||{})[id];
-  let ref='';
-  if(!nulo&&!txt&&typeof v==='number'&&typeof vRef==='number'&&vRef!==0){
-    const d=(v/vRef-1)*100;
-    // Somáveis se comparam como parcela do todo; taxas e índices, como
-    // distância da média. Dizer que a população de BH está "88% abaixo de MG"
-    // seria absurdo — ela é 11% do estado.
-    let como;
-    if(m.somavel){
-      const parte=v/vRef*100;
-      como=`${br(f1(parte))}% do total ${refNome}`;
-    }else{
-      const dif=br(f1(Math.abs(d)));
-      como = Math.abs(d)<1 ? `na média ${refNome}`
-           : `${dif}% ${d>0?'acima':'abaixo'} da média ${refNome}`;
-    }
-    // O "· Brasil X" sobra quando a comparação já é com o Brasil.
-    const extra=(typeof vBR==='number'&&!m.somavel&&refChave!=='BR')
-      ? ` · Brasil ${fmt(vBR,id,true)}` : '';
-    ref=`<div class="ref">${como}${extra}</div>`;
-  }
+  /* O cartão carrega três coisas: o que é, quanto é, e de onde veio.
+     Já carregou mais — posição no estado, barra de percentil e comparação com
+     a média —, e eram três informações competindo com o número justamente no
+     lugar onde o número é o assunto. Quem quer comparar tem a aba Comparar e o
+     mapa, que foram feitos para isso; quem abre a ficha quer ler o valor.
+     A comparação continua existindo no KPI do topo, onde são seis números e
+     não oitenta e quatro. */
   return `<div class="card">
     <div class="n">${icone(ICONE_IND[id]||ICONE_TEMA[m.tema],tm.ramp[4])}<span>${nomeLongo(id)}</span></div>
     <div class="v${nulo?' na':''}${txt&&!nulo?' txt':''}">${fmt(v,id,false)}${
       (m.unidade&&m.formato!=='pct'&&!nulo&&!txt)?` <small>${m.unidade}</small>`:''}</div>
-    ${P?`<div class="tr"><i style="width:${Math.max(2,P.pct*100)}%;background:${tm.ramp[4]}"></i></div>
-        <div class="pos">${P.pos}º de ${P.tot} ${P.entre}</div>`:''}
-    ${ref}
     <div class="fonte">${citaFonte(m,"",id,alvoSidra(i))}</div>
     ${blocoRessalva(id,i)}
   </div>`;
