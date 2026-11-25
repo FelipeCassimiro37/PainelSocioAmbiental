@@ -1,0 +1,18 @@
+{
+  "ano": 2025,
+  "assinatura": "26644168|None",
+  "origem": "https://www.gov.br/mj/pt-br/assuntos/sua-seguranca/seguranca-publica/estatistica/dados-nacionais-1/base-de-dados-e-notas-metodologicas-dos-gestores-estaduais-sinesp-vde-2022-e-2023",
+  "eventos": [
+    "Homicídio doloso",
+    "Feminicídio",
+    "Roubo seguido de morte (latrocínio)",
+    "Lesão corporal seguida de morte"
+  ],
+  "verificadoEm": "2026-11-25 17:25 UTC",
+  "totais": {
+    "municipios": 5570,
+    "vitimas_brasil": 34546,
+    "taxa_brasil": 16.2,
+    "sem_par": []
+  }
+}

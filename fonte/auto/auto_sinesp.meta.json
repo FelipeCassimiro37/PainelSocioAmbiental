@@ -1,0 +1,20 @@
+{
+  "cvli": {
+    "nome": "Crimes violentos letais (CVLI)",
+    "tema": "seguranca",
+    "unidade": "vítimas",
+    "formato": "int",
+    "somavel": "1",
+    "ano": "2025",
+    "fonte": "MJSP — SINESP VDE 2025"
+  },
+  "tx_cvli": {
+    "nome": "Taxa de CVLI",
+    "tema": "seguranca",
+    "unidade": "/100 mil hab",
+    "formato": "dec1",
+    "somavel": "0",
+    "ano": "2025",
+    "fonte": "MJSP — SINESP VDE 2025; população: IBGE, estimativa 2025"
+  }
+}
