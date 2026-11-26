@@ -4,9 +4,17 @@ name: Vigiar o SINISA (saneamento)
 # custa duas requisições à página do Ministério das Cidades; os pacotes — cerca
 # de 35 MB somando Resíduos, Água e Esgoto — só são baixados quando aparece
 # edição que ainda não foi processada.
+#
+# AGENDAMENTO DESLIGADO desde 26/11/2026. Desde 21/11 o www.gov.br derruba
+# toda conexão vinda do GitHub Actions, e esta fonte não tem cópia fora dele
+# (testado: dados.mj.gov.br foi desativado; gov.br sem "www" também bloqueia;
+# os servidores *.cidades.gov.br respondem 403). Quem cobre esta fonte é a
+# conferência semanal, que roda às sextas fora do GitHub e abre o PR quando
+# há novidade. O botão "Run workflow" continua funcionando. Para religar,
+# descomente as duas linhas do schedule abaixo.
 on:
-  schedule:
-    - cron: "0 13 * * 4"      # quinta-feira, 10:00 em Brasília
+  # schedule:
+    # - cron: "0 13 * * 4"      # quinta-feira, 10:00 em Brasília
   workflow_dispatch:
     inputs:
       sondar:

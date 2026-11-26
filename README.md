@@ -274,11 +274,11 @@ vai para `fonte/auto/`, não para a planilha.
 | vigia | fonte | quando roda | o que atualiza |
 | --- | --- | --- | --- |
 | `monitor_caged.py` | CAGED (MTE) | todo dia, 08:00 | estoque, admissões, desligamentos, saldo |
-| `monitor_sinesp.py` | SINESP VDE (Ministério da Justiça) | segunda | CVLI e taxa de CVLI por município |
+| `monitor_sinesp.py` | SINESP VDE (Ministério da Justiça) | sexta, pela conferência semanal¹ | CVLI e taxa de CVLI por município |
 | `monitor_clp.py` | CLP | terça | ranking de competitividade |
 | `monitor_censo.py` | Censo Escolar (INEP) | quarta, 12h | matrículas por escola (subpainel de educação) |
 | `monitor_escolas.py` | Censo Escolar (INEP) | quarta, 16h | contagem de escolas por município |
-| `monitor_sinisa.py` | SINISA | quinta | água, esgoto e resíduos sólidos |
+| `monitor_sinisa.py` | SINISA | sexta, pela conferência semanal¹ | água, esgoto e resíduos sólidos |
 | `monitor_cempre.py` | CEMPRE (IBGE) | sexta | salário médio mensal |
 | `monitor_pib.py` | PIB dos Municípios (IBGE) | sábado | PIB, PIB per capita, VAB e participações |
 
@@ -306,6 +306,13 @@ esgoto ligado à rede, fossa séptica sem rede e lixo coletado. Não tem vigia �
 o Censo não muda até o próximo —, roda-se uma vez à mão. O SINISA diz o que o
 prestador declara; o Censo, o que o morador respondeu, em todos os municípios.
 No SIDRA, `-` é zero absoluto, não ausência: o script lê assim.
+
+¹ Desde 21/11/2026 o www.gov.br derruba as conexões vindas do GitHub
+Actions. CAGED e Censo Escolar ganharam caminho alternativo (Google Drive e
+download.inep.gov.br); SINESP e SINISA não têm cópia fora do gov.br, então o
+agendamento deles no GitHub foi desligado e quem os roda é a conferência
+semanal do Claude, às sextas, fora do GitHub. O botão "Run workflow" continua
+valendo; para religar, basta descomentar o `schedule` no workflow.
 
 ### Segurança: por que CVLI, e não roubos
 
