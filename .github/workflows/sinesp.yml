@@ -8,9 +8,17 @@ name: Vigiar o SINESP (CVLI por município)
 # Segunda-feira: os outros dias já têm vigia (CLP terça, Censo Escolar quarta,
 # SINISA quinta, CEMPRE sexta, PIB sábado; CAGED diário). Dois que rodem junto
 # conflitam no fonte/auto.
+#
+# AGENDAMENTO DESLIGADO desde 26/11/2026. Desde 21/11 o www.gov.br derruba
+# toda conexão vinda do GitHub Actions, e esta fonte não tem cópia fora dele
+# (testado: dados.mj.gov.br foi desativado; gov.br sem "www" também bloqueia;
+# os servidores *.cidades.gov.br respondem 403). Quem cobre esta fonte é a
+# conferência semanal, que roda às sextas fora do GitHub e abre o PR quando
+# há novidade. O botão "Run workflow" continua funcionando. Para religar,
+# descomente as duas linhas do schedule abaixo.
 on:
-  schedule:
-    - cron: "0 13 * * 1"      # segunda-feira, 10:00 em Brasília
+  # schedule:
+    # - cron: "0 13 * * 1"      # segunda-feira, 10:00 em Brasília
   workflow_dispatch:
     inputs:
       forcar:
