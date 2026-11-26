@@ -48,7 +48,7 @@ continua inteira: só o elo que o servidor esqueceu é suprido.
 import argparse, io, json, os, re, socket, ssl, sys, tempfile, unicodedata, zipfile
 from datetime import datetime, timezone
 
-import urllib.parse, urllib.request
+import urllib.error, urllib.parse, urllib.request
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SAIDA = os.path.join(RAIZ, 'fonte', 'auto')
@@ -306,7 +306,76 @@ def busca(url, cabecalhos=None, metodo='GET', ua=None, espera=60, tentativas=2,
 
 
 # ------------------------------------------------------ achar a divulgação
+DOWNLOAD = 'https://download.inep.gov.br/dados_abertos/'
+# Grafias que o INEP já usou no nome do pacote. A de 2025 saiu com um "_"
+# sobrando ("microdados_censo_escolar_2025_.zip"); por isso a lista, e não
+# um nome só.
+GRAFIAS_ZIP = ('microdados_censo_escolar_%d.zip', 'microdados_censo_escolar_%d_.zip',
+               'microdados_censo_escolar_%d_v2.zip', 'microdados_censo_escolar_%d_V2.zip')
+
+
 def anos_publicados():
+    """
+    {ano: url do zip}. Pela página do INEP no gov.br e, se ela recusar a
+    conexão, pelo servidor de downloads.
+
+    Por que o plano B: desde 21/11/2026 o www.gov.br derruba toda conexão vinda
+    do GitHub Actions; as duas rotinas do Censo Escolar falharam assim em
+    25/11. O download.inep.gov.br é outro servidor e, testado do Actions em
+    26/11, respondeu — com instabilidade, que a repetição de `busca` absorve.
+    Sem a página não há lista de anos, então o plano B pergunta diretamente
+    pelos pacotes do último ano processado e do seguinte, nas grafias que o
+    INEP já usou. Limite conhecido: um ano novo com nome inédito passa
+    despercebido aqui — e é apanhado pela conferência semanal, que roda fora
+    do GitHub e lê a página.
+    """
+    try:
+        return anos_pela_pagina()
+    except (SystemExit, KeyboardInterrupt):
+        raise
+    except Exception as erro:
+        print('  aviso: a página do INEP no gov.br não respondeu (%s); perguntando '
+              'direto ao download.inep.gov.br' % type(erro).__name__)
+        return anos_pelo_download()
+
+
+def _ultimo_ano_processado():
+    anos = []
+    for nome in ('auto_censo.estado.json', 'auto_escolas.estado.json'):
+        try:
+            anos.append(int(json.load(open(os.path.join(SAIDA, nome), encoding='utf-8'))['ano']))
+        except Exception:
+            pass
+    return max(anos) if anos else datetime.now(timezone.utc).year - 2
+
+
+def anos_pelo_download():
+    base = _ultimo_ano_processado()
+    achados, erros = {}, []
+    for ano in (base, base + 1):
+        for g in GRAFIAS_ZIP:
+            url = DOWNLOAD + g % ano
+            try:
+                with busca(url, cabecalhos={'Range': 'bytes=0-1'}, espera=40,
+                           tentativas=3) as r:
+                    if r.status in (200, 206):
+                        achados[ano] = url
+                        print('  %d: %s' % (ano, url))
+                        break
+            except urllib.error.HTTPError as e:
+                if e.code != 404:
+                    erros.append('%s (%s)' % (url, e.code))
+            except Exception as e:
+                erros.append('%s (%s)' % (url, type(e).__name__))
+    if base not in achados:
+        # Se nem o ano já processado aparece, o servidor de downloads também
+        # está fora de alcance — dizer "sem novidade" seria mentir.
+        raise SystemExit('Nem a página do INEP nem o download.inep.gov.br '
+                         'responderam. Erros: ' + '; '.join(erros[:4]))
+    return achados
+
+
+def anos_pela_pagina():
     """
     {ano: url do zip}, lido da página de microdados.
 
