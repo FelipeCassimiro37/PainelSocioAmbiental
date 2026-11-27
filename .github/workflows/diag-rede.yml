@@ -1,0 +1,23 @@
+name: Diagnóstico de camadas (temporário)
+# Baixa, a partir do GitHub Actions, camadas que não abrem da nuvem do Claude
+# (FUNAI e INCRA) e testa CORS dos serviços de mapa. Apagar depois.
+on:
+  push:
+    branches: [diag/camadas]
+jobs:
+  baixar:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          mkdir out
+          O="Origin: https://felipecassimiro37.github.io"
+          echo "== FUNAI WFS"; curl -sS -m 300 -A "Mozilla/5.0" -o out/tis.json -w "%{http_code} %{size_download}\n" "https://geoserver.funai.gov.br/geoserver/Funai/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=Funai:tis_poligonais&outputFormat=application/json" || true
+          echo "== FUNAI CORS WMS"; curl -sS -m 60 -D - -o /dev/null -H "$O" "https://geoserver.funai.gov.br/geoserver/Funai/wms?service=WMS&version=1.1.1&request=GetMap&layers=Funai:tis_poligonais&styles=&srs=EPSG:3857&bbox=-5500000,-1500000,-5000000,-1000000&width=256&height=256&format=image/png&transparent=true" | grep -i -E 'HTTP/|access-control|content-type' || true
+          echo "== FUNAI CORS WFS"; curl -sS -m 60 -D - -o /dev/null -H "$O" "https://geoserver.funai.gov.br/geoserver/Funai/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=Funai:tis_poligonais&maxFeatures=1&outputFormat=application/json" | grep -i -E 'HTTP/|access-control|content-type' || true
+          echo "== INCRA"; curl -sS -m 600 -A "Mozilla/5.0" -o out/quilombolas.zip -w "%{http_code} %{size_download}\n" "https://certificacao.incra.gov.br/csv_shp/zip/%C3%81reas%20de%20Quilombolas.zip" || true
+          ls -la out; file out/* || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: camadas
+          path: out/
+          retention-days: 3
