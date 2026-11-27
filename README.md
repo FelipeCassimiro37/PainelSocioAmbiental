@@ -24,10 +24,12 @@ O site lê arquivos estáticos, então continua rápido para quem acessa.
 ├── dados/
 │   ├── meta.json               dicionário, lista de municípios, agregados
 │   ├── ind/<indicador>.json    o valor de um indicador nos 5.570 municípios
-│   └── uf/<SIGLA>.json         todos os indicadores dos municípios de uma UF
+│   ├── uf/<SIGLA>.json         todos os indicadores dos municípios de uma UF
+│   └── camadas/uc/<SIGLA>.json unidades de conservação, para a aba Mapas
+├── mapas.js, mapas.css         a aba Mapas (só baixa quando a aba abre)
 ├── malha/                      contornos dos municípios e das UFs
 ├── marca/                      símbolo e assinatura da Houer, em SVG
-├── vendor/                     bibliotecas de mapa
+├── vendor/                     bibliotecas de mapa (d3, topojson, MapLibre)
 ├── scripts/build.py            lê a planilha e gera dados/
 ├── .github/workflows/          a automação
 └── ver-local.bat               servidor local para testar antes de publicar
@@ -65,6 +67,45 @@ município na malha, **ou** uma chave — `'BR'` ou o código de dois dígitos d
 UF, que é como `META.agregados` já se indexa. `ehAgregado(i)` é o teste.
 Acrescentar um recorte novo não pede estrutura nova, pede uma chave nova em
 `META.agregados`.
+
+## A aba Mapas
+
+Para um município, gera os mapas que entram num diagnóstico — localização, uso
+e cobertura da terra, vegetação, hidrografia, áreas protegidas, comunidades
+tradicionais, geologia, solos e geomorfologia — com um clique, e deixa cruzar
+camadas, trocar o fundo e decidir o que fazer com o que fica fora do limite.
+A folha na tela é a mesma que sai em "Baixar imagem": título, coordenadas nas
+bordas, norte, escala, legenda e fontes, em PNG com o dobro da resolução da
+tela.
+
+| Camada | Fonte | Como chega |
+|---|---|---|
+| Limite, vizinhos, sedes, rodovias, ferrovias, cursos e massas d'água | IBGE, BC250 2025 | serviço WFS do IBGE, recortado na hora |
+| Vegetação, geologia, solos, geomorfologia | IBGE, BDiA 1:250.000 | idem |
+| Terras indígenas, territórios quilombolas | IBGE, base territorial do Censo 2022 (de FUNAI e INCRA) | idem |
+| Cobertura e uso da terra | IBGE, monitoramento 2020, grade de 1 km | imagem (WMS) |
+| Unidades de conservação | MMA, CNUC | cópia em `dados/camadas/uc/` |
+
+A legenda lista só as classes que tocam o município, com a parcela da área de
+cada uma — o município é rasterizado numa grade de até 600 px e cada classe é
+pintada e contada por cima, sem biblioteca de geometria. Unidades de
+conservação, terras indígenas e quilombos saem pelo nome, com a parcela do
+território que cada um ocupa.
+
+Município muito extenso (Amazônia) pesa: a drenagem fica só com os cursos que
+têm nome — ou, nos gigantes, só os chamados de rio — e os pedidos grandes vão
+em quatro pedaços paralelos, porque o servidor do IBGE corta em 60 s. Quando
+ele está lento, a página avisa.
+
+"Baixar camadas para o QGIS" é um teste: um .zip com um GeoJSON por camada
+ligada (as feições que tocam o município, inteiras) e o limite municipal.
+
+Para atualizar as unidades de conservação quando o MMA publicar um CNUC novo:
+
+```bash
+python scripts/camadas_uc.py                 # baixa o mais recente do dados.mma.gov.br
+python scripts/camadas_uc.py arquivo.shp     # ou usa um shapefile já baixado
+```
 
 ## Cada número leva à sua fonte
 
