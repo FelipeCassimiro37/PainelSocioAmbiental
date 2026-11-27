@@ -298,6 +298,13 @@ Para rodar um vigia na mão: **Actions → o workflow dele → Run workflow**. A
 opção *Reprocessar mesmo sem edição nova* serve para refazer os arquivos depois
 de mexer no script.
 
+### Faixas etárias da Educação Infantil
+
+`scripts/censo_idade.py` grava em `fonte/auto/auto_censo_idade.*` a população
+de 0 a 3, 4 a 5 e 0 a 5 anos (Censo 2022, SIDRA 9514), com os nomes que as
+bonecas de Educação Infantil já usam (`pop_0a3`, `pop_4a5`, `pop_0a5`). Roda-se
+uma vez à mão; o Censo não muda até o próximo.
+
 ### Saneamento: SINISA e Censo lado a lado
 
 `scripts/censo_saneamento.py` grava em `fonte/auto/auto_censo_san.*` quatro

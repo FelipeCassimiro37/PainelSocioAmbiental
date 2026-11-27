@@ -1,0 +1,29 @@
+{
+  "pop_0a3": {
+    "nome": "População de 0 a 3 anos",
+    "tema": "demografia",
+    "unidade": "pessoas",
+    "formato": "int",
+    "somavel": "1",
+    "ano": "2022",
+    "fonte": "IBGE — Censo Demográfico 2022 (SIDRA, tabela 9514)"
+  },
+  "pop_4a5": {
+    "nome": "População de 4 e 5 anos",
+    "tema": "demografia",
+    "unidade": "pessoas",
+    "formato": "int",
+    "somavel": "1",
+    "ano": "2022",
+    "fonte": "IBGE — Censo Demográfico 2022 (SIDRA, tabela 9514)"
+  },
+  "pop_0a5": {
+    "nome": "População de 0 a 5 anos",
+    "tema": "demografia",
+    "unidade": "pessoas",
+    "formato": "int",
+    "somavel": "1",
+    "ano": "2022",
+    "fonte": "IBGE — Censo Demográfico 2022 (SIDRA, tabela 9514)"
+  }
+}
