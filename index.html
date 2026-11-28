@@ -338,7 +338,7 @@ details.grp{border-bottom:1px solid var(--line-2)}
 /* ---------- navegação e ações no topo ---------- */
 .nav{display:flex;gap:2px;margin-left:14px}
 .nav button{background:none;border:0;color:#BCD0EA;padding:9px 16px;border-radius:var(--r);
-  cursor:pointer;font-size:14.5px;font-weight:600}
+  cursor:pointer;font-size:14.5px;font-weight:600;white-space:nowrap}
 .nav button:hover{background:#ffffff18;color:#fff}
 .nav-externo{color:var(--ceu);padding:7px 13px;border-radius:var(--r-p);font-size:13px;
   font-weight:600;text-decoration:none;border:1px solid color-mix(in srgb, var(--ceu) 38%, transparent);white-space:nowrap}
@@ -555,6 +555,14 @@ summary .rot{flex:1}
 
 /* ---------- página do município ---------- */
 #vistaMunicipio{flex:1;overflow-y:auto;background:var(--paper);display:none;min-height:0}
+/* A aba Mapas traz o resto do estilo em mapas.css, que só desce quando ela abre;
+   o que precisa valer antes disso (esconder, avisar) fica aqui. */
+#vistaGeo{flex:1;display:none;min-height:0;background:var(--paper)}
+#vistaGeo.on{display:grid;grid-template-columns:300px minmax(0,1fr)}
+.geo-aviso{padding:32px 36px;max-width:560px;margin:48px auto;background:#fff;border-radius:var(--r);
+  box-shadow:var(--sombra)}
+.geo-aviso h2{margin:0 0 8px;font-size:19px}
+.geo-aviso p{color:var(--ink-2);line-height:1.5;margin:0}
 /* Nota da ficha de Brasil/estado: explica de onde vem um agregado antes que
    alguém o some à mão e estranhe a diferença. Discreta de propósito — é
    contexto, não aviso. */
@@ -989,9 +997,10 @@ summary.tema-cab .qt{margin-left:auto}
   </div>
   <nav class="nav">
     <button data-v="inicio" aria-pressed="true">Início</button>
-    <button data-v="mapa" aria-pressed="false">Mapa</button>
     <button data-v="municipio" aria-pressed="false" hidden>Município</button>
+    <button data-v="geo" aria-pressed="false" hidden>Mapas</button>
     <button data-v="comparar" aria-pressed="false">Comparar</button>
+    <button data-v="mapa" aria-pressed="false" title="Um indicador por vez, pintado em todos os municípios">Mapa de calor</button>
     <button data-v="sobre" aria-pressed="false">Sobre</button>
   </nav>
   </div>
@@ -1155,6 +1164,7 @@ summary.tema-cab .qt{margin-left:auto}
 </div>
 
 <div id="vistaMunicipio"></div>
+<div id="vistaGeo"></div>
 <div id="vistaSobre"></div>
 
 <div class="modal" id="modalRel">
@@ -1297,7 +1307,7 @@ let malhaMun, feats, meshUF, geoUF;
 const cacheInd = new Map();     // id -> vetor nacional
 const cacheUF  = new Map();     // sigla -> {ind:[...]}
 const st = { nivel:'pais', uf:null, mun:null, ind:null, vista:'inicio',
-             setor:null, edu:null, eduEsc:null };
+             setor:null, edu:null, eduEsc:null, geo:'' };
 let munsByUF = new Map(), idxByCode = new Map();
 
 /* ================= formatação ================= */
@@ -2232,6 +2242,10 @@ function sincronizaControles(){
     // Só o recorte de município pode não ter nada escolhido.
     if(st.nivel==='mun'&&(st.mun===null||st.mun===undefined)) bm.hidden=true;
   }
+  // Os mapas temáticos só existem para município: pedem o recorte de um lugar
+  // pequeno o bastante para o servidor do IBGE devolver em segundos.
+  const bg=$('.nav button[data-v="geo"]');
+  if(bg) bg.hidden = !(st.nivel==='mun'&&st.mun!==null&&st.mun!==undefined);
   $('#segNivel').querySelectorAll('button')
     .forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.n===st.nivel)));
   $('#indList').querySelectorAll('.ind')
@@ -2716,6 +2730,7 @@ function montaHash(){
     if(st.vista==='municipio'&&st.setor) p.set('set',st.setor);
     if(st.vista==='municipio'&&st.edu) p.set('edu',st.edu);
     if(st.vista==='municipio'&&st.eduEsc) p.set('esc',st.eduEsc);
+    if(st.vista==='geo'&&st.geo) p.set('g',st.geo);
   }
   return '#'+p.toString();
 }
@@ -2745,7 +2760,8 @@ function lerHash(){
   if(st.nivel==='pais') st.uf=null;
   // sem "else" aqui, um link de volta ao mapa não tirava a vista anterior da
   // tela: o estado mudava por baixo e a página continuava a mesma
-  st.vista = (v==='comparar'||v==='sobre'||v==='municipio'||v==='mapa') ? v : 'inicio';
+  st.vista = (v==='comparar'||v==='sobre'||v==='municipio'||v==='mapa'||v==='geo') ? v : 'inicio';
+  st.geo = p.get('g')||'';
   const se=p.get('set');
   st.setor = (se&&TEMAS[se]) ? se : null;
   const ed=p.get('edu');
@@ -3305,13 +3321,13 @@ async function montaAgregado(chave){
   alvo.innerHTML=`<div class="mun">
     <div class="mun-topo">
       <div class="mun-id">
-        <button class="volta" id="munVolta">&larr; voltar ao mapa</button>
+        <button class="volta" id="munVolta">&larr; mapa de calor</button>
         <h2>${nome}</h2>
         <p class="uf">${ehBR ? `${nMun.toLocaleString('pt-BR')} municípios · 27 unidades da federação`
                              : `${META.ufSiglas[chave]} · ${nMun.toLocaleString('pt-BR')} municípios`}</p>
         <p class="cod">${comDadoTotal} de ${IDS.length} indicadores com dado</p>
         <div class="acoesM">
-          <button class="btn sec" id="munMapaBtn">Ver no mapa</button>
+          <button class="btn sec" id="munMapaBtn">Ver no mapa de calor</button>
           <button class="btn sec" id="munCmp">Comparar</button>
           <button class="btn sec" id="munPdf">Gerar PDF</button>
         </div>
@@ -3438,14 +3454,15 @@ async function montaMunicipio(){
   alvo.innerHTML=`<div class="mun">
     <div class="mun-topo">
       <div class="mun-id">
-        <button class="volta" id="munVolta">&larr; voltar ao mapa</button>
+        <button class="volta" id="munVolta">&larr; mapa de calor</button>
         <h2>${META.nomes[i]}</h2>
         <p class="uf">${META.ufNomes[uf]} · ${sig}</p>
         <p class="cod">código IBGE ${META.municipios[i]}</p>
         <div class="acoesM">
-          <button class="btn sec" id="munMapaBtn">Ver no mapa</button>
+          <button class="btn" id="munGeo">Mapas</button>
           <button class="btn sec" id="munCmp">Comparar</button>
           <button class="btn sec" id="munPdf">Gerar PDF</button>
+          <button class="btn sec" id="munMapaBtn">Ver no mapa de calor</button>
         </div>
       </div>
       <div class="mun-mapa">
@@ -3492,6 +3509,7 @@ async function montaMunicipio(){
 
   $('#munVolta').onclick=()=>trocaVista('mapa');
   $('#munMapaBtn').onclick=()=>trocaVista('mapa');
+  $('#munGeo').onclick=()=>trocaVista('geo');
   $('#munCmp').onclick=()=>{
     if(!selecao.some(x=>x.t==='mun'&&x.i===i) && selecao.length<MAX_SEL) selecao.push({t:'mun',i});
     trocaVista('comparar');
@@ -4485,11 +4503,13 @@ function trocaVista(v){
   $('#vistaComparar').style.display = v==='comparar' ? 'block' : 'none';
   $('#vistaSobre').style.display = v==='sobre' ? 'block' : 'none';
   $('#vistaMunicipio').style.display = v==='municipio' ? 'block' : 'none';
+  $('#vistaGeo').classList.toggle('on', v==='geo');
   // ao voltar para o mapa, remedir e redesenhar: enquanto ele estava escondido
   // a caixa media zero, e a medida pode ter mudado nesse meio-tempo
   if(v==='mapa'){ setTimeout(()=>{ dimensiona(); desenhar(); },30); gravarHash(); }
   else if(v==='inicio'){ montaRecentes(); setTimeout(desenhaCapa,30); gravarHash(); }
   else if(v==='comparar') comparar();
+  else if(v==='geo'){ abreMapas(); gravarHash(); }
   else if(v==='municipio'){
     guardaRecente(st.nivel==='mun'&&st.mun!==null ? {t:'mun',i:st.mun}
                 : (st.nivel==='uf'&&st.uf ? {t:'uf',cod:st.uf} : {t:'br'}));
@@ -4501,6 +4521,68 @@ function trocaVista(v){
     gravarHash();
   }
   else { montaSobre(); gravarHash(); }
+}
+
+/* ================= aba Mapas =================
+   O MapLibre (800 KB) e o código da aba só descem quando a aba abre pela
+   primeira vez; quem só consulta números não paga por eles. */
+const carregados=new Map();
+function carregaArquivo(url){
+  if(carregados.has(url)) return carregados.get(url);
+  const pr=new Promise((ok,falha)=>{
+    const css=url.split('?')[0].endsWith('.css');
+    const e=document.createElement(css?'link':'script');
+    if(css){ e.rel='stylesheet'; e.href=url; } else { e.src=url; e.async=false; }
+    e.onload=()=>ok(); e.onerror=()=>{ carregados.delete(url); falha(new Error('não foi possível baixar '+url)); };
+    document.head.appendChild(e);
+  });
+  carregados.set(url,pr);
+  return pr;
+}
+let geoAberto=null;
+async function abreMapas(){
+  const alvo=$('#vistaGeo');
+  if(st.nivel!=='mun'||st.mun===null||st.mun===undefined){
+    if(window.PainelMapas) PainelMapas.fechar();
+    geoAberto=null;
+    alvo.innerHTML='<div style="grid-column:1/-1"><div class="geo-aviso"><h2>Escolha um município</h2>'+
+      '<p>Os mapas são feitos para um município de cada vez: localização, uso da terra, vegetação, '+
+      'hidrografia, áreas protegidas, geologia, solos e relevo, recortados pelo limite municipal. '+
+      'Use a busca no topo para abrir um.</p></div></div>';
+    return;
+  }
+  const i=st.mun, cod=String(META.municipios[i]);
+  if(geoAberto===cod&&window.PainelMapas) return;
+  geoAberto=cod;
+  if(!window.PainelMapas){
+    alvo.innerHTML='<div style="grid-column:1/-1;padding:40px;color:var(--muted)">Carregando a aba de mapas…</div>';
+    try{
+      const v=VER?'?v='+encodeURIComponent(VER):'';
+      await Promise.all([carregaArquivo('vendor/maplibre-gl.css'),carregaArquivo('mapas.css'+v),
+                         carregaArquivo('vendor/maplibre-gl.js')]);
+      await carregaArquivo('mapas.js'+v);
+    }catch(e){
+      geoAberto=null;
+      alvo.innerHTML='<div style="grid-column:1/-1"><div class="geo-aviso"><h2>A aba de mapas não abriu</h2><p>'+
+        escHtml(e.message||String(e))+'. Verifique a conexão e tente de novo.</p></div></div>';
+      return;
+    }
+  }
+  if(geoAberto!==cod||st.vista!=='geo') return;
+  const uf=META.uf[i], f=feats[i];
+  PainelMapas.abrir({
+    el:alvo, cod, nome:META.nomes[i], sigla:META.ufSiglas[uf], ufNome:META.ufNomes[uf], ufCod:uf,
+    feature:f, bbox:d3.geoBounds(f).flat(), ufs:geoUF.features,
+    munsUF:(munsByUF.get(uf)||[]).map(k=>feats[k]).filter(Boolean),
+    estado:st.geo,
+    aoMudar:s=>{ st.geo=s; gravarHash(); },
+    aoVoltar:()=>trocaVista('municipio')
+  }).catch(e=>{
+    console.error(e);
+    alvo.innerHTML='<div style="grid-column:1/-1"><div class="geo-aviso"><h2>Não foi possível montar o mapa</h2><p>'+
+      escHtml(e.message||String(e))+'</p></div></div>';
+    geoAberto=null;
+  });
 }
 
 /* ================= orquestração ================= */
